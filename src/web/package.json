@@ -1,0 +1,71 @@
+{
+  "name": "YG-Backend",
+  "version": "0.1.0",
+  "private": true,
+  "scripts": {
+    "start:dev": "vue-cli-service serve",
+    "build:web": "vue-cli-service build",
+    "build:docker": "vue-cli-service build --dest ../app/dist/web",
+    "lint": "vue-cli-service lint"
+  },
+  "dependencies": {
+    "axios": "0.24.0",
+    "chart.js": "^4.2.1",
+    "core-js": "3.24.1",
+    "moment": "2.29.4",
+    "vue": "2.7.14",
+    "vue-chartjs": "5.2.0",
+    "html2pdf.js": "0.10.1",
+    "vue-router": "3.5.3",
+    "vuetify": "2.6.14",
+    "vuex": "3.4.0",
+    "xlsx": "0.18.5"
+  },
+  "devDependencies": {
+    "@fortawesome/fontawesome-free": "6.2.1",
+    "@vue/cli-plugin-babel": "~5.0.0",
+    "@vue/cli-plugin-eslint": "5.0.8",
+    "@vue/cli-plugin-router": "~5.0.0",
+    "@vue/cli-plugin-vuex": "~5.0.0",
+    "@vue/cli-service": "~5.0.0",
+    "@vue/eslint-config-prettier": "7.0.0",
+    "babel-eslint": "10.1.0",
+    "eslint": "7.28.0",
+    "eslint-plugin-prettier": "4.2.1",
+    "eslint-plugin-vue": "9.8.0",
+    "vue-cli-plugin-tailwind": "~3.0.0",
+    "vue-template-compiler": "2.6.11"
+  },
+  "eslintConfig": {
+    "root": true,
+    "env": {
+      "node": true
+    },
+    "extends": [
+      "plugin:vue/essential",
+      "eslint:recommended"
+    ],
+    "parserOptions": {
+      "parser": "babel-eslint"
+    },
+    "rules": {
+      "vue/multi-word-component-names": [
+        "error",
+        {
+          "ignores": [
+            "Form",
+            "Profile",
+            "Login",
+            "Home",
+            "Grid"
+          ]
+        }
+      ]
+    }
+  },
+  "browserslist": [
+    "> 1%",
+    "last 2 versions",
+    "not dead"
+  ]
+}
