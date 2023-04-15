@@ -54,9 +54,7 @@ export class UserPermissionRepository extends BaseRepository<UserPermissionDTO> 
                 "USER_NAME",
                 "USER_EMAIL"
             ]);
-        
-            console.log(user_email);
-        
+
         const user_data = (this.loadResults(user_data_qry)[0] ?? {}) as UserDTO;        
         const user_permissions = await this.getPermissions(user_data.user_email);        
                 

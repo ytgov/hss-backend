@@ -5,6 +5,8 @@ Health and social services Backend for Vuejs-based web apps for internal service
 ## Development
 Before starting the API server, you need to create the appropriate .env file, which can be done by running `cp src/api/.env src/api/.env.development`. You must then set the appropriate values.
 
+Before starting the WEB server, you need to create the appropriate .env file which can be done by running `cp src/web/.env.sample src/web/.env.development`. You must then set the appropriate value.
+
 To develop within this environment, you must have Node.js and NPM installed on your development machine. Open two terminal windows and open one to `/src/api` and `src/web`, respectively. The API back-end and the web front-end can be started with: `npm run start:dev`.
 
 

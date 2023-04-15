@@ -29,7 +29,6 @@ a {
 .v-main .v-btn {
     text-transform: none;
     color: #ffffff;
-    /* border: 1px #000 solid !important; */
     text-decoration: none;
     margin: 15px 0;
     box-shadow: none;
@@ -38,10 +37,6 @@ a {
     ;
 }
 
-/* .v-main .v-btn.primary {
-    border: 1px #000 solid !important;
-}
- */
 .v-main .v-btn.secondary {
     color: #0097a9;
     border: 1px #0097a9 solid !important;

@@ -147,4 +147,4 @@ export const sections = [
     },
 ];
 export const environment = process.env.NODE_ENV;
-export const apiBaseUrl = process.env.NODE_ENV == "production" ? "http://localhost:8080" : "http://localhost:3000";
+export const apiBaseUrl = process.env.VUE_APP_API_URL || 'https://test.hss-backend.ynet.gov.yk.ca/';
