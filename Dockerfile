@@ -7,7 +7,7 @@ RUN mkdir -p /opt/oracle/instantclient_21_9
 COPY src/web/package*.json /home/node/web/
 COPY src/api/package*.json /home/node/app/
 
-ADD instantclient_21_9/* /opt/oracle/instantclient_21_9
+ADD instantclient_21_9/* /opt/oracle/instantclient_21_9/
 RUN echo /opt/oracle/instantclient_21_9 > /etc/ld.so.conf.d/oracle-instantclient.conf && \
     ldconfig
 
