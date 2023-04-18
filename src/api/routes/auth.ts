@@ -54,7 +54,7 @@ export function configureAuthentication(app: Express) {
             oid_user: user,
             db_user: await userRepo.getUserByEmail(req.oidc.user.email)
           };
-
+          console.log("USER", user);
           res.redirect(AUTH_REDIRECT);
       }
       else {
