@@ -580,7 +580,7 @@ constellationRouter.post("/export/", async (req: Request, res: Response) => {
             }else{
                 value.language_prefer_to_receive_services = value.language_preferred;
             }
-            
+
             var dataString = "";
             const diagnosisList = helper.getJsonDataList(value.diagnosis);
 
@@ -596,7 +596,7 @@ constellationRouter.post("/export/", async (req: Request, res: Response) => {
             if(dataString.substr(-1) == ","){
                 dataString = dataString.slice(0, -1);
             }
-            
+
             value.diagnosis = dataString.replace(/,/g, ', ');
             delete value.id;
         });
@@ -641,7 +641,7 @@ constellationRouter.post("/export/", async (req: Request, res: Response) => {
                 value.date_of_birth_family_member ? 
                     value.date_of_birth_family_member= date_of_birth.substring(1, 11): 
                     value.date_of_birth_family_member =  "N/A";
-                    
+
                 if(value.date_of_birth_family_member == 0) {
                     value.date_of_birth_family_member =  "N/A";
                 }
@@ -716,11 +716,10 @@ constellationRouter.post("/duplicates", async (req: Request, res: Response) => {
             .join(`${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH`, 'CONSTELLATION_DUPLICATED_REQUESTS.ORIGINAL_ID', '=', 'CONSTELLATION_HEALTH.ID')
             .join(`${SCHEMA_CONSTELLATION}.CONSTELLATION_STATUS`, 'CONSTELLATION_HEALTH.STATUS', '=', 'CONSTELLATION_STATUS.ID')
             .select('CONSTELLATION_HEALTH.YOUR_LEGAL_NAME',
-                    'CONSTELLATION_HEALTH.ID',
                     'CONSTELLATION_STATUS.DESCRIPTION AS STATUS_DESCRIPTION',
                     'CONSTELLATION_HEALTH.ID AS CONSTELLATION_HEALTH_ID',
                     db.raw("TO_CHAR(CONSTELLATION_HEALTH.CREATED_AT, 'YYYY-MM-DD HH24:MI:SS') AS CREATED_AT,"+
-                    "(CONSTELLATION_DUPLICATED_REQUESTS.ID|| '-'|| CONSTELLATION_HEALTH.ID) AS UNIQUE_ID, "+    
+                    "(CONSTELLATION_DUPLICATED_REQUESTS.ID|| '-'|| CONSTELLATION_HEALTH.ID) AS UNIQUE_ID, "+
                     "TO_CHAR(CONSTELLATION_HEALTH.DATE_OF_BIRTH, 'YYYY-MM-DD') AS DATE_OF_BIRTH"))
             .where('CONSTELLATION_HEALTH.STATUS', '<>', 4 )
             .orderBy("CONSTELLATION_HEALTH.CREATED_AT").then((rows: any) => {
@@ -751,6 +750,8 @@ constellationRouter.post("/duplicates", async (req: Request, res: Response) => {
         constellationDuplicate.forEach(function (value: any) {
 
             let url = "constellationWarnings/details/"+value.id;
+
+            delete value.id;
 
             constellation.push({
                 constellation_health_id: null,

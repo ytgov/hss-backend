@@ -490,7 +490,9 @@ midwiferyRouter.post("/store", async (req: Request, res: Response) => {
             midwifery.WHEN_WAS_THE_FIRST_DAY_OF_YOUR_LAST_PERIOD_  = db.raw("TO_DATE('"+period+"','YYYY-MM-DD') ");
         }
 
-        midwiferyCommunityLocations = await db(`${SCHEMA_MIDWIFERY}.MIDWIFERY_COMMUNITY_LOCATIONS`).where({ DESCRIPTION: data.community_located }).select().first();
+        midwiferyCommunityLocations = await db(`${SCHEMA_MIDWIFERY}.MIDWIFERY_COMMUNITY_LOCATIONS`).where({ DESCRIPTION: data.community_located }).select().then((data:any) => {
+            return data[0];
+        });
 
         if(midwiferyCommunityLocations) {
             midwifery.COMMUNITY_LOCATED = midwiferyCommunityLocations.id;
