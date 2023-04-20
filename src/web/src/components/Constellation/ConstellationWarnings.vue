@@ -9,7 +9,6 @@
         <v-data-table
             dense
             :items="items"
-            item-key="unique_id"
             :headers="headers"
             :options.sync="options"
             :loading="loading"
