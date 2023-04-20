@@ -698,7 +698,7 @@ hipmaRouter.post("/deleteFile", async (req: Request, res: Response) => {
         var fs = require("fs");
         var file = sanitize(req.body.params.file);
         let pathPublicFront = path.join(__dirname, "../../");
-        var filePath = pathPublicFront+"/web/public/"+file;
+        var filePath = pathPublicFront+"web/public/"+file;
 
         if(fs.existsSync(filePath)) {
             fs.unlinkSync(filePath);
