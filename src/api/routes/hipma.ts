@@ -532,7 +532,7 @@ hipmaRouter.get("/downloadFile/:hipmaFile_id",[param("hipmaFile_id").isInt().not
         var buffer = Buffer.from(hipmaFiles.file_data.toString(), 'base64');
         let safeName = (Math.random() + 1).toString(36).substring(7)+'_'+hipmaFiles.file_name;
         let pathPublicFront = path.join(__dirname, "../../");
-        pathFile = pathPublicFront+"/web/public/"+safeName+"."+hipmaFiles.file_type;
+        pathFile = pathPublicFront+"web/public/"+safeName+"."+hipmaFiles.file_type;
 
         fs.writeFileSync(pathFile, buffer);
 
