@@ -278,8 +278,7 @@ export default {
                 this.getDataFromApi();
                 this.selectedStatus = null;
                 this.applyDisabled = true;
-                this.alertMessage = resp.data.message;
-                this.alertType = resp.data.type;
+                this.$refs.notifier.showSuccess(resp.data.message);
             })
             .catch((err) => console.error(err))
             .finally(() => {
