@@ -17,9 +17,12 @@ export class SubmissionStatusRepository extends BaseRepository<SubmissionStatusD
        
         if (actionId === "month") {
             const monthId = actionVal.slice(-6);
+            const yearCode = monthId.slice(0, 4);
+            const monthCode = actionVal.slice(-2);
+            const monthFilter = yearCode+"-"+monthCode;
             viewName = `${SCHEMA_GENERAL}.SUBMISSIONS_STATUS_MONTH_V`;
             whereClause = (builder: any) => {
-                builder.where("MONTHID", "=", monthId);
+                builder.where("MONTHID", "=", monthFilter);
             };
         }
         
@@ -49,10 +52,13 @@ export class SubmissionStatusRepository extends BaseRepository<SubmissionStatusD
         
         if (actionId === "month") {
             const monthId = actionVal.slice(-6);
+            const yearCode = monthId.slice(0, 4);
+            const monthCode = actionVal.slice(-2);
+            const monthFilter = yearCode+"-"+monthCode;
             viewName = `${SCHEMA_GENERAL}.SUBMISSIONS_STATUS_MONTH_V`;
             whereClause = (builder: any) => {
                 builder
-                    .where("MONTHID", "=", monthId)
+                    .where("MONTHID", "=", monthFilter)
                     .andWhere("ID", "=", module);
             };
         }
@@ -82,9 +88,12 @@ export class SubmissionStatusRepository extends BaseRepository<SubmissionStatusD
         
         if (actionId === "month") {
             const monthId = actionVal.slice(-6);
+            const yearCode = monthId.slice(0, 4);
+            const monthCode = actionVal.slice(-2);
+            const monthFilter = yearCode+"-"+monthCode;
             viewName = `${SCHEMA_GENERAL}.SUBMISSIONS_MONTH_V`;
             whereClause = (builder: any) => {
-                builder.where("MONTHID", "=", monthId);
+                builder.where("MONTHID", "=", monthFilter);
             };
         }
 
@@ -115,10 +124,13 @@ export class SubmissionStatusRepository extends BaseRepository<SubmissionStatusD
         
         if (actionId === "month") {
             const monthId = actionVal.slice(-6);
+            const yearCode = monthId.slice(0, 4);
+            const monthCode = actionVal.slice(-2);
+            const monthFilter = yearCode+"-"+monthCode;
             viewName = `${SCHEMA_GENERAL}.SUBMISSIONS_MONTH_V`;
             whereClause = (builder: any) => {
                 builder
-                    .where("MONTHID", "=", monthId)
+                    .where("MONTHID", "=", monthFilter)
                     .andWhere("ID", "=", module);
             };
         }
