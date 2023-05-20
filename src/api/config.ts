@@ -33,6 +33,7 @@ export const SCHEMA_CONSTELLATION = process.env.SCHEMA_CONSTELLATION || '';
 export const SCHEMA_MIDWIFERY = process.env.SCHEMA_MIDWIFERY || '';
 export const SCHEMA_HIPMA = process.env.SCHEMA_HIPMA || '';
 export const SCHEMA_GENERAL = process.env.SCHEMA_GENERAL || '';
+export const SCHEMA_DENTAL = process.env.SCHEMA_DENTAL || '';
 
 const postProcessToLowerCase = (result: any, queryContext: any) => {
   if (Array.isArray(result)) {
@@ -111,6 +112,24 @@ export const DB_CONFIG_HIPMA = {
 };
 
 export const DB_CONFIG_GENERAL = {
+  client: 'oracledb',
+  connection: {
+    host: `${DB_HOST}:${DB_PORT}`,
+    user: DB_USER,
+    password: DB_PASS,
+    database: DB_NAME,
+    requestTimeout: 100,
+    instanceName: DB_SERVICE,
+    connectString: `(DESCRIPTION=                   
+        (ADDRESS_LIST=            
+        (ADDRESS=(PROTOCOL=TCP)              
+        (HOST=${DB_HOST})(PORT=${DB_PORT}) ) )           
+        (CONNECT_DATA=(SERVICE_NAME=${DB_SERVICE}) ) )`
+  },
+  postProcessResponse: postProcessToLowerCase
+};
+
+export const DB_CONFIG_DENTAL = {
   client: 'oracledb',
   connection: {
     host: `${DB_HOST}:${DB_PORT}`,

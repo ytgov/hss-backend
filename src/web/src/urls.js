@@ -53,3 +53,15 @@ export const MIDWIFERY_DUPLICATES_DETAILS = `${MIDWIFERY_DUPLICATES}/details/`;
 export const MIDWIFERY_DUPLICATES_PRIMARY = `${MIDWIFERY_DUPLICATES}/primary/`;
 export const MIDWIFERY_VALIDATE_WARNING_URL = `${MIDWIFERY_DUPLICATES}/validateWarning/`;
 
+export const DENTAL_URL = `${config.apiBaseUrl}/api/dental`;
+export const DENTAL_CHANGE_STATUS_URL = `${DENTAL_URL}/changeStatus/`;
+export const DENTAL_SHOW_URL = `${DENTAL_URL}/show/`;
+export const DENTAL_VALIDATE_URL = `${DENTAL_URL}/validateRecord/`;
+export const DENTAL_EXPORT_FILE_URL = `${DENTAL_URL}/export`;
+export const DENTAL_SUBMISSIONS_URL = `${DENTAL_URL}/submissions`
+export const DENTAL_STATUS_URL = `${DENTAL_SUBMISSIONS_URL}/status`
+export const DENTAL_DUPLICATES = `${DENTAL_URL}/duplicates`;
+export const DENTAL_DUPLICATES_DETAILS = `${DENTAL_DUPLICATES}/details/`;
+export const DENTAL_DUPLICATES_PRIMARY = `${DENTAL_DUPLICATES}/primary/`;
+export const DENTAL_VALIDATE_WARNING_URL = `${DENTAL_DUPLICATES}/validateWarning/`;
+

@@ -145,6 +145,23 @@ export const sections = [
             }
         ]
     },
+    {
+        header: "Dental",
+        icon: "/MS.png",
+        permissions: [
+            "dental_view"
+        ],
+        data:[
+            {
+                name: "Submissions",
+                url: "/dental",
+                icon: "fa-regular fa-rectangle-list",
+                permissions: [
+                    "dental_view"
+                ]
+            }
+        ]
+    },
 ];
 export const environment = process.env.NODE_ENV;
 export const apiBaseUrl = process.env.VUE_APP_API_URL || 'https://test.hss-backend.ynet.gov.yk.ca';

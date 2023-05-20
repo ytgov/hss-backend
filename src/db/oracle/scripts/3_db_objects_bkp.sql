@@ -1,4 +1,3 @@
-
 --------------------------------------------------------
 --  DDL for View STATUS_V
 --------------------------------------------------------
@@ -138,6 +137,21 @@ UNION
      LEFT JOIN GENERAL.config cc ON cc.type = 'STATUS_CHART_COLOR' AND cc.name = tab.owner AND cc.val_int1 = st.id
      LEFT JOIN GENERAL.config cp ON cp.type = 'SCHEMA_PERMISSION_VIEW' AND cp.name = tab.owner
   GROUP BY tab.owner, (to_char(hi.created_at, 'yyyy-mm')), cd.val_str1, cc.val_str1, cp.val_str1, st.description
+UNION
+ SELECT tab.owner AS id,
+    cd.val_str1 AS department,
+    cc.val_str1 AS color,
+    cp.val_str1 AS permissions,
+    count(1) AS submissions,
+    st.description AS status,
+    to_char(ds.created_at, 'yyyy-mm') AS monthid
+   FROM DENTAL.DENTAL_SERVICE ds
+     LEFT JOIN all_tables tab ON tab.table_name = 'DENTAL_SERVICE'
+     LEFT JOIN DENTAL.DENTAL_STATUS st ON st.id = ds.status
+     LEFT JOIN GENERAL.config cd ON cd.type = 'SCHEMA_TITLE' AND cd.name = tab.owner
+     LEFT JOIN GENERAL.config cc ON cc.type = 'STATUS_CHART_COLOR' AND cc.name = tab.owner AND cc.val_int1 = st.id
+     LEFT JOIN GENERAL.config cp ON cp.type = 'SCHEMA_PERMISSION_VIEW' AND cp.name = tab.owner
+  GROUP BY tab.owner, (to_char(ds.created_at, 'yyyy-mm')), cd.val_str1, cc.val_str1, cp.val_str1, st.description
 ;
 --------------------------------------------------------
 --  DDL for View SUBMISSIONS_STATUS_WEEK_V
@@ -188,6 +202,21 @@ UNION
      LEFT JOIN GENERAL.config cp ON cp.type = 'SCHEMA_PERMISSION_VIEW' AND cp.name = tab.owner
   WHERE hi.created_at > (CURRENT_DATE - INTERVAL '7' DAY)
   GROUP BY tab.owner, st.id, cd.val_str1, cc.val_str1, cp.val_str1, st.DESCRIPTION
+UNION
+ SELECT tab.owner AS id,
+    cd.val_str1 AS department,
+    cc.val_str1 AS color,
+    cp.val_str1 AS permissions,
+    count(1) AS submissions,
+    st.description AS status
+   FROM DENTAL.DENTAL_SERVICE ds
+     LEFT JOIN DENTAL.DENTAL_STATUS st ON st.id = ds.status
+     LEFT JOIN all_tables tab ON tab.table_name = 'DENTAL_SERVICE'
+     LEFT JOIN GENERAL.config cd ON cd.type = 'SCHEMA_TITLE' AND cd.name = tab.owner
+     LEFT JOIN GENERAL.config cc ON cc.type = 'STATUS_CHART_COLOR' AND cc.name = tab.owner AND cc.val_int1 = st.id
+     LEFT JOIN GENERAL.config cp ON cp.type = 'SCHEMA_PERMISSION_VIEW' AND cp.name = tab.owner
+  WHERE ds.created_at > (CURRENT_DATE - INTERVAL '7' DAY)
+  GROUP BY tab.owner, st.id, cd.val_str1, cc.val_str1, cp.val_str1, st.DESCRIPTION
 ;
 --------------------------------------------------------
 --  DDL for View SUBMISSIONS_WEEK_V
@@ -235,6 +264,20 @@ UNION
      LEFT JOIN GENERAL.config cp ON cp.type = 'SCHEMA_PERMISSION_VIEW' AND cp.name = tab.owner
   WHERE ch.created_at > (CURRENT_DATE - interval '7' DAY)
   GROUP BY tab.owner, (to_char(ch.created_at, 'yyyy-mm-dd')), cd.val_str1, cc.val_str1, cp.val_str1
+UNION
+ SELECT tab.owner AS id,
+    cd.val_str1 AS department,
+    cc.val_str1 AS color,
+    cp.val_str1 AS permissions,
+    count(1) AS submissions,
+    to_char(ds.created_at, 'yyyy-mm-dd') AS date_code
+   FROM MIDWIFERY.DENTAL_SERVICE ds
+     LEFT JOIN all_tables tab ON tab.table_name = 'DENTAL_SERVICE'
+     LEFT JOIN GENERAL.config cd ON cd.type = 'SCHEMA_TITLE' AND cd.name = tab.owner
+     LEFT JOIN GENERAL.config cc ON cc.type = 'SCHEMA_CHART_COLOR' AND cc.name = tab.owner
+     LEFT JOIN GENERAL.config cp ON cp.type = 'SCHEMA_PERMISSION_VIEW' AND cp.name = tab.owner
+  WHERE ds.created_at > (CURRENT_DATE - interval '7' DAY)
+  GROUP BY tab.owner, (to_char(ds.created_at, 'yyyy-mm-dd')), cd.val_str1, cc.val_str1, cp.val_str1
 ;
 --------------------------------------------------------
 --  DDL for View USER_PERMISSIONS_V
@@ -274,6 +317,94 @@ FROM
 FROM
     MIDWIFERY_STATUS
 ;
+--------------------------------------------------------
+--  DDL for View STATUS_V
+--------------------------------------------------------
+
+  CREATE OR REPLACE FORCE EDITIONABLE VIEW "DENTAL"."STATUS_V" ("ID", "DESCRIPTION") AS
+  SELECT
+    ID,
+    DESCRIPTION
+FROM
+    DENTAL_STATUS
+;
+--------------------------------------------------------
+--  DDL for View DENTAL_SERVICE_SUBMISSIONS
+--------------------------------------------------------
+
+  CREATE OR REPLACE FORCE EDITIONABLE VIEW "DENTAL"."DENTAL_SERVICE_SUBMISSIONS" (
+    "ID", "FIRST_NAME", "LAST_NAME", "DATE_OF_BIRTH",
+		"STATUS", "STATUS_DESCRIPTION", "CREATED_AT",
+    "DEPENDENT", "FILE_DENTAL", "ELIGIBLE_PHARMACARE", "showUrl"
+) AS
+SELECT
+    DENTAL_SERVICE.ID,
+    DENTAL_SERVICE.FIRST_NAME,
+    DENTAL_SERVICE.LAST_NAME,
+    TO_CHAR(DENTAL_SERVICE.DATE_OF_BIRTH, 'YYYY-MM-DD') AS DATE_OF_BIRTH,
+    DENTAL_SERVICE.STATUS,
+    DENTAL_STATUS.DESCRIPTION AS STATUS_DESCRIPTION,
+    TO_CHAR(DENTAL_SERVICE.CREATED_AT, 'YYYY-MM-DD HH24:MI:SS') AS CREATED_AT,
+    CASE WHEN DENTAL_SERVICE_DEPENDENTS.ID IS NOT NULL THEN 'YES' ELSE 'NO' END AS DEPENDENT,
+    CASE WHEN DENTAL_SERVICE_FILES.FILE_NAME IS NOT NULL THEN 'YES' ELSE 'NO' END AS FILE_DENTAL,
+    CASE WHEN DENTAL_SERVICE.ARE_YOU_ELIGIBLE_FOR_THE_PHARMACARE_AND_EXTENDED_HEALTH_CARE_BEN IS NULL THEN 'NOT APPLICABLE' END AS ELIGIBLE_PHARMACARE,
+    'dental/show/' || TO_CHAR(DENTAL_SERVICE.ID) AS showUrl
+FROM
+    DENTAL.DENTAL_SERVICE
+    JOIN DENTAL.DENTAL_STATUS ON DENTAL_SERVICE.STATUS = DENTAL_STATUS.ID
+    LEFT JOIN DENTAL.DENTAL_SERVICE_DEPENDENTS ON DENTAL_SERVICE.ID = DENTAL_SERVICE_DEPENDENTS.DENTAL_SERVICE_ID
+    LEFT JOIN DENTAL.DENTAL_SERVICE_FILES ON DENTAL_SERVICE.ID = DENTAL_SERVICE_FILES.DENTAL_SERVICE_ID
+WHERE
+    DENTAL_SERVICE.STATUS <> 4;
+
+--------------------------------------------------------
+--  DDL for View DENTAL_SERVICE_SUBMISSIONS_DETAILS
+--------------------------------------------------------
+CREATE OR REPLACE FORCE EDITIONABLE VIEW "DENTAL"."DENTAL_SERVICE_SUBMISSIONS_DETAILS" (ID, STATUS, FIRST_NAME, MIDDLE_NAME, LAST_NAME, DATE_OF_BIRTH,
+      HEALTH_CARD_NUMBER, MAILING_ADDRESS, CITY_OR_TOWN, POSTAL_CODE, PHONE, EMAIL, OTHER_COVERAGE, ELIGIBLE_PHARMACARE,
+      EMAIL_INSTEAD, HAVE_CHILDREN, ASK_DEMOGRAPHIC, IDENTIFY_GROUPS, GENDER, EDUCATION, OFTEN_BRUSH, STATE_TEETH, OFTEN_FLOSS,
+      STATE_GUMS, LAST_SAW_DENTIST, REASON_FOR_DENTIST, BUY_SUPPLIES, PAY_FOR_VISIT, BARRIERS, PROBLEMS, SERVICES_NEEDED,
+      FILE_ID, FILE_NAME, FILE_TYPE, FILE_SIZE) AS
+SELECT
+    DENTAL_SERVICE.ID,
+    DENTAL_SERVICE.STATUS,
+    DENTAL_SERVICE.FIRST_NAME,
+    DENTAL_SERVICE.MIDDLE_NAME,
+    DENTAL_SERVICE.LAST_NAME,
+    TO_CHAR(DENTAL_SERVICE.DATE_OF_BIRTH, 'YYYY-MM-DD') AS DATE_OF_BIRTH,
+    DENTAL_SERVICE.HEALTH_CARD_NUMBER,
+    DENTAL_SERVICE.MAILING_ADDRESS,
+    DENTAL_SERVICE.CITY_OR_TOWN,
+    DENTAL_SERVICE.POSTAL_CODE,
+    DENTAL_SERVICE.PHONE,
+    DENTAL_SERVICE.EMAIL,
+    DENTAL_SERVICE.OTHER_COVERAGE,
+    CASE WHEN DENTAL_SERVICE.ARE_YOU_ELIGIBLE_FOR_THE_PHARMACARE_AND_EXTENDED_HEALTH_CARE_BEN IS NULL THEN 'NOT APPLICABLE' END AS ELIGIBLE_PHARMACARE,
+    CASE WHEN DENTAL_SERVICE.EMAIL_INSTEAD = 1 THEN 'YES' ELSE 'NO' END AS EMAIL_INSTEAD,
+    DENTAL_SERVICE.HAVE_CHILDREN,
+    DENTAL_SERVICE.ASK_DEMOGRAPHIC,
+    DENTAL_SERVICE.IDENTIFY_GROUPS,
+    DENTAL_SERVICE.GENDER,
+    DENTAL_SERVICE.EDUCATION,
+    DENTAL_SERVICE.OFTEN_BRUSH,
+    DENTAL_SERVICE.STATE_TEETH,
+    DENTAL_SERVICE.OFTEN_FLOSS,
+    DENTAL_SERVICE.STATE_GUMS,
+    DENTAL_SERVICE.LAST_SAW_DENTIST,
+    DENTAL_SERVICE.REASON_FOR_DENTIST,
+    DENTAL_SERVICE.BUY_SUPPLIES,
+    DENTAL_SERVICE.PAY_FOR_VISIT,
+    DENTAL_SERVICE.BARRIERS,
+		DENTAL_SERVICE.PROBLEMS,
+		DENTAL_SERVICE.SERVICES_NEEDED,
+		DENTAL_SERVICE_FILES.id AS FILE_ID,
+		DENTAL_SERVICE_FILES.FILE_NAME,
+		DENTAL_SERVICE_FILES.FILE_TYPE,
+    DENTAL_SERVICE_FILES.FILE_SIZE
+FROM
+    DENTAL.DENTAL_SERVICE
+    LEFT JOIN DENTAL.DENTAL_SERVICE_FILES ON DENTAL_SERVICE.ID = DENTAL_SERVICE_FILES.DENTAL_SERVICE_ID;
+
 --------------------------------------------------------
 --  DDL for Index CONSTELLATION_DUPLICATED_REQUESTS_PK
 --------------------------------------------------------
@@ -537,6 +668,94 @@ FROM
   ;
 
 --------------------------------------------------------
+--  DDL for Index DENTAL_DUPLICATED_REQUESTS_PK
+--------------------------------------------------------
+
+  CREATE UNIQUE INDEX "DENTAL"."DENTAL_DUPLICATED_REQUESTS_PK" ON "DENTAL"."DENTAL_DUPLICATED_REQUESTS" ("ID")
+  ;
+--------------------------------------------------------
+--  DDL for Index DENTAL_SERVICE_CREATED
+--------------------------------------------------------
+
+  CREATE INDEX "DENTAL"."DENTAL_SERVICE_CREATED" ON "DENTAL"."DENTAL_SERVICE" ("CREATED_AT")
+  ;
+--------------------------------------------------------
+--  DDL for Index DENTAL_SERVICE_DOB
+--------------------------------------------------------
+
+  CREATE INDEX "DENTAL"."DENTAL_SERVICE_DOB" ON "DENTAL"."DENTAL_SERVICE" ("DATE_OF_BIRTH")
+  ;
+--------------------------------------------------------
+--  DDL for Index DENTAL_SERVICE_FIRST_NAME
+--------------------------------------------------------
+
+  CREATE INDEX "DENTAL"."DENTAL_SERVICE_FIRST_NAME" ON "DENTAL"."DENTAL_SERVICE" ("FIRST_NAME")
+  ;
+--------------------------------------------------------
+--  DDL for Index DENTAL_SERVICE_LAST_NAME
+--------------------------------------------------------
+
+  CREATE INDEX "DENTAL"."DENTAL_SERVICE_LAST_NAME" ON "DENTAL"."DENTAL_SERVICE" ("LAST_NAME")
+  ;
+--------------------------------------------------------
+--  DDL for Index DENTAL_SERVICE_PK
+--------------------------------------------------------
+
+  CREATE UNIQUE INDEX "DENTAL"."DENTAL_SERVICE_PK" ON "DENTAL"."DENTAL_SERVICE" ("ID")
+  ;
+--------------------------------------------------------
+--  DDL for Index DENTAL_SERVICE_REV_CREATED
+--------------------------------------------------------
+
+  CREATE INDEX "DENTAL"."DENTAL_SERVICE_REV_CREATED" ON "DENTAL"."DENTAL_SERVICE_REV" ("CREATED_AT")
+  ;
+--------------------------------------------------------
+--  DDL for Index DENTAL_SERVICE_REV_DOB
+--------------------------------------------------------
+
+  CREATE INDEX "DENTAL"."DENTAL_SERVICE_REV_DOB" ON "DENTAL"."DENTAL_SERVICE_REV" ("DATE_OF_BIRTH")
+  ;
+--------------------------------------------------------
+--  DDL for Index DENTAL_SERVICE_REV_FIRST_NAME
+--------------------------------------------------------
+
+  CREATE INDEX "DENTAL"."DENTAL_SERVICE_REV_FIRST_NAME" ON "DENTAL"."DENTAL_SERVICE_REV" ("FIRST_NAME")
+  ;
+--------------------------------------------------------
+--  DDL for Index DENTAL_SERVICE_REV_LAST_NAME
+--------------------------------------------------------
+
+  CREATE INDEX "DENTAL"."DENTAL_SERVICE_REV_LAST_NAME" ON "DENTAL"."DENTAL_SERVICE_REV" ("LAST_NAME")
+  ;
+--------------------------------------------------------
+--  DDL for Index DENTAL_SERVICE_REV_PK
+--------------------------------------------------------
+
+  CREATE UNIQUE INDEX "DENTAL"."DENTAL_SERVICE_REV_PK" ON "DENTAL"."DENTAL_SERVICE_REV" ("REV_ID")
+  ;
+--------------------------------------------------------
+--  DDL for Index DENTAL_STATUS_PK
+--------------------------------------------------------
+
+  CREATE UNIQUE INDEX "DENTAL"."DENTAL_STATUS_PK" ON "DENTAL"."DENTAL_STATUS" ("ID")
+  ;
+
+--------------------------------------------------------
+--  DDL for Index DENTAL_SERVICE_INTERNAL_FIELDS_PK
+--------------------------------------------------------
+
+  CREATE UNIQUE INDEX "DENTAL"."DENTAL_SERVICE_INTERNAL_FIELDS_PK" ON "DENTAL"."DENTAL_SERVICE_INTERNAL_FIELDS" ("ID")
+  ;
+
+--------------------------------------------------------
+--  DDL for Index DENTAL_SERVICE_COMMENTS_PK
+--------------------------------------------------------
+
+  CREATE UNIQUE INDEX "DENTAL"."DENTAL_SERVICE_COMMENTS_PK" ON "DENTAL"."DENTAL_SERVICE_COMMENTS" ("ID")
+  ;
+
+
+--------------------------------------------------------
 --  DDL for Trigger CONSTELLATION_HEALTH_LOG_SUBMISSIONS
 --------------------------------------------------------
 
@@ -772,6 +991,215 @@ SELECT COUNT(*)
 END;
 /
 ALTER TRIGGER "MIDWIFERY"."MIDWIFERY_SERVICES_DUPLICATED_REQUESTS" ENABLE;
+
+--------------------------------------------------------
+--  DDL for Trigger DENTAL_SERVICE_LOG_SUBMISSIONS
+--------------------------------------------------------
+
+  CREATE OR REPLACE EDITIONABLE TRIGGER "DENTAL"."DENTAL_SERVICE_LOG_SUBMISSIONS"
+BEFORE DELETE OR INSERT OR UPDATE ON DENTAL.DENTAL_SERVICE
+FOR EACH ROW
+DECLARE
+    v_guid RAW(20) := SYS_GUID();
+    v_rev_id NUMBER;
+    v_cur_schema NVARCHAR2(500);
+    v_cur_table NVARCHAR2(500);
+BEGIN
+
+    SELECT
+        OWNER,
+        TABLE_NAME
+    INTO
+        v_cur_schema,
+        v_cur_table
+    FROM ALL_TABLES
+    WHERE TABLE_NAME = 'DENTAL_SERVICE';
+
+    IF INSERTING
+    THEN
+        INSERT INTO GENERAL.events (schema_name, table_name, entity_id, event_type, title, event_by, entity_data, guid, uuid)
+		VALUES (v_cur_schema, v_cur_table, :new.id, 1, 'INSERT', 'system', NULL, v_guid, :NEW.ROWID);
+    END IF;
+
+    IF UPDATING
+    THEN
+        INSERT INTO DENTAL.DENTAL_SERVICE_REV (ID,
+        STATUS,
+        FIRST_NAME,
+        MIDDLE_NAME,
+        LAST_NAME,
+        DATE_OF_BIRTH,
+        HEALTH_CARD_NUMBER,
+        MAILING_ADDRESS,
+        CITY_OR_TOWN,
+        POSTAL_CODE,
+        PHONE,
+        EMAIL,
+        OTHER_COVERAGE,
+        ARE_YOU_ELIGIBLE_FOR_THE_PHARMACARE_AND_EXTENDED_HEALTH_CARE_BEN,
+        EMAIL_INSTEAD,
+        HAVE_CHILDREN,
+        ASK_DEMOGRAPHIC,
+        IDENTIFY_GROUPS,
+        GENDER,
+        EDUCATION,
+        OFTEN_BRUSH,
+        STATE_TEETH,
+        OFTEN_FLOSS,
+        STATE_GUMS,
+        LAST_SAW_DENTIST,
+        REASON_FOR_DENTIST,
+        BUY_SUPPLIES,
+        PAY_FOR_VISIT,
+        BARRIERS,
+        PROBLEMS,
+        SERVICES_NEEDED,
+        CREATED_AT,
+        UPDATED_AT)
+        VALUES (:OLD.ID,
+        :OLD.STATUS,
+        :OLD.FIRST_NAME,
+        :OLD.MIDDLE_NAME,
+        :OLD.LAST_NAME,
+        :OLD.DATE_OF_BIRTH,
+        :OLD.HEALTH_CARD_NUMBER,
+        :OLD.MAILING_ADDRESS,
+        :OLD.CITY_OR_TOWN,
+        :OLD.POSTAL_CODE,
+        :OLD.PHONE,
+        :OLD.EMAIL,
+        :OLD.OTHER_COVERAGE,
+        :OLD.ARE_YOU_ELIGIBLE_FOR_THE_PHARMACARE_AND_EXTENDED_HEALTH_CARE_BEN,
+        :OLD.EMAIL_INSTEAD,
+        :OLD.HAVE_CHILDREN,
+        :OLD.ASK_DEMOGRAPHIC,
+        :OLD.IDENTIFY_GROUPS,
+        :OLD.GENDER,
+        :OLD.EDUCATION,
+        :OLD.OFTEN_BRUSH,
+        :OLD.STATE_TEETH,
+        :OLD.OFTEN_FLOSS,
+        :OLD.STATE_GUMS,
+        :OLD.LAST_SAW_DENTIST,
+        :OLD.REASON_FOR_DENTIST,
+        :OLD.BUY_SUPPLIES,
+        :OLD.PAY_FOR_VISIT,
+        :OLD.BARRIERS,
+        :OLD.PROBLEMS,
+        :OLD.SERVICES_NEEDED,
+        :OLD.CREATED_AT,
+        :OLD.UPDATED_AT)
+        RETURNING REV_ID INTO v_rev_id;
+        INSERT INTO GENERAL.events (schema_name, table_name, entity_id, event_type, title, event_by, entity_data, guid, uuid, rev_id)
+		VALUES (v_cur_schema, v_cur_table, :old.id, 3, 'UPDATE_OLD', 'system', NULL, v_guid, :OLD.ROWID, v_rev_id);
+    END IF;
+
+    IF DELETING
+    THEN
+        INSERT INTO DENTAL.DENTAL_SERVICE_REV (ID,
+        STATUS,
+        FIRST_NAME,
+        MIDDLE_NAME,
+        LAST_NAME,
+        DATE_OF_BIRTH,
+        HEALTH_CARD_NUMBER,
+        MAILING_ADDRESS,
+        CITY_OR_TOWN,
+        POSTAL_CODE,
+        PHONE,
+        EMAIL,
+        OTHER_COVERAGE,
+        ARE_YOU_ELIGIBLE_FOR_THE_PHARMACARE_AND_EXTENDED_HEALTH_CARE_BEN,
+        EMAIL_INSTEAD,
+        HAVE_CHILDREN,
+        ASK_DEMOGRAPHIC,
+        IDENTIFY_GROUPS,
+        GENDER,
+        EDUCATION,
+        OFTEN_BRUSH,
+        STATE_TEETH,
+        OFTEN_FLOSS,
+        STATE_GUMS,
+        LAST_SAW_DENTIST,
+        REASON_FOR_DENTIST,
+        BUY_SUPPLIES,
+        PAY_FOR_VISIT,
+        BARRIERS,
+        PROBLEMS,
+        SERVICES_NEEDED,
+        CREATED_AT,
+        UPDATED_AT)
+        VALUES (:OLD.ID,
+        :OLD.STATUS,
+        :OLD.FIRST_NAME,
+        :OLD.MIDDLE_NAME,
+        :OLD.LAST_NAME,
+        :OLD.DATE_OF_BIRTH,
+        :OLD.HEALTH_CARD_NUMBER,
+        :OLD.MAILING_ADDRESS,
+        :OLD.CITY_OR_TOWN,
+        :OLD.POSTAL_CODE,
+        :OLD.PHONE,
+        :OLD.EMAIL,
+        :OLD.OTHER_COVERAGE,
+        :OLD.ARE_YOU_ELIGIBLE_FOR_THE_PHARMACARE_AND_EXTENDED_HEALTH_CARE_BEN,
+        :OLD.EMAIL_INSTEAD,
+        :OLD.HAVE_CHILDREN,
+        :OLD.ASK_DEMOGRAPHIC,
+        :OLD.IDENTIFY_GROUPS,
+        :OLD.GENDER,
+        :OLD.EDUCATION,
+        :OLD.OFTEN_BRUSH,
+        :OLD.STATE_TEETH,
+        :OLD.OFTEN_FLOSS,
+        :OLD.STATE_GUMS,
+        :OLD.LAST_SAW_DENTIST,
+        :OLD.REASON_FOR_DENTIST,
+        :OLD.BUY_SUPPLIES,
+        :OLD.PAY_FOR_VISIT,
+        :OLD.BARRIERS,
+        :OLD.PROBLEMS,
+        :OLD.SERVICES_NEEDED,
+        :OLD.CREATED_AT,
+        :OLD.UPDATED_AT)
+        RETURNING REV_ID INTO v_rev_id;
+        INSERT INTO GENERAL.events (schema_name, table_name, entity_id, event_type, title, event_by, entity_data, guid, uuid, rev_id)
+		VALUES (v_cur_schema, v_cur_table, :old.id, 4, 'DELETE', 'system', NULL, v_guid, :OLD.ROWID, v_rev_id);
+    END IF;
+END;
+/
+ALTER TRIGGER "DENTAL_SERVICE"."DENTAL_SERVICE_LOG_SUBMISSIONS" ENABLE;
+
+--------------------------------------------------------
+--  Trigger DENTAL_SERVICE_DUPLICATED_REQUESTS
+--------------------------------------------------------
+
+CREATE OR REPLACE EDITIONABLE TRIGGER "DENTAL"."DENTAL_SERVICE_DUPLICATED_REQUESTS"
+BEFORE INSERT ON DENTAL.DENTAL_SERVICE
+FOR EACH ROW
+DECLARE
+exist_record NUMBER;
+oldest_request NUMBER;
+BEGIN
+
+SELECT COUNT(*)
+  INTO exist_record
+  FROM DENTAL.DENTAL_SERVICE
+  WHERE  status = 1 AND FIRST_NAME = :NEW.FIRST_NAME  AND LAST_NAME  = :NEW.LAST_NAME AND DATE_OF_BIRTH  = :NEW.DATE_OF_BIRTH;
+  IF exist_record > 0 THEN
+    SELECT DENTAL_SERVICE.id
+    INTO oldest_request
+    FROM DENTAL.DENTAL_SERVICE
+    WHERE STATUS = 1 AND FIRST_NAME = :NEW.FIRST_NAME AND LAST_NAME  = :NEW.LAST_NAME AND DATE_OF_BIRTH  = :NEW.DATE_OF_BIRTH AND  ROWNUM <= 1
+    ORDER BY CREATED_AT ;
+
+    INSERT INTO DENTAL.MIDWIFERY_DUPLICATED_REQUESTS (ORIGINAL_ID , DUPLICATED_ID) VALUES (oldest_request, :NEW.ID);
+
+  END IF;
+
+END;
+/
+ALTER TRIGGER "DENTAL"."DENTAL_SERVICE_DUPLICATED_REQUESTS" ENABLE;
 --------------------------------------------------------
 --  DDL for Function GETTRANSFORMVALUE
 --------------------------------------------------------

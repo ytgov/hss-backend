@@ -2,7 +2,7 @@ import express, { Request, Response, Router } from "express";
 import cors from "cors";
 import helmet from "helmet";
 import path from 'path';
-import { userRouter, constellationRouter, midwiferyRouter, hipmaRouter, generalRouter } from "./routes";
+import { userRouter, constellationRouter, midwiferyRouter, hipmaRouter, generalRouter, dentalRouter } from "./routes";
 import * as config from './config';
 import { doHealthCheck } from "./utils/healthCheck";
 import { configureAuthentication } from "./routes/auth"
@@ -14,7 +14,8 @@ const routes: Record<string, Router> = {
   "/api/constellation": constellationRouter,
   "/api/midwifery": midwiferyRouter,
   "/api/hipma": hipmaRouter,
-  "/api/general": generalRouter
+  "/api/general": generalRouter,
+  "/api/dental": dentalRouter
 };
 
 const maxRequestBodySize = '10mb';

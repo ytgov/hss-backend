@@ -24,6 +24,7 @@ import MidwiferyExport from "../components/Midwifery/MidwiferyExport";
 import MidwiferyAnalytics from "../components/Midwifery/MidwiferyAnalytics";
 import MidwiferyWarnings from "../components/Midwifery/MidwiferyWarnings";
 import MidwiferyWarningsDetails from "../components/Midwifery/MidwiferyWarningsDetails";
+import Dental from "../components/Dental/Dental";
 
 import Dashboard from "../components/Dashboard.vue";
 
@@ -252,6 +253,17 @@ const routes = [
     component: ConstellationWarningsDetails,
     meta: {
       requiresAuth: true
+    }
+  },
+  {
+    path: "/dental",
+    name: "Dental Service",
+    component: Dental,
+    meta: {
+      requiresAuth: true,
+      permissions: [
+        "dental_view"
+      ]
     }
   },
 ];
