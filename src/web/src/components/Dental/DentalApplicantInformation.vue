@@ -14,7 +14,7 @@
 								<th>
 									<b>Field</b>
 								</th>
-								<th>
+								<th colspan="2">
 									<b>Value</b>
 								</th>
 							</tr>
@@ -22,70 +22,70 @@
                         <tbody>
 							<tr>
 								<td>First name</td>
-								<td>{{ dentalService.first_name }}</td>
+								<td colspan="2">{{ dentalService.first_name }}</td>
 							</tr>
 
 							<tr v-if="dentalService.middle_name">
 								<td>Middle name</td>
-								<td>{{ dentalService.middle_name }}</td>
+								<td colspan="2">{{ dentalService.middle_name }}</td>
 							</tr>
 
 							<tr>
 								<td>Last name</td>
-								<td>{{ dentalService.last_name }}</td>
+								<td colspan="2">{{ dentalService.last_name }}</td>
 							</tr>
 
 							<tr v-if="dentalService.date_of_birth">
 								<td>Date of birth</td>
-								<td>{{ (dentalService.date_of_birth) }}</td>
+								<td colspan="2">{{ (dentalService.date_of_birth) }}</td>
 							</tr>
 
 							<tr v-if="dentalService.health_card_number">
 								<td>Yukon health care card number</td>
-								<td>{{ dentalService.health_card_number }}</td>
+								<td colspan="2">{{ dentalService.health_card_number }}</td>
 							</tr>
 
 							<tr v-if="dentalService.mailing_address">
 								<td>Mailing address</td>
-								<td>{{ dentalService.mailing_address }}</td>
+								<td colspan="2">{{ dentalService.mailing_address }}</td>
 							</tr>
 
 							<tr v-if="dentalService.city_or_town">
 								<td>City or town</td>
-								<td>{{ dentalService.city_or_town }}</td>
+								<td colspan="2">{{ dentalService.city_or_town }}</td>
 							</tr>
 
 							<tr v-if="dentalService.postal_code">
 								<td>Postal code</td>
-								<td>{{ dentalService.postal_code }}</td>
+								<td colspan="2">{{ dentalService.postal_code }}</td>
 							</tr>
 
 							<tr v-if="dentalService.phone">
 								<td>Phone number</td>
-								<td>{{ (dentalService.phone) }}</td>
+								<td colspan="2">{{ (dentalService.phone) }}</td>
 							</tr>
 
 							<tr v-if="dentalService.email">
 								<td>Email address</td>
-								<td>{{ (dentalService.email) }}</td>
+								<td colspan="2">{{ (dentalService.email) }}</td>
 							</tr>
 
 							<tr v-if="dentalService.other_coverage">
 								<td>Do you have coverage for dental services under any other program, plan or insurance group?</td>
-								<td>{{ (dentalService.other_coverage) }}</td>
+								<td colspan="2">{{ (dentalService.other_coverage) }}</td>
 							</tr>
 
 							<tr v-if="dentalService.are_you_eligible_for_the_pharmacare_and_extended_health_care_ben">
 								<td>Are you eligible for the Pharmacare and Extended Health Care Benefits program?</td>
-								<td>{{ dentalService.are_you_eligible_for_the_pharmacare_and_extended_health_care_ben }}</td>
+								<td colspan="2">{{ dentalService.are_you_eligible_for_the_pharmacare_and_extended_health_care_ben }}</td>
 							</tr>
 
 							<tr v-if="dentalService.email_instead">
 								<td>I will submit my proof of income separately</td>
-								<td>{{ dentalService.email_instead }}</td>
+								<td colspan="2">{{ dentalService.email_instead }}</td>
 							</tr>
 
-							<tr v-if="dentalService.file_id">
+							<tr v-if="dentalFiles">
 								<td>Proof of income</td>
 								<td>
 									<v-icon
@@ -95,13 +95,13 @@
 									>
 									mdi-file
 									</v-icon>
-									{{dentalService.file_fullName}}
+									{{dentalFiles.file_fullName}}
 								</td>
 								<td>
 									<v-btn
 										color="#F3A901"
 										class="pull-right ma-2 white--text apply-btn"
-										@click="downloadFile(dentalService.file_id)"
+										@click="downloadFile(dentalFiles.id)"
 									>
 										Download &nbsp;
 										<v-icon
@@ -117,7 +117,7 @@
 
 							<tr v-if="dentalService.have_children">
 								<td>Do you have children who are under 19 years of age AND listed on your Yukon Health Care Insurance Plan (YHCIP)?</td>
-								<td>{{ dentalService.have_children }}</td>
+								<td colspan="2">{{ dentalService.have_children }}</td>
 							</tr>
 
                         </tbody>
@@ -136,7 +136,7 @@ import { DENTAL_DELETE_FILE } from "../../urls.js";
 
 export default {
     name: 'DentalApplicantInformation',
-    props: ['dental', 'panelModel'],
+    props: ['dentalService', 'dentalFiles', 'panelModel'],
 	data() {
 		return {
 			modelPanel: this.panelModel

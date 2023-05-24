@@ -25,6 +25,7 @@ import MidwiferyAnalytics from "../components/Midwifery/MidwiferyAnalytics";
 import MidwiferyWarnings from "../components/Midwifery/MidwiferyWarnings";
 import MidwiferyWarningsDetails from "../components/Midwifery/MidwiferyWarningsDetails";
 import Dental from "../components/Dental/Dental";
+import DentalDetails from "../components/Dental/DentalDetails";
 
 import Dashboard from "../components/Dashboard.vue";
 
@@ -259,6 +260,17 @@ const routes = [
     path: "/dental",
     name: "Dental Service",
     component: Dental,
+    meta: {
+      requiresAuth: true,
+      permissions: [
+        "dental_view"
+      ]
+    }
+  },
+  {
+    path: "/dental/show/:dentalService_id",
+    name: "Dental Service Details",
+    component: DentalDetails,
     meta: {
       requiresAuth: true,
       permissions: [

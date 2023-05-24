@@ -11,6 +11,7 @@ var _ = require('lodash');
 
 const db = knex(DB_CONFIG_DENTAL)
 const submissionStatusRepo = new SubmissionStatusRepository();
+const path = require('path');
 
 export const dentalRouter = express.Router();
 dentalRouter.use(RateLimit({
@@ -66,7 +67,6 @@ dentalRouter.post("/", async (req: Request, res: Response) => {
         let status_request = req.body.params.status;
 
         let query = db(`${SCHEMA_DENTAL}.DENTAL_SERVICE_SUBMISSIONS`)
-            .where('STATUS', '<>', 4 )
             .orderBy('ID', 'ASC');
 
         if(dateFrom && dateTo) {
@@ -137,14 +137,13 @@ dentalRouter.get("/validateRecord/:dentalService_id",[param("dentalService_id").
         var type= "error";
 
         dentalService = await db(`${SCHEMA_DENTAL}.DENTAL_SERVICE`)
-            .join(`${SCHEMA_DENTAL}.DENTAl_STATUS`, 'DENTAL_SERVICE.STATUS', '=', 'DENTAl_STATUS.ID')
+            .join(`${SCHEMA_DENTAL}.DENTAL_STATUS`, 'DENTAL_SERVICE.STATUS', '=', 'DENTAL_STATUS.ID')
             .where('DENTAL_SERVICE.ID', dentalService_id)
             .select(`${SCHEMA_DENTAL}.DENTAL_SERVICE.*`,
-                    'DENTAl_STATUS.DESCRIPTION AS STATUS_DESCRIPTION')
+                    'DENTAL_STATUS.DESCRIPTION AS STATUS_DESCRIPTION')
             .then((data:any) => {
                 return data[0];
             });
-
 
         if(!dentalService || dentalService.status_description == "closed"){
             flagExists= false;
@@ -177,9 +176,15 @@ dentalRouter.get("/show/:dentalService_id", checkPermissions("constellation_view
             .where('ID', dentalService_id)
             .first();
 
-        dentalServiceDependents = await db(`${SCHEMA_DENTAL}.DENTAL_SERVICE_SUBMISSIONS_DETAILS`)
+        dentalServiceDependents = await db(`${SCHEMA_DENTAL}.DENTAL_SERVICE_DEPENDENTS`)
                                         .select('DENTAL_SERVICE_DEPENDENTS.*')
                                         .where('DENTAL_SERVICE_DEPENDENTS.DENTAL_SERVICE_ID', dentalService_id);
+
+        var dentalFiles = await db(`${SCHEMA_DENTAL}.DENTAL_SERVICE_FILES`).where("DENTAL_SERVICE_ID", dentalService_id).select().then((data:any) => {
+            return data[0];
+        });
+
+        dentalFiles.file_fullName = dentalFiles.file_name+"."+dentalFiles.file_type;
 
         dentalService.flagDemographic = true;
         if(!_.isEmpty(dentalService.ask_demographic)){
@@ -244,7 +249,8 @@ dentalRouter.get("/show/:dentalService_id", checkPermissions("constellation_view
 
         var dentalStatus = await getAllStatus();
 
-        res.json({ status: 200, dataStatus: dentalStatus, dataDentalService: dentalService, dataDentalServiceDependents: dentalServiceDependents, dentalStatusClosed: statusDental.id, fileName:fileName});
+        res.json({ status: 200, dataStatus: dentalStatus, dataDentalService: dentalService, dataDentalDependents: dentalServiceDependents,
+                    dentalStatusClosed: statusDental.id, fileName:fileName, dentalFiles:dentalFiles});
     } catch(e) {
         console.log(e);  // debug if needed
 
@@ -301,7 +307,7 @@ dentalRouter.post("/deleteFile", async (req: Request, res: Response) => {
         var file = sanitize(req.body.params.file);
         let pathPublicFront = path.join(__dirname, "../../");
         var filePath = pathPublicFront+"web/public/"+file;
-
+        console.log(filePath);
         if(fs.existsSync(filePath)) {
             fs.unlinkSync(filePath);
         }
@@ -407,12 +413,38 @@ dentalRouter.post("/store", async (req: Request, res: Response) => {
 
         dentalServiceSaved = await db(`${SCHEMA_DENTAL}.DENTAL_SERVICE`).insert(dentalService).into(`${SCHEMA_DENTAL}.DENTAL_SERVICE`).returning('ID');
 
+        if(!dentalServiceSaved){
+            res.json({ status:400, message: 'Request could not be processed' });
+        }
+
+        let dentalId = dentalServiceSaved.find((obj: any) => {return obj.id;});
+
+        if(!_.isEmpty(data.dependent_list)){
+            let arrayDependents = getDependents(dentalId.id, data.dependent_list);
+
+            let dependentsSaved = false;
+
+            for (const dependent of arrayDependents) {
+                await db(`${SCHEMA_DENTAL}.DENTAL_SERVICE_DEPENDENTS`).insert(dependent).into(`${SCHEMA_DENTAL}.DENTAL_SERVICE_DEPENDENTS`)
+                .then(() => {
+                    dependentsSaved = true;
+                })
+                .catch((e) => {
+                    dependentsSaved = false;
+                    console.log(e);
+                    res.send( {
+                        status: 400,
+                        message: 'Request could not be processed'
+                    });
+                });
+            }
+        }
+
         if(!_.isEmpty(fileData)){
             var filesInsert = Array();
             var dentalFiles = Object();
 
-            let dental_id = dentalServiceSaved.find((obj: any) => {return obj.id;});
-            dentalFiles.DENTAL_SERVICE_ID = dental_id.id
+            dentalFiles.DENTAL_SERVICE_ID = dentalId.id
             dentalFiles.DESCRIPTION = fileData.description;
             dentalFiles.FILE_NAME = fileData.file_name;
             dentalFiles.FILE_TYPE = fileData.file_type;
@@ -436,19 +468,15 @@ dentalRouter.post("/store", async (req: Request, res: Response) => {
                 `
                     INSERT INTO ${SCHEMA_DENTAL}.DENTAL_SERVICE_FILES (DENTAL_SERVICE_ID, DESCRIPTION, FILE_NAME, FILE_TYPE, FILE_SIZE, FILE_DATA) VALUES (?,?,?,?, ?,v_long_text);
                 END;
-                `, [dental_id.id,fileData.description,fileData.file_name,fileData.file_type,fileData.file_size]);
+                `, [dentalId.id,fileData.description,fileData.file_name,fileData.file_type,fileData.file_size]);
 
             if(!filesSaved){
                 res.json({ status:400, message: 'Request could not be processed' });
             }
 
-            if(dentalServiceSaved && filesSaved){
-                res.json({ status:200, message: 'Request saved' });
-            }
-
-        }else if(dentalServiceSaved){
-            res.json({ status:200, message: 'Request saved' });
         }
+
+        res.json({ status:200, message: 'Request saved' });
 
     } catch(e) {
         console.log(e);  // debug if needed
@@ -460,7 +488,38 @@ dentalRouter.post("/store", async (req: Request, res: Response) => {
 
 });
 
+/**
+ * Obtains string of Blob field
+ *
+ * @param {idDentalService}
+ * @return {result}
+ */
+function getDependents(idDentalService: any, arrayDependets: any){
+    let dependents = Array();
 
+    _.forEach(arrayDependets, function(value: any, key: any) {
+        let dataDependent = Object();
+
+        dataDependent.DENTAL_SERVICE_ID = idDentalService;
+        dataDependent.C_FIRSTNAME = arrayDependets[key]['c_firstname'];
+        dataDependent.C_LASTNAME = arrayDependets[key]['c_lastname'];
+
+        if(!_.isEmpty(arrayDependets[key]['c_dob'])){
+            arrayDependets[key]['c_dob'] = new Date(arrayDependets[key]['c_dob']);
+            let result: string =   arrayDependets[key]['c_dob'].toISOString().split('T')[0];
+            dataDependent.C_DOB  = db.raw("TO_DATE( ? ,'YYYY-MM-DD') ", result);
+        }else{
+            dataDependent.C_DOB = null;
+        }
+
+        dataDependent.C_HEALTHCARE = arrayDependets[key]['c_healthcare'];
+        dataDependent.C_APPLY = arrayDependets[key]['c_apply'];
+
+        dependents.push(dataDependent);
+    });
+
+    return dependents;
+}
 
 async function getAllStatus(){
     var dentalServiceStatus = Array();
@@ -481,7 +540,7 @@ async function getAllStatus(){
  *
  * @param {field_name}
  * @param {data}
- * @return {filesHipma} array with file data
+ * @return {fileData} array with file data
  */
 function saveFile(field_name: any, data: any){
     var path = "";

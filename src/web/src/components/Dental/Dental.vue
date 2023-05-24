@@ -1,94 +1,10 @@
 <template>
     <div class="dental-service">
 		<span class="title-service">Dental Service Requests</span>
+		<ModuleAlert v-bind:alertMessage="alertMessage"  v-bind:alertType="alertType"/>
 		<Notifications ref="notifier"></Notifications>
-		<v-row no-gutters>
-		<v-col
-			cols="12"
-			sm="4"
-		>
-			<v-select
-				v-model="statusSelected"
-				:items="statusFilter"
-				:menu-props="{ maxHeight: '400' }"
-				label="Select"
-				multiple
-				persistent-hint
-				@change="changeStatusSelect"
-			></v-select>
-
-		</v-col>
-		<v-col
-			cols="10"
-			sm="3"
-		>
-			<v-menu
-				ref="menu"
-				v-model="menu"
-				:close-on-content-click="false"
-				transition="scale-transition"
-				offset-y
-				min-width="auto"
-			>
-				<template v-slot:activator="{ on, attrs }">
-					<v-text-field
-						v-model="date"
-						label="From:"
-						prepend-icon="mdi-calendar"
-						v-bind="attrs"
-						v-on="on"
-					></v-text-field>
-				</template>
-				<v-date-picker
-					v-model="date"
-					no-title
-					@input="menu = false"
-					@change="updateDate"
-				></v-date-picker>
-			</v-menu>
-
-		</v-col>
-		<v-col
-			cols="10"
-			sm="3"
-		>
-			<v-menu
-				ref="menuEnd"
-				v-model="menuEnd"
-				:close-on-content-click="false"
-				transition="scale-transition"
-				offset-y
-				min-width="auto"
-			>
-				<template v-slot:activator="{ on, attrs }">
-					<v-text-field
-						v-model="dateEnd"
-						label="To:"
-						prepend-icon="mdi-calendar"
-						v-bind="attrs"
-						v-on="on"
-					></v-text-field>
-				</template>
-				<v-date-picker
-					v-model="dateEnd"
-					no-title
-					@input="menuEnd = false"
-					@change="updateDate"
-				></v-date-picker>
-			</v-menu>
-		</v-col>
-		<v-col 
-			align-self="center" 
-			cols="2"
-			sm="1"
-			v-if="removeFilters">
-			<v-icon @click="resetInputs"> mdi-filter-remove </v-icon>
-		</v-col>
-		</v-row>
-		<v-row
-			align="center" 
-			class="container-actions"
-		>
+		<br><br>
+		<v-row class="submission-filters" no-gutters>
 			<v-col
 				cols="12"
 				sm="3"
@@ -111,7 +27,7 @@
 			<v-col
 				class="align-start"
 				cols="12"
-				sm="3"
+				sm="2"
 			>
 				<v-btn
 					color="#F3A901"
@@ -122,6 +38,87 @@
 				>
 					Apply
 				</v-btn>
+			</v-col>
+			<v-col
+				cols="12"
+				sm="2"
+			>
+				<v-select
+					v-model="statusSelected"
+					:items="statusFilter"
+					:menu-props="{ maxHeight: '400' }"
+					label="Select"
+					multiple
+					persistent-hint
+					@change="changeStatusSelect"
+				></v-select>
+
+			</v-col>
+			<v-col
+				cols="12"
+				sm="2"
+			>
+				<v-menu
+					ref="menu"
+					v-model="menu"
+					:close-on-content-click="false"
+					transition="scale-transition"
+					offset-y
+					min-width="auto"
+				>
+					<template v-slot:activator="{ on, attrs }">
+						<v-text-field
+							v-model="date"
+							label="From:"
+							prepend-icon="mdi-calendar"
+							v-bind="attrs"
+							v-on="on"
+						></v-text-field>
+					</template>
+					<v-date-picker
+						v-model="date"
+						no-title
+						@input="menu = false"
+						@change="updateDate"
+					></v-date-picker>
+				</v-menu>
+
+			</v-col>
+			<v-col
+				cols="12"
+				sm="2"
+			>
+				<v-menu
+					ref="menuEnd"
+					v-model="menuEnd"
+					:close-on-content-click="false"
+					transition="scale-transition"
+					offset-y
+					min-width="auto"
+				>
+					<template v-slot:activator="{ on, attrs }">
+						<v-text-field
+							v-model="dateEnd"
+							label="To:"
+							prepend-icon="mdi-calendar"
+							v-bind="attrs"
+							v-on="on"
+						></v-text-field>
+					</template>
+					<v-date-picker
+						v-model="dateEnd"
+						no-title
+						@input="menuEnd = false"
+						@change="updateDate"
+					></v-date-picker>
+				</v-menu>
+			</v-col>
+			<v-col 
+				align-self="center" 
+				cols="12"
+				sm="1"
+				v-if="removeFilters">
+				<v-icon @click="resetInputs"> mdi-filter-remove </v-icon>
 			</v-col>
 		</v-row>
 		<v-data-table
@@ -135,8 +132,8 @@
 			:search="search"
 			@input="enterSelect"
 		>
-			<template v-slot:[`item.showUrl`]="{ item }">
-				<v-icon @click="showDetails(item.showUrl)">mdi-eye</v-icon>
+			<template v-slot:[`item.showurl`]="{ item }">
+				<v-icon @click="showDetails(item.showurl)">mdi-eye</v-icon>
 			</template>
 		</v-data-table>
     </div>
@@ -144,7 +141,7 @@
 
 <script>
 	const axios = require("axios");
-	//import ModuleAlert from "../General/ModuleAlert.vue";
+	import ModuleAlert from "../General/ModuleAlert.vue";
 	import { DENTAL_URL } from "../../urls.js";
 	import Notifications from "../Notifications.vue";
 
@@ -198,7 +195,7 @@
 		{ text: "Proof of income", value: "file_dental", sortable: true },
 		{ text: "Created", value: "created_at", width: "15%", sortable: true },
 		{ text: "Status", value: "status_description", sortable: true },
-		{ text: "", value: "showUrl", sortable: false },
+		{ text: "", value: "showurl", sortable: false },
 		],
 		page: 1,
 		pageCount: 0,
@@ -207,7 +204,7 @@
 	}),
 	components: {
 		Notifications,
-		//ModuleAlert,
+		ModuleAlert,
 	},
 	watch: {
 		options: {

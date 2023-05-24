@@ -72,10 +72,31 @@
 -->
 		<v-row no-gutters>
 			<v-col id="dentalPanels">
-				<DentalApplicantInformation v-bind:dental="itemsDental"
+				<DentalApplicantInformation
+					v-bind:dentalService="itemsDental"
+					v-bind:dentalFiles="itemsDentalFiles"
 					v-bind:panelModel="panelModel"
 				/>
-				</v-col>
+
+				<DentalDependents
+					v-if="itemsDental.flagDependents"
+					v-bind:dentalService="itemsDental"
+					v-bind:dentalDependents="itemsDentalDependents"
+					v-bind:panelModel="panelModel"
+				/>
+
+				<DentalDemographicInformation
+					v-if="itemsDental.flagDemographic"
+					v-bind:dentalService="itemsDental"
+					v-bind:panelModel="panelModel"
+				/>
+
+				<DentalInformation
+					v-if="itemsDental.flagDemographic"
+					v-bind:dentalService="itemsDental"
+					v-bind:panelModel="panelModel"
+				/>
+			</v-col>
 			<v-col lg="1"> </v-col>
 		</v-row>
 <!--     </v-container> -->
@@ -85,6 +106,9 @@
 <script>
 const axios = require("axios");
 import DentalApplicantInformation from './DentalApplicantInformation.vue';
+import DentalDependents from './DentalDependents.vue';
+import DentalDemographicInformation from './DentalDemographicInformation.vue';
+import DentalInformation from './DentalInformation.vue';
 import { DENTAL_SHOW_URL } from "../../urls.js";
 import { DENTAL_VALIDATE_URL } from "../../urls.js";
 import { DENTAL_CHANGE_STATUS_URL } from "../../urls.js";
@@ -97,6 +121,8 @@ export default {
 		loading: false,
 		selectAction:[],
 		itemsDental: [],
+		itemsDentalFiles: [],
+		itemsDentalDependents: [],
 		dialog: false,
 		panelModel: [0],
 		fileName: "",
@@ -105,7 +131,10 @@ export default {
 	}),
 	components: {
     Notifications,
-		DentalApplicantInformation
+		DentalApplicantInformation,
+		DentalDependents,
+		DentalDemographicInformation,
+		DentalInformation
 	},
 	created(){
 
@@ -116,9 +145,9 @@ export default {
 	methods: {
 		validateRecord() {
 			axios
-			.get(DENTAL_VALIDATE_URL+this.$route.params.dental_service_id)
+			.get(DENTAL_VALIDATE_URL+this.$route.params.dentalService_id)
 			.then((resp) => {
-				if(!resp.data.flagMidwifery){
+				if(!resp.data.flagDental){
 					this.$router.push({
 						path: '/dental',
 						query: { message: resp.data.message, type: resp.data.type}
@@ -133,13 +162,15 @@ export default {
 		},
 		getDataFromApi() {
 			axios
-			.get(MIDWIFERY_SHOW_URL+this.$route.params.dental_service_id)
+			.get(DENTAL_SHOW_URL+this.$route.params.dentalService_id)
 			.then((resp) => {
 				this.itemsDental = resp.data.dataDentalService;
 				this.fileName = resp.data.fileName;
+				this.itemsDentalFiles = resp.data.dentalFiles;
+				this.itemsDentalDependents =resp.data.dataDentalDependents;
 				this.idStatusClosed = resp.data.dentalStatusClosed;
 				this.bulkActions = resp.data.dataStatus;
-				this.selectAction = resp.data.midwifery.status;
+				this.selectAction = resp.data.dataDentalService.status;
 			})
 			.catch((err) => console.error(err))
 			.finally(() => {
@@ -150,12 +181,12 @@ export default {
 		},
 		changeStatus(){
 			//Sent it as an array to use the same function for both single and bulk status changes
-			var midwiferyId = [Number(this.$route.params.dental_service_id)];
+			var dentalId = [Number(this.$route.params.dentalService_id)];
 
 			axios
 			.patch(DENTAL_CHANGE_STATUS_URL, {
                 params: {
-					requests: midwiferyId,
+					requests: dentalId,
 					requestStatus: this.actionSelected
 				}
             })
