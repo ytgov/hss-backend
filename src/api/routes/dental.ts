@@ -171,6 +171,7 @@ dentalRouter.get("/show/:dentalService_id", checkPermissions("constellation_view
         var dentalService_id = Number(req.params.dentalService_id);
         var dentalService = Object();
         var dentalServiceDependents = Object();
+        var dentalFiles = Object();
 
         dentalService = await db(`${SCHEMA_DENTAL}.DENTAL_SERVICE_SUBMISSIONS_DETAILS`)
             .where('ID', dentalService_id)
@@ -180,11 +181,13 @@ dentalRouter.get("/show/:dentalService_id", checkPermissions("constellation_view
                                         .select('DENTAL_SERVICE_DEPENDENTS.*')
                                         .where('DENTAL_SERVICE_DEPENDENTS.DENTAL_SERVICE_ID', dentalService_id);
 
-        var dentalFiles = await db(`${SCHEMA_DENTAL}.DENTAL_SERVICE_FILES`).where("DENTAL_SERVICE_ID", dentalService_id).select().then((data:any) => {
+        dentalFiles = await db(`${SCHEMA_DENTAL}.DENTAL_SERVICE_FILES`).where("DENTAL_SERVICE_ID", dentalService_id).select().then((data:any) => {
             return data[0];
         });
 
-        dentalFiles.file_fullName = dentalFiles.file_name+"."+dentalFiles.file_type;
+        if(!_.isEmpty(dentalFiles)){
+            dentalFiles.file_fullName = dentalFiles.file_name+"."+dentalFiles.file_type;
+        }
 
         dentalService.flagDemographic = true;
         if(!_.isEmpty(dentalService.ask_demographic)){
