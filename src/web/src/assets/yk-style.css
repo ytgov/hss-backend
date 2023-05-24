@@ -413,6 +413,11 @@ div.row.container-actions.align-center{
     align-items: baseline;
 }
 
+.internal-field-row{
+    align-items: baseline;
+}
+
+
 @-moz-keyframes loader {
     from {
         transform: rotate(0);

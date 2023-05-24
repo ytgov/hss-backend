@@ -96,10 +96,69 @@
 					v-bind:dentalService="itemsDental"
 					v-bind:panelModel="panelModel"
 				/>
+
+				<v-expansion-panels
+				multiple
+				>
+					<v-expansion-panel>
+						<v-expansion-panel-header class="info">Internal Fields</v-expansion-panel-header>
+						<v-expansion-panel-content>
+						<v-row no-gutters>
+							<v-col
+							cols="12"
+							sm="3"
+							md="3"
+							lg="3"
+							style="margin: 10px;"
+							>
+								<v-text-field label="Program Year"></v-text-field>
+							</v-col>
+							<v-col
+							cols="12"
+							sm="3"
+							md="3"
+							lg="3"
+							style="margin: 10px;"
+							>
+								<v-text-field label="Income Amount"></v-text-field>
+							</v-col>
+							<v-col
+							cols="12"
+							sm="3"
+							md="3"
+							lg="3"
+							style="margin: 10px;"
+							>
+								<v-text-field label="Date of Enrollment"></v-text-field>
+							</v-col>
+						</v-row>
+						<v-row no-gutters class="internal-field-row">
+							<v-col
+							cols="12"
+							sm="3"
+							md="3"
+							lg="3"
+							style="margin: 10px;"
+							>
+								<v-text-field label="policy number"></v-text-field>
+							</v-col>
+							<v-btn
+								color="#F3A901"
+								class="ma-2 white--text details-btn"
+								id="apply-btn"
+							>
+								Apply
+							</v-btn>
+						</v-row>
+						</v-expansion-panel-content>
+					</v-expansion-panel>
+
+				</v-expansion-panels>
 			</v-col>
 			<v-col lg="1"> </v-col>
 		</v-row>
 <!--     </v-container> -->
+
 	</div>
 </template>
 
