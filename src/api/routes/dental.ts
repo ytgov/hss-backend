@@ -64,14 +64,29 @@ dentalRouter.post("/", async (req: Request, res: Response) => {
     try {
         var dateFrom = req.body.params.dateFrom //? new Date(req.body.params.dateFrom) : '';
         var dateTo = req.body.params.dateTo //? new Date(req.body.params.dateTo) : '';
+        var dateYear = req.body.params.dateYear
         let status_request = req.body.params.status;
 
         let query = db(`${SCHEMA_DENTAL}.DENTAL_SERVICE_SUBMISSIONS`)
             .orderBy('ID', 'ASC');
 
+        if(dateYear) {
+            query.where(db.raw("EXTRACT(YEAR FROM TO_DATE(CREATED_AT, 'YYYY-MM-DD HH24:MI:SS')) = ?",
+                [dateYear]));
+        }
+
         if(dateFrom && dateTo) {
-            query.where(db.raw("TO_CHAR(CREATED_AT, 'YYYY-MM-DD') >=  ? AND TO_CHAR(CREATED_AT, 'YYYY-MM-DD') <= ?",
-                [dateFrom, dateTo]));
+            const dateFromFormat = new Date(dateFrom);
+            const dateToFormat = new Date(dateTo);
+
+            dateFromFormat.setHours(0, 0, 0);
+            const dateTimeFrom = dateFromFormat.toISOString();
+
+            dateToFormat.setHours(23, 59, 59);
+            const dateTimeTo = dateToFormat.toISOString();
+
+            query.where(db.raw("CREATED_AT >=  ? AND CREATED_AT <= ?",
+                [dateTimeFrom, dateTimeTo]));
         }
 
         if (status_request) {
@@ -185,8 +200,12 @@ dentalRouter.get("/show/:dentalService_id", checkPermissions("constellation_view
             return data[0];
         });
 
+        dentalService.flagFile = true;
+
         if(!_.isEmpty(dentalFiles)){
             dentalFiles.file_fullName = dentalFiles.file_name+"."+dentalFiles.file_type;
+        }else{
+            dentalService.flagFile = false;
         }
 
         dentalService.flagDemographic = true;

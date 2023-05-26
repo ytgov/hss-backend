@@ -74,7 +74,6 @@
 			<v-col id="dentalPanels">
 				<DentalApplicantInformation
 					v-bind:dentalService="itemsDental"
-					v-bind:dentalFiles="itemsDentalFiles"
 					v-bind:panelModel="panelModel"
 				/>
 
@@ -94,6 +93,13 @@
 				<DentalInformation
 					v-if="itemsDental.flagDemographic"
 					v-bind:dentalService="itemsDental"
+					v-bind:panelModel="panelModel"
+				/>
+
+				<DentalAttachments
+					v-if="itemsDental.flagFile"
+					v-bind:dentalService="itemsDental"
+					v-bind:dentalFiles="itemsDentalFiles"
 					v-bind:panelModel="panelModel"
 				/>
 
@@ -168,6 +174,7 @@ import DentalApplicantInformation from './DentalApplicantInformation.vue';
 import DentalDependents from './DentalDependents.vue';
 import DentalDemographicInformation from './DentalDemographicInformation.vue';
 import DentalInformation from './DentalInformation.vue';
+import DentalAttachments from './DentalAttachments.vue';
 import { DENTAL_SHOW_URL } from "../../urls.js";
 import { DENTAL_VALIDATE_URL } from "../../urls.js";
 import { DENTAL_CHANGE_STATUS_URL } from "../../urls.js";
@@ -193,7 +200,8 @@ export default {
 		DentalApplicantInformation,
 		DentalDependents,
 		DentalDemographicInformation,
-		DentalInformation
+		DentalInformation,
+		DentalAttachments
 	},
 	created(){
 

@@ -7,7 +7,7 @@
 		<v-row class="submission-filters" no-gutters>
 			<v-col
 				cols="12"
-				sm="3"
+				sm="2"
 				class="actions"
 			>
 				<v-select
@@ -27,7 +27,7 @@
 			<v-col
 				class="align-start"
 				cols="12"
-				sm="2"
+				sm="1"
 			>
 				<v-btn
 					color="#F3A901"
@@ -39,6 +39,7 @@
 					Apply
 				</v-btn>
 			</v-col>
+
 			<v-col
 				cols="12"
 				sm="2"
@@ -46,13 +47,25 @@
 				<v-select
 					v-model="statusSelected"
 					:items="statusFilter"
-					:menu-props="{ maxHeight: '400' }"
 					label="Select"
 					multiple
 					persistent-hint
 					@change="changeStatusSelect"
 				></v-select>
 
+			</v-col>
+			<v-col
+				cols="12"
+				sm="2"
+			>
+				<v-text-field
+					v-model="selectedYear"
+					label="Year"
+					prepend-icon="mdi-calendar"
+					variant="underlined"
+					@input="handleYear"
+					type="number"
+				></v-text-field>
 			</v-col>
 			<v-col
 				cols="12"
@@ -73,6 +86,7 @@
 							prepend-icon="mdi-calendar"
 							v-bind="attrs"
 							v-on="on"
+							:disabled="dateDisabled"
 						></v-text-field>
 					</template>
 					<v-date-picker
@@ -103,6 +117,7 @@
 							prepend-icon="mdi-calendar"
 							v-bind="attrs"
 							v-on="on"
+							:disabled="dateDisabled"
 						></v-text-field>
 					</template>
 					<v-date-picker
@@ -153,10 +168,13 @@
 		items: [],
 		statusSelected: [1],
 		date: null,
+		selectedYear: null,
+		dateYear: null,
 		menu: false,
 		dateEnd: null,
 		statusFilter: [],
 		menuEnd: false,
+		dateDisabled: false,
 		selected: [],
 		bulkActions: [],
 		actionSelected: "",
@@ -218,7 +236,7 @@
 				this.getDataFromApi();
 			},
 			deep: true,
-		},
+		}
 	},
 	created() {
 	},
@@ -236,6 +254,16 @@
 		this.getDataFromApi();
 	},
 	methods: {
+		handleYear() {
+			const year = parseInt(this.selectedYear);
+			if (Number.isInteger(year) && year >= 1950 && year <= 2050) {
+				this.dateYear = year;
+				this.dateDisabled = true;
+				this.date = null;
+				this.dateEnd = null;
+				this.getDataFromApi();
+			}
+		},
 		changeStatusSelect(){
 			this.getDataFromApi();
 		},
@@ -245,7 +273,7 @@
 			}
 		},
 		removeFilters() {
-			return this.date || this.dateEnd || this.statusSelected;
+			return this.date || this.dateEnd || this.statusSelected || this.dateYear || this.selectedYear;
 		},
 		resetInputs() {
 			this.date = null;
@@ -253,6 +281,8 @@
 			this.statusSelected = null;
 			this.bulkSelected = null;
 			this.applyDisabled = true;
+			this.dateYear = null;
+			this.selectedYear = null;
 			this.getDataFromApi();
 		},
 		getDataFromApi() {
@@ -262,6 +292,7 @@
 				params: {
 					dateFrom: this.date,
 					dateTo: this.dateEnd,
+					dateYear: this.dateYear,
 					status: this.statusSelected
 				}
 			})
@@ -270,6 +301,7 @@
 				this.bulkActions = resp.data.dataStatus;
 				this.statusFilter = resp.data.dataStatus.filter((element) => element.value != 4);
 				this.loading = false;
+				this.dateDisabled = false;
 			})
 			.catch((err) => console.error(err))
 			.finally(() => {
