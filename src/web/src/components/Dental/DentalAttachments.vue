@@ -36,6 +36,7 @@
 									<v-btn
 										color="#F3A901"
 										class="pull-right ma-2 white--text apply-btn"
+										v-show="showDownloadButton"
 										@click="downloadFile(dentalFiles.id)"
 									>
 										Download &nbsp;
@@ -66,15 +67,19 @@ import { DENTAL_DELETE_FILE } from "../../urls.js";
 
 export default {
     name: 'DentalAttachments',
-    props: ['dentalService', 'dentalFiles', 'panelModel'],
+    props: ['dentalService', 'dentalFiles', 'panelModel', 'showDownload'],
 	data() {
 		return {
-			modelPanel: this.panelModel
+			modelPanel: this.panelModel,
+			showDownloadButton: this.showDownload
 		};
 	},
 	watch: {
 		panelModel(newValue) {
 			this.modelPanel = newValue;
+		},
+		showDownload(newValue) {
+			this.showDownloadButton = newValue;
 		}
 	},
 	methods: {

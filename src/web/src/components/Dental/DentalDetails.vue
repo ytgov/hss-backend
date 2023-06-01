@@ -101,6 +101,7 @@
 					v-bind:dentalService="itemsDental"
 					v-bind:dentalFiles="itemsDentalFiles"
 					v-bind:panelModel="panelModel"
+					v-bind:showDownload="showDownload"
 				/>
 
 				<v-expansion-panels
@@ -194,6 +195,7 @@ export default {
 		fileName: "",
 		bulkActions: [],
 		idStatusClosed: null,
+		showDownload: true
 	}),
 	components: {
     Notifications,
@@ -273,8 +275,9 @@ export default {
 		exportToPDF() {
 			this.panelModel = [0];
 			var namePdf = this.fileName;
+			this.showDownload = false;
 
-			setTimeout(function() {
+			setTimeout(() => {
 				html2pdf(document.getElementById("dentalPanels"), {
 						margin: 5,
 						filename: namePdf,
@@ -282,6 +285,8 @@ export default {
 							mode: ['avoid-all', 'css', 'legacy']
 						}
 				});
+
+				this.showDownload = true;
 			}, 500);
 		},
 	},

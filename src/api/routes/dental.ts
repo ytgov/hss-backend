@@ -76,17 +76,9 @@ dentalRouter.post("/", async (req: Request, res: Response) => {
         }
 
         if(dateFrom && dateTo) {
-            const dateFromFormat = new Date(dateFrom);
-            const dateToFormat = new Date(dateTo);
-
-            dateFromFormat.setHours(0, 0, 0);
-            const dateTimeFrom = dateFromFormat.toISOString();
-
-            dateToFormat.setHours(23, 59, 59);
-            const dateTimeTo = dateToFormat.toISOString();
-
-            query.where(db.raw("CREATED_AT >=  ? AND CREATED_AT <= ?",
-                [dateTimeFrom, dateTimeTo]));
+            query.where(db.raw("TO_CHAR(TO_DATE(CREATED_AT, 'YYYY-MM-DD HH24:MI:SS'), 'YYYY-MM-DD') >=  ? "+
+                                "AND TO_CHAR(TO_DATE(CREATED_AT, 'YYYY-MM-DD HH24:MI:SS'), 'YYYY-MM-DD') <= ?",
+                [dateFrom, dateTo]));
         }
 
         if (status_request) {
@@ -181,7 +173,7 @@ dentalRouter.get("/validateRecord/:dentalService_id",[param("dentalService_id").
  * @param {dentalService_id} id of request
  * @return json
  */
-dentalRouter.get("/show/:dentalService_id", checkPermissions("constellation_view"), [param("dentalService_id").isInt().notEmpty()], async (req: Request, res: Response) => {
+dentalRouter.get("/show/:dentalService_id", checkPermissions("dental_view"), [param("dentalService_id").isInt().notEmpty()], async (req: Request, res: Response) => {
     try {
         var dentalService_id = Number(req.params.dentalService_id);
         var dentalService = Object();
@@ -212,7 +204,7 @@ dentalRouter.get("/show/:dentalService_id", checkPermissions("constellation_view
         if(!_.isEmpty(dentalService.ask_demographic)){
             let askDemographic = dentalService.ask_demographic.split(",");
 
-            if(askDemographic[0] == "No" || askDemographic[0] == "no" || askDemographic[0] == "NO"){
+            if(askDemographic[0].toLowerCase() == "no"){
                 dentalService.flagDemographic = false;
             }
         }
@@ -282,6 +274,131 @@ dentalRouter.get("/show/:dentalService_id", checkPermissions("constellation_view
         });
     }
 });
+
+/**
+ * Obtain data to show in export file
+ *
+ * @param {status} status of request
+ * @return json
+ */
+dentalRouter.post("/export/", async (req: Request, res: Response) => {
+    try {
+        var requests = req.body.params.requests;
+        let status_request = req.body.params.status;
+        var dateFrom = req.body.params.dateFrom;
+        var dateTo = req.body.params.dateTo;
+        var dateYear = req.body.params.dateYear
+        const idSubmission: number[] = [];
+
+        let query  = db(`${SCHEMA_DENTAL}.DENTAL_SERVICE_SUBMISSIONS_DETAILS`)
+                    .where('DENTAL_SERVICE_SUBMISSIONS_DETAILS.STATUS', '<>', 4);
+
+        if(requests.length > 0){
+            query.whereIn("ID", requests);
+        }
+
+        if(dateYear) {
+            query.where(db.raw("EXTRACT(YEAR FROM TO_DATE(DENTAL_SERVICE_SUBMISSIONS_DETAILS.CREATED_AT, 'YYYY-MM-DD HH24:MI:SS')) = ?",
+                [dateYear]));
+        }
+
+        if(dateFrom && dateTo) {
+            query.where(db.raw("TO_CHAR(TO_DATE(CREATED_AT, 'YYYY-MM-DD HH24:MI:SS'), 'YYYY-MM-DD') >=  ? "+
+                                "AND TO_CHAR(TO_DATE(CREATED_AT, 'YYYY-MM-DD HH24:MI:SS'), 'YYYY-MM-DD') <= ?",
+                [dateFrom, dateTo]));
+        }
+
+        if (status_request) {
+            query.whereIn("DENTAL_SERVICE_SUBMISSIONS_DETAILS.STATUS", status_request);
+        }
+
+        query.orderBy('ID', 'ASC');
+        const dentalService = await query;
+
+        dentalService.forEach(function (value: any) {
+            idSubmission.push(value.id);
+
+            if(value.date_of_birth === null) {
+                value.date_of_birth =  "N/A";
+            }
+
+            if(!_.isEmpty(value.identify_groups)){
+                value.identify_groups = getBlobField(value.identify_groups);
+            }
+
+            if(!_.isEmpty(value.reason_for_dentist)){
+                value.reason_for_dentist = getBlobField(value.reason_for_dentist);
+            }
+
+            if(!_.isEmpty(value.pay_for_visit)){
+                value.pay_for_visit = getBlobField(value.pay_for_visit);
+            }
+
+            if(!_.isEmpty(value.barriers)){
+                value.barriers = getBlobField(value.barriers);
+            }
+
+            if(!_.isEmpty(value.problems)){
+                value.problems = getBlobField(value.problems);
+            }
+
+            if(!_.isEmpty(value.services_needed)){
+                value.services_needed = getBlobField(value.services_needed);
+            }
+
+            if(!_.isEmpty(value.file_name)){
+                value.file_fullName = value.file_name+"."+value.file_type;
+            }else{
+                value.file_fullName = "";
+            }
+
+            delete value.id;
+            delete value.status;
+            delete value.file_id;
+            delete value.file_name;
+            delete value.file_type;
+            delete value.file_size;
+
+        });
+
+        let queryDependents = db(`${SCHEMA_DENTAL}.DENTAL_SERVICE_DEPENDENTS`)
+                            .leftJoin(`${SCHEMA_DENTAL}.DENTAL_SERVICE`, 'DENTAL_SERVICE_DEPENDENTS.DENTAL_SERVICE_ID', 'DENTAL_SERVICE.ID')
+                            .select(db.raw("(DENTAL_SERVICE.FIRST_NAME ||' '|| DENTAL_SERVICE.LAST_NAME) AS APPLICANT_NAME" ),
+                                    'DENTAL_SERVICE_DEPENDENTS.C_FIRSTNAME',
+                                    'DENTAL_SERVICE_DEPENDENTS.C_LASTNAME',
+                                    'DENTAL_SERVICE_DEPENDENTS.C_DOB',
+                                    'DENTAL_SERVICE_DEPENDENTS.C_HEALTHCARE',
+                                    'DENTAL_SERVICE_DEPENDENTS.C_APPLY');
+
+        if (!_.isEmpty(idSubmission)) {
+            queryDependents.whereIn('DENTAL_SERVICE_DEPENDENTS.DENTAL_SERVICE_ID', idSubmission);
+        }
+
+        queryDependents.orderBy('DENTAL_SERVICE_DEPENDENTS.DENTAL_SERVICE_ID', 'ASC');
+        const dentalServiceDependents = await queryDependents;
+
+        _.forEach(dentalServiceDependents, function(valueDependents: any, key: any) {
+
+            if(valueDependents["c_dob"] == 0) {
+                valueDependents["c_dob"] =  "N/A";
+            }
+
+            if(valueDependents["c_apply"] == "0"){
+                valueDependents["c_apply"] = "Yes, they are applying";
+            }else if(valueDependents["c_apply"] == "1"){
+                valueDependents["c_apply"] = "No, they alredy have coverage";
+            }
+        });
+
+        res.json({ status: 200, dataDental: dentalService, dataDependents: dentalServiceDependents});
+    } catch(e) {
+        console.log(e);  // debug if needed
+        res.send( {
+            status: 400,
+            message: 'Request could not be processed'
+        });
+    }
+    });
 
 /**
  * Download request file

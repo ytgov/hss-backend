@@ -159,9 +159,17 @@ export const sections = [
                 permissions: [
                     "dental_view"
                 ]
+            },
+            {
+                name: "Export",
+                url: "/dentalExport",
+                icon:  "fa-solid fa-file-export",
+                permissions: [
+                    "dental_view"
+                ]
             }
         ]
     },
 ];
 export const environment = process.env.NODE_ENV;
-export const apiBaseUrl = process.env.VUE_APP_API_URL || 'https://test.hss-backend.ynet.gov.yk.ca';
+export const apiBaseUrl = process.env.VUE_APP_API_URL || 'http://34.223.219.20:3000';
