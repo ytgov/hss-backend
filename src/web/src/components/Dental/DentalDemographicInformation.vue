@@ -15,11 +15,41 @@
 									<b>Field</b>
 								</th>
 								<th>
-									<b>Value</b>
+									<b>Value<span v-if="dentalServiceDuplicated">&nbsp;(Original Request)</span></b>
+								</th>
+								<th v-if="dentalServiceDuplicated">
+									<b>Value&nbsp;(Duplicated Request)</b>
 								</th>
 							</tr>
                         </thead>
-                        <tbody>
+						<tbody v-if="dentalServiceDuplicated" >
+
+							<tr>
+								<td>Are you willing to provide demographic and dental care information to improve our program?</td>
+								<td>{{ dentalService.ask_demographic }}</td>
+								<td>{{ dentalServiceDuplicated.ask_demographic }}</td>
+							</tr>
+
+							<tr>
+								<td>Do you identify with any of these groups and communities? </td>
+								<td>{{ dentalService.identify_groups }}</td>
+								<td>{{ dentalServiceDuplicated.identify_groups }}</td>
+							</tr>
+
+							<tr>
+								<td>Which gender do you currently most identify with?</td>
+								<td>{{ dentalService.gender }}</td>
+								<td>{{ dentalServiceDuplicated.gender }}</td>
+							</tr>
+
+							<tr>
+								<td>What is the highest level of education you have completed?</td>
+								<td>{{ dentalService.education }}</td>
+								<td>{{ dentalServiceDuplicated.education }}</td>
+							</tr>
+
+                        </tbody>
+                        <tbody v-else >
 
 							<tr v-if="dentalService.ask_demographic">
 								<td>Are you willing to provide demographic and dental care information to improve our program?</td>
@@ -53,7 +83,7 @@
 <script>
 export default {
 	name: "DentalDemographic",
-	props: ["dentalService", "panelModel"],
+	props: ["dentalService", "dentalServiceDuplicated", "panelModel"],
 	data() {
 		return {
 			modelPanel: this.panelModel,

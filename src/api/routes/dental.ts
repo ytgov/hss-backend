@@ -398,7 +398,355 @@ dentalRouter.post("/export/", async (req: Request, res: Response) => {
             message: 'Request could not be processed'
         });
     }
-    });
+});
+
+
+/**
+ * Obtain data of duplicated warnings
+ *
+ * @return json
+ */
+dentalRouter.post("/duplicates", async (req: Request, res: Response) => {
+
+    try {
+
+        var dentalOriginal = Object();
+        var dentalDuplicate = Object();
+        var dentalService = Array();
+
+        dentalOriginal = await db(`${SCHEMA_DENTAL}.DENTAL_DUPLICATED_REQUESTS`)
+            .join(`${SCHEMA_DENTAL}.DENTAL_SERVICE`, 'DENTAL_DUPLICATED_REQUESTS.ORIGINAL_ID', '=', 'DENTAL_SERVICE.ID')
+            .join(`${SCHEMA_DENTAL}.DENTAL_STATUS`, 'DENTAL_SERVICE.STATUS', '=', 'DENTAL_STATUS.ID')
+            .leftJoin(`${SCHEMA_DENTAL}.DENTAL_SERVICE_DEPENDENTS`, 'DENTAL_SERVICE.ID', '=', 'DENTAL_SERVICE_DEPENDENTS.DENTAL_SERVICE_ID')
+            .select('DENTAL_SERVICE.ID AS DENTAL_SERVICE_ID',
+                    'DENTAL_SERVICE.FIRST_NAME',
+                    'DENTAL_SERVICE.LAST_NAME',
+                    'DENTAL_DUPLICATED_REQUESTS.ORIGINAL_ID',
+                    'DENTAL_DUPLICATED_REQUESTS.DUPLICATED_ID',
+                    'DENTAL_STATUS.DESCRIPTION AS STATUS_DESCRIPTION',
+                    db.raw("TO_CHAR(DENTAL_SERVICE.CREATED_AT, 'YYYY-MM-DD HH24:MI:SS') AS CREATED_AT,"+
+                        "TO_CHAR(DENTAL_SERVICE.DATE_OF_BIRTH, 'YYYY-MM-DD') as DATE_OF_BIRTH,"+
+                        "CASE WHEN COUNT(DENTAL_SERVICE_DEPENDENTS.ID) > 0 THEN 'YES' ELSE 'NO' END AS DEPENDENT")
+            )
+            .where('DENTAL_SERVICE.STATUS', '<>', 4 )
+            .groupBy('DENTAL_SERVICE.ID',
+                    'DENTAL_SERVICE.FIRST_NAME',
+                    'DENTAL_SERVICE.LAST_NAME',
+                    'DENTAL_DUPLICATED_REQUESTS.ORIGINAL_ID',
+                    'DENTAL_DUPLICATED_REQUESTS.DUPLICATED_ID',
+                    'DENTAL_STATUS.DESCRIPTION',
+                    db.raw("TO_CHAR(DENTAL_SERVICE.CREATED_AT, 'YYYY-MM-DD HH24:MI:SS'),"+
+                            "TO_CHAR(DENTAL_SERVICE.DATE_OF_BIRTH, 'YYYY-MM-DD')")
+            ).then((rows: any) => {
+                let arrayResult = Object();
+
+                for (let row of rows) {
+                    arrayResult[row['original_id']] = row;
+                }
+
+                return arrayResult;
+            });
+
+        dentalDuplicate = await db(`${SCHEMA_DENTAL}.DENTAL_DUPLICATED_REQUESTS`)
+        .join(`${SCHEMA_DENTAL}.DENTAL_SERVICE`, 'DENTAL_DUPLICATED_REQUESTS.DUPLICATED_ID', '=', 'DENTAL_SERVICE.ID')
+        .join(`${SCHEMA_DENTAL}.DENTAL_STATUS`, 'DENTAL_SERVICE.STATUS', '=', 'DENTAL_STATUS.ID')
+        .leftJoin(`${SCHEMA_DENTAL}.DENTAL_SERVICE_DEPENDENTS`, 'DENTAL_SERVICE.ID', '=', 'DENTAL_SERVICE_DEPENDENTS.DENTAL_SERVICE_ID')
+        .select('DENTAL_DUPLICATED_REQUESTS.ID',
+                'DENTAL_SERVICE.ID AS DENTAL_SERVICE_ID',
+                'DENTAL_SERVICE.FIRST_NAME',
+                'DENTAL_SERVICE.LAST_NAME',
+                'DENTAL_DUPLICATED_REQUESTS.ORIGINAL_ID',
+                'DENTAL_DUPLICATED_REQUESTS.DUPLICATED_ID',
+                'DENTAL_STATUS.DESCRIPTION AS STATUS_DESCRIPTION',
+                db.raw("TO_CHAR(DENTAL_SERVICE.CREATED_AT, 'YYYY-MM-DD HH24:MI:SS') AS CREATED_AT,"+
+                    "TO_CHAR(DENTAL_SERVICE.DATE_OF_BIRTH, 'YYYY-MM-DD') as DATE_OF_BIRTH,"+
+                    "CASE WHEN COUNT(DENTAL_SERVICE_DEPENDENTS.ID) > 0 THEN 'YES' ELSE 'NO' END AS DEPENDENT")
+        )
+        .where('DENTAL_SERVICE.STATUS', '<>', 4 )
+        .groupBy('DENTAL_DUPLICATED_REQUESTS.ID',
+                'DENTAL_SERVICE.ID',
+                'DENTAL_SERVICE.FIRST_NAME',
+                'DENTAL_SERVICE.LAST_NAME',
+                'DENTAL_DUPLICATED_REQUESTS.ORIGINAL_ID',
+                'DENTAL_DUPLICATED_REQUESTS.DUPLICATED_ID',
+                'DENTAL_STATUS.DESCRIPTION',
+                db.raw("TO_CHAR(DENTAL_SERVICE.CREATED_AT, 'YYYY-MM-DD HH24:MI:SS'),"+
+                        "TO_CHAR(DENTAL_SERVICE.DATE_OF_BIRTH, 'YYYY-MM-DD')")
+        );
+
+        let index = 0;
+
+        dentalDuplicate.forEach(function (value: any) {
+
+            let url = "dentalWarnings/details/"+value.id;
+
+            delete value.id;
+
+            dentalService.push({
+                dental_service_id: null,
+                original_id: null,
+                duplicated_id: null,
+                first_name: 'Duplicated #'+(index+1),
+                last_name: null,
+                dependent: null,
+                date_of_birth: null,
+                status_description: null,
+                created_at: 'ACTIONS:',
+                showUrl: url
+            });
+
+            dentalService.push(dentalOriginal[value.original_id]);
+            dentalService.push(value);
+            index = index + 1;
+        });
+
+        res.send({data: dentalService});
+
+    } catch(e) {
+        console.log(e);  // debug if needed
+        res.send( {
+            status: 400,
+            message: 'Request could not be processed'
+        });
+    }
+
+});
+
+/**
+ * Obtain data to show in details view
+ *
+ * @param id of request
+ * @return json
+ */
+dentalRouter.get("/duplicates/details/:duplicate_id",[param("duplicate_id").isInt().notEmpty()], async (req: Request, res: Response) => {
+    try {
+
+        let duplicate_id = Number(req.params.duplicate_id);
+        var dentalOriginal = Object();
+        var dentalDuplicate = Object();
+        var dentalEntries = Object();
+        var dependentsOriginal = Object();
+        var dependentsDuplicated = Object();
+        var dentalFiles = Object();
+        var dentalFilesDuplicated = Object();
+        var flagDependents = false;
+        var flagDemographic = true;
+        var flagFile = false;
+
+        var duplicateEntry = await db(`${SCHEMA_DENTAL}.DENTAL_DUPLICATED_REQUESTS`)
+            .where("ID", duplicate_id).then((rows: any) => {
+                let arrayResult = Object();
+
+                for (let row of rows) {
+                    arrayResult.original = row['original_id'];
+                    arrayResult.duplicated = row['duplicated_id'];
+                }
+
+                return arrayResult;
+            });
+
+        dentalEntries = await db(`${SCHEMA_DENTAL}.DENTAL_SERVICE_SUBMISSIONS_DETAILS`)
+                    .whereIn("ID", [duplicateEntry.original, duplicateEntry.duplicated])
+                    .whereNot('STATUS', '4');
+
+        dependentsOriginal = await db(`${SCHEMA_DENTAL}.DENTAL_SERVICE_DEPENDENTS`)
+                    .select('DENTAL_SERVICE_DEPENDENTS.*')
+                    .where('DENTAL_SERVICE_DEPENDENTS.DENTAL_SERVICE_ID', duplicateEntry.original);
+
+        dependentsDuplicated = await db(`${SCHEMA_DENTAL}.DENTAL_SERVICE_DEPENDENTS`)
+                    .select('DENTAL_SERVICE_DEPENDENTS.*')
+                    .where('DENTAL_SERVICE_DEPENDENTS.DENTAL_SERVICE_ID', duplicateEntry.duplicated);
+
+        dentalFiles = await db(`${SCHEMA_DENTAL}.DENTAL_SERVICE_FILES`)
+            .where("DENTAL_SERVICE_ID", duplicateEntry.original).select().then((data:any) => {
+                return data[0];
+            });
+
+        if(!_.isEmpty(dentalFiles)){
+            flagFile = true;
+            dentalFiles.file_fullName = dentalFiles.file_name+"."+dentalFiles.file_type;
+        }
+
+        dentalFilesDuplicated = await db(`${SCHEMA_DENTAL}.DENTAL_SERVICE_FILES`)
+            .where("DENTAL_SERVICE_ID", duplicateEntry.duplicated).select().then((data:any) => {
+                return data[0];
+            });
+
+        if(!_.isEmpty(dentalFilesDuplicated)){
+            flagFile = true;
+            dentalFilesDuplicated.file_fullName = dentalFilesDuplicated.file_name+"."+dentalFilesDuplicated.file_type;
+        }
+
+        dentalEntries.forEach(function (value: any) {
+
+            if(!_.isEmpty(value.ask_demographic)){
+                let askDemographic = value.ask_demographic.split(",");
+
+                if(askDemographic[0].toLowerCase() !== "no"){
+                    flagDemographic = false;
+                }
+            }
+
+            if(!_.isEmpty(value.identify_groups)){
+                value.identify_groups = getBlobField(value.identify_groups);
+            }
+
+            if(!_.isEmpty(value.reason_for_dentist)){
+                value.reason_for_dentist = getBlobField(value.reason_for_dentist);
+            }
+
+            if(!_.isEmpty(value.pay_for_visit)){
+                value.pay_for_visit = getBlobField(value.pay_for_visit);
+            }
+
+            if(!_.isEmpty(value.barriers)){
+                value.barriers = getBlobField(value.barriers);
+            }
+
+            if(!_.isEmpty(value.problems)){
+                value.problems = getBlobField(value.problems);
+            }
+
+            if(!_.isEmpty(value.services_needed)){
+                value.services_needed = getBlobField(value.services_needed);
+            }
+
+            if(value.id == duplicateEntry.original){
+                dentalOriginal = value;
+            }else if(value.id == duplicateEntry.duplicated){
+                dentalDuplicate = value;
+            }
+
+        });
+
+        if(!_.isEmpty(dependentsOriginal) || !_.isEmpty(dependentsDuplicated)){
+            flagDependents = true;
+
+            _.forEach(dependentsOriginal, function(valueOriginal: any, key: any) {
+
+                if(valueOriginal["c_dob"] == 0) {
+                    valueOriginal["c_dob"] =  "N/A";
+                }
+
+                if(valueOriginal["c_apply"] == "0"){
+                    valueOriginal["c_apply"] = "Yes, they are applying";
+                }else if(valueOriginal["c_apply"] == "1"){
+                    valueOriginal["c_apply"] = "No, they alredy have coverage";
+                }
+            });
+
+            _.forEach(dependentsDuplicated, function(valueDuplicated: any, key: any) {
+
+                if(valueDuplicated["c_dob"] == 0) {
+                    valueDuplicated["c_dob"] =  "N/A";
+                }
+
+                if(valueDuplicated["c_apply"] == "0"){
+                    valueDuplicated["c_apply"] = "Yes, they are applying";
+                }else if(valueDuplicated["c_apply"] == "1"){
+                    valueDuplicated["c_apply"] = "No, they alredy have coverage";
+                }
+            });
+        }
+
+        res.json({ dataDentalService: dentalOriginal, dataDentalDuplicate: dentalDuplicate, dentalFiles: dentalFiles,
+                dentalFilesDuplicated: dentalFilesDuplicated, dataDependentsOriginal: dependentsOriginal,
+                dataDependentsDuplicated: dependentsDuplicated, flagDependents: flagDependents, flagFile:flagFile, flagDemographic: flagDemographic
+        });
+
+    } catch(e) {
+        console.log(e);  // debug if needed
+        res.send( {
+            status: 400,
+            message: 'Request could not be processed'
+        });
+    }
+});
+
+/**
+ * Validate if warning is non existant
+ *
+ * @param {duplicate_id} id of warning
+ * @return json
+ */
+dentalRouter.get("/duplicates/validateWarning/:duplicate_id",[param("duplicate_id").isInt().notEmpty()], async (req: Request, res: Response) => {
+    try {
+        var duplicate_id = Number(req.params.duplicate_id);
+        var warning = Object();
+        var flagExists = true;
+        var message = "";
+        var type = "error";
+
+        warning = await db(`${SCHEMA_DENTAL}.DENTAL_DUPLICATED_REQUESTS`)
+            .where('ID', duplicate_id)
+            .select()
+            .then((data:any) => {
+                return data[0];
+            });
+
+        if(!warning){
+            flagExists = false;
+            message = "The request you are consulting is non existant, please choose a valid request.";
+        }
+
+        res.json({ status: 200, flagWarning: flagExists, message: message, type: type});
+
+    } catch(e) {
+        console.log(e);  // debug if needed
+        res.send( {
+            status: 400,
+            message: 'Request could not be processed'
+        });
+    }
+});
+
+/**
+ * Reject duplicate warning
+ *
+ * @param {warning}
+ * @param {request}
+ * @return json
+ */
+dentalRouter.patch("/duplicates/primary", async (req: Request, res: Response) => {
+
+    try {
+
+        var warning = Number(req.body.params.warning);
+        var request = Number(req.body.params.request);
+        var type = req.body.params.type;
+        var updateRequest = Object();
+        var rejectWarning = Object();
+
+        if(!request){
+            rejectWarning = await db(`${SCHEMA_DENTAL}.DENTAL_DUPLICATED_REQUESTS`).where("ID", warning).del();
+        }else{
+            var warningRequest = await db(`${SCHEMA_DENTAL}.DENTAL_DUPLICATED_REQUESTS`).where("ID", warning).first();
+
+            if(type == 'O'){
+                updateRequest = await db(`${SCHEMA_DENTAL}.DENTAL_SERVICE`).update({STATUS: "4"}).where("ID", warningRequest.duplicated_id);
+            }else if(type == 'D'){
+                updateRequest = await db(`${SCHEMA_DENTAL}.DENTAL_SERVICE`).update({STATUS: "4"}).where("ID", warningRequest.original_id);
+            }
+
+            if(updateRequest){
+                rejectWarning = await db(`${SCHEMA_DENTAL}.DENTAL_DUPLICATED_REQUESTS`).where("ID", warning).del();
+            }
+        }
+
+        if(rejectWarning) {
+            let type = "success";
+            let message = "Warning updated successfully.";
+            res.json({ status:200, message: message, type: type });
+        }
+
+    } catch(e) {
+        console.log(e);  // debug if needed
+        res.send( {
+            status: 400,
+            message: 'Request could not be processed'
+        });
+    }
+});
 
 /**
  * Download request file

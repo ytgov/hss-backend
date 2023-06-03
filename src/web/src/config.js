@@ -167,7 +167,15 @@ export const sections = [
                 permissions: [
                     "dental_view"
                 ]
-            }
+            },
+            {
+                name: "Warnings",
+                url: "/dentalWarnings",
+                icon: "fas fa-exclamation-triangle",
+                permissions: [
+                    "dental_view"
+                ]
+            },
         ]
     },
 ];

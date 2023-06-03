@@ -2,7 +2,7 @@
 	<v-expansion-panels multiple v-model="modelPanel">
 	<v-expansion-panel class="mb-6">
 		<v-expansion-panel-header>
-		Dependents Information
+			Dependents Information&nbsp;{{titleLabel}}
 		</v-expansion-panel-header>
 		<v-expansion-panel-content>
 		<v-expansion-panels
@@ -65,7 +65,7 @@
 <script>
 export default {
 	name: "DentalDependents",
-	props: ["dentalService", "dentalDependents", "panelModel"],
+	props: ["dentalService", "dentalDependents", "titleLabel", "panelModel"],
 	data() {
 		return {
 			modelPanel: this.panelModel,

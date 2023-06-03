@@ -14,12 +14,71 @@
 								<th>
 									<b>Field</b>
 								</th>
-								<th colspan="2">
-									<b>Value</b>
+								<th>
+									<b>Value<span v-if="dentalServiceDuplicated">&nbsp;(Original Request)</span></b>
+								</th>
+								<th v-if="dentalServiceDuplicated">
+									<b>Value&nbsp;(Duplicated Request)</b>
 								</th>
 							</tr>
                         </thead>
-                        <tbody>
+                        <tbody v-if="dentalServiceDuplicated" >
+							<tr>
+								<td>Proof of income</td>
+								<td class="td-file-download">
+									<v-icon
+										right
+										light
+										color="black"
+									>
+									mdi-file
+									</v-icon>
+									{{dentalFiles.file_fullName}}
+									<br>
+									<v-btn
+										color="#F3A901"
+										class="pull-right ma-2 white--text apply-btn"
+										@click="downloadFile(dentalFiles.id)"
+									>
+										Download &nbsp;
+										<v-icon
+											right
+											dark
+										>
+										mdi-cloud-download
+										</v-icon>
+									</v-btn>
+								</td>
+								<td  v-if="dentalFilesDuplicated" class="td-file-download">
+									<v-icon
+										right
+										light
+										color="black"
+									>
+									mdi-file
+									</v-icon>
+									{{dentalFilesDuplicated.file_fullName}}
+									<br>
+									<v-btn
+										color="#F3A901"
+										class="pull-right ma-2 white--text apply-btn"
+										@click="downloadFile(dentalFilesDuplicated.id)"
+									>
+										Download &nbsp;
+										<v-icon
+											right
+											dark
+										>
+										mdi-cloud-download
+										</v-icon>
+									</v-btn>
+								</td>
+								<td v-else>
+								</td>
+							</tr>
+
+                        </tbody>
+						<tbody v-else>
 							<tr v-if="dentalFiles">
 								<td>Proof of income</td>
 								<td>
@@ -67,7 +126,9 @@ import { DENTAL_DELETE_FILE } from "../../urls.js";
 
 export default {
     name: 'DentalAttachments',
-    props: ['dentalService', 'dentalFiles', 'panelModel', 'showDownload'],
+    props: ['dentalService', 'dentalServiceDuplicated', 'dentalFiles',
+			'dentalFilesDuplicated', 'panelModel', 'showDownload'
+			],
 	data() {
 		return {
 			modelPanel: this.panelModel,

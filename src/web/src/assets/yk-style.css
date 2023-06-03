@@ -417,6 +417,10 @@ div.row.container-actions.align-center{
     align-items: baseline;
 }
 
+.td-file-download{
+    display: flex;
+    align-items: center;
+}
 
 @-moz-keyframes loader {
     from {

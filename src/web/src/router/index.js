@@ -27,6 +27,8 @@ import MidwiferyWarningsDetails from "../components/Midwifery/MidwiferyWarningsD
 import Dental from "../components/Dental/Dental";
 import DentalDetails from "../components/Dental/DentalDetails";
 import DentalExport from "../components/Dental/DentalExport";
+import DentalWarnings from "../components/Dental/DentalWarnings";
+import DentalWarningsDetails from "../components/Dental/DentalWarningsDetails";
 
 import Dashboard from "../components/Dashboard.vue";
 
@@ -288,6 +290,25 @@ const routes = [
       permissions: [
         "dental_view"
       ]
+    }
+  },
+  {
+    path: "/dentalWarnings",
+    name: "Dental Warnings",
+    component: DentalWarnings,
+    meta: {
+      requiresAuth: true,
+      permissions: [
+        "dental_view"
+      ]
+    }
+  },
+  {
+    path: "/dentalWarnings/details/:duplicate_id",
+    name: "Dental Warnings Details",
+    component: DentalWarningsDetails,
+    meta: {
+      requiresAuth: true
     }
   },
 ];
