@@ -17,7 +17,7 @@ export const dentalRouter = express.Router();
 dentalRouter.use(RateLimit({
     windowMs: 1*60*1000, // 1 minute
     max: 5000
-  }));
+}));
 
 /**
  * Obtain data to show in the index view
@@ -36,14 +36,49 @@ dentalRouter.get("/submissions/:action_id/:action_value", [
         const actionId = req.params.action_id;
         const actionVal = req.params.action_value;
         const permissions = req.user?.db_user.permissions ?? [];
+        console.log(SCHEMA_DENTAL);
+        console.log(actionId);
+        console.log(actionVal);
+        console.log(permissions);
         const result = await submissionStatusRepo.getModuleSubmissions(SCHEMA_DENTAL, actionId, actionVal, permissions);
         const groupedId = groupBy(result, i => i.id);
         const labels = groupBy(result, i => i.date_code);
+        console.log(groupedId);
         res.send(
             {
                 data: groupedId,
                 labels: labels
             });
+
+    } catch(e) {
+        console.log(e);  // debug if needed
+        res.send( {
+            status: 400,
+            message: 'Request could not be processed'
+        });
+    }
+});
+
+/**
+ * Obtain data to show in the index view
+ *
+ * @param { action_id } action id.
+ * @param { action_value } action value.
+ * @return json
+ */
+dentalRouter.get("/submissions/status/:action_id/:action_value", [
+    param("action_id").notEmpty(),
+    param("action_value").notEmpty()
+], async (req: Request, res: Response) => {
+
+    try {
+
+        const actionId = req.params.action_id;
+        const actionVal = req.params.action_value;
+        const permissions = req.user?.db_user.permissions ?? [];
+        const result = await submissionStatusRepo.getModuleSubmissionsStatus(SCHEMA_DENTAL, actionId, actionVal, permissions);
+
+        res.send({data: result});
 
     } catch(e) {
         console.log(e);  // debug if needed

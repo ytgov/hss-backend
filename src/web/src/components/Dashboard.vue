@@ -1,16 +1,18 @@
 <template>
   <div class="home">
     <div class="row">
-      <div class="col-md-7">
-        <v-card class="mt-5" color="#ffffff">
+      <div class="col-md-8">
+        <v-card class="mt-3" color="#ffffff">
           <SubmissionsChart :title="'Submissions'" :data="submissionsData" @filterSelected="sFilterSelected"></SubmissionsChart>
-        </v-card>  
-        <v-card class="mt-5" color="#ffffff">
+        </v-card>
+        <v-card class="mt-3" color="#ffffff">
           <StatusChart :title="'Status'" :data="statusData" @filterSelected="scFilterSelected"></StatusChart>
         </v-card>
-            
+        <v-card class="mt-2" color="#ffffff">
+          <AgesChart :title="'Age'" :data="statusData" @filterSelected="scFilterSelected"></AgesChart>
+        </v-card>
       </div>
-      <div class="col-md-5">
+      <div class="col-md-4">
         <ActivityTimeline :title="'Activity Timeline'" :data="atData"></ActivityTimeline>
       </div>
     </div>
@@ -21,6 +23,7 @@
 const axios = require("axios");
 import StatusChart from "./Chart/Status.vue";
 import SubmissionsChart from "./Chart/Submissions.vue";
+import AgesChart from "./Chart/Ages.vue";
 import ActivityTimeline from "./General/ActivityTimeline.vue";
 import { ref } from "vue";
 import { setSubmissionsStatusData, setSubmissionsData } from "../helper/index";
@@ -46,7 +49,7 @@ const getSubmissionsStatusDataFromApi = (actionId, actionVal) => {
 const getSubmissionsDataFromApi = (actionId, actionVal) => {
   axios
   .get(`${SUBMISSION_URL}/${actionId}/${actionVal}`)
-  .then((resp) => {    
+  .then((resp) => {
     sData.value = setSubmissionsData(resp);
   })
   .catch((err) => console.error(err));
@@ -55,7 +58,7 @@ const getSubmissionsDataFromApi = (actionId, actionVal) => {
 const getAuditTimelineDataFromApi = () => {
   axios
   .get(`${AUDIT_TIMELINE_URL}`)
-  .then((resp) => {    
+  .then((resp) => {
     atData.value = resp.data.data;
   })
   .catch((err) => console.error(err));
@@ -66,7 +69,8 @@ export default {
   components: {
     StatusChart,
     SubmissionsChart,
-    ActivityTimeline
+    ActivityTimeline,
+    AgesChart
   },
   data: () => ({
     statusData: scData,

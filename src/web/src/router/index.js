@@ -29,6 +29,7 @@ import DentalDetails from "../components/Dental/DentalDetails";
 import DentalExport from "../components/Dental/DentalExport";
 import DentalWarnings from "../components/Dental/DentalWarnings";
 import DentalWarningsDetails from "../components/Dental/DentalWarningsDetails";
+import DentalAnalytics from "../components/Dental/DentalAnalytics";
 
 import Dashboard from "../components/Dashboard.vue";
 
@@ -309,6 +310,17 @@ const routes = [
     component: DentalWarningsDetails,
     meta: {
       requiresAuth: true
+    }
+  },
+  {
+    path: "/dentalAnalytics",
+    name: "Dental Analytics",
+    component: DentalAnalytics,
+    meta: {
+      requiresAuth: true,
+      permissions: [
+        "dental_view"
+      ]
     }
   },
 ];

@@ -161,17 +161,25 @@ export const sections = [
                 ]
             },
             {
-                name: "Export",
-                url: "/dentalExport",
-                icon:  "fa-solid fa-file-export",
+                name: "Warnings",
+                url: "/dentalWarnings",
+                icon: "fas fa-exclamation-triangle",
                 permissions: [
                     "dental_view"
                 ]
             },
             {
-                name: "Warnings",
-                url: "/dentalWarnings",
-                icon: "fas fa-exclamation-triangle",
+                name: "Analytics",
+                url: "/dentalAnalytics",
+                icon: "fa-solid fa-chart-line",
+                permissions: [
+                    "dental_view"
+                ]
+            },
+            {
+                name: "Export",
+                url: "/dentalExport",
+                icon:  "fa-solid fa-file-export",
                 permissions: [
                     "dental_view"
                 ]
@@ -180,4 +188,4 @@ export const sections = [
     },
 ];
 export const environment = process.env.NODE_ENV;
-export const apiBaseUrl = process.env.VUE_APP_API_URL || 'http://34.223.219.20:3000';
+export const apiBaseUrl = process.env.VUE_APP_API_URL || 'http://34.210.103.92:3000';

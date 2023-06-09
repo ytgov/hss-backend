@@ -87,6 +87,20 @@ UNION
      LEFT JOIN GENERAL.config cc ON cc.type = 'SCHEMA_CHART_COLOR' AND cc.name = tab.owner
      LEFT JOIN GENERAL.config cp ON cp.type = 'SCHEMA_PERMISSION_VIEW' AND cp.name = tab.owner
   GROUP BY tab.owner, (to_char(ch.created_at, 'yyyy-mm')), (to_char(ch.created_at, 'WW')), cd.val_str1, cc.val_str1, cp.val_str1
+  UNION
+ SELECT tab.owner AS id,
+    cd.val_str1 AS department,
+    cc.val_str1 AS color,
+    cp.val_str1 AS permissions,
+    count(1) AS submissions,
+    to_char(ch.created_at, 'WW') AS date_code,
+    to_char(ch.created_at, 'yyyy-mm') AS monthid
+   FROM DENTAL.DENTAL_SERVICE ch
+     LEFT JOIN all_tables tab ON tab.table_name = 'DENTAL_SERVICE'
+     LEFT JOIN GENERAL.config cd ON cd.type = 'SCHEMA_TITLE' AND cd.name = tab.owner
+     LEFT JOIN GENERAL.config cc ON cc.type = 'SCHEMA_CHART_COLOR' AND cc.name = tab.owner
+     LEFT JOIN GENERAL.config cp ON cp.type = 'SCHEMA_PERMISSION_VIEW' AND cp.name = tab.owner
+  GROUP BY tab.owner, (to_char(ch.created_at, 'yyyy-mm')), (to_char(ch.created_at, 'WW')), cd.val_str1, cc.val_str1, cp.val_str1
 ;
 --------------------------------------------------------
 --  DDL for View SUBMISSIONS_STATUS_MONTH_V
@@ -271,7 +285,7 @@ UNION
     cp.val_str1 AS permissions,
     count(1) AS submissions,
     to_char(ds.created_at, 'yyyy-mm-dd') AS date_code
-   FROM MIDWIFERY.DENTAL_SERVICE ds
+   FROM DENTAL.DENTAL_SERVICE ds
      LEFT JOIN all_tables tab ON tab.table_name = 'DENTAL_SERVICE'
      LEFT JOIN GENERAL.config cd ON cd.type = 'SCHEMA_TITLE' AND cd.name = tab.owner
      LEFT JOIN GENERAL.config cc ON cc.type = 'SCHEMA_CHART_COLOR' AND cc.name = tab.owner
