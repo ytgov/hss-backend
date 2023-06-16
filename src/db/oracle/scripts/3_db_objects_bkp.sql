@@ -426,6 +426,98 @@ FROM
     LEFT JOIN DENTAL.DENTAL_SERVICE_FILES ON DENTAL_SERVICE.ID = DENTAL_SERVICE_FILES.DENTAL_SERVICE_ID;
 
 --------------------------------------------------------
+--  DDL for View SUBMISSIONS_DENTAL_AGE_WEEK_V
+--------------------------------------------------------
+
+CREATE OR REPLACE FORCE EDITIONABLE VIEW "GENERAL"."SUBMISSIONS_DENTAL_AGE_WEEK_V" ("ID", "DEPARTMENT", "COLOR", "PERMISSIONS",
+                                          "SUBMISSIONS", "AGE_RANGE") AS
+  SELECT tab.owner AS id,
+    cd.val_str1 AS department,
+		cc.val_str1 AS color,
+    cp.val_str1 AS permissions,
+    count(1) AS submissions,
+		GENERAL.GETAGERANGE(ch.date_of_birth) AS age_range
+    FROM DENTAL.DENTAL_SERVICE ch
+    LEFT JOIN all_tables tab ON tab.table_name = 'DENTAL_SERVICE'
+    LEFT JOIN GENERAL.config cd ON cd.type = 'SCHEMA_TITLE' AND cd.name = tab.owner
+		LEFT JOIN GENERAL.config cc ON cc.type = 'STATUS_CHART_COLOR' AND cc.name = tab.owner AND cc.val_str2 = GENERAL.GETAGERANGE(ch.date_of_birth)
+    LEFT JOIN GENERAL.config cp ON cp.type = 'SCHEMA_PERMISSION_VIEW' AND cp.name = tab.owner
+  WHERE ch.created_at > (CURRENT_DATE - INTERVAL '7' DAY)
+  GROUP BY tab.owner, cd.val_str1, cp.val_str1, cc.val_str1, (GENERAL.GETAGERANGE(ch.date_of_birth))
+;
+
+--------------------------------------------------------
+--  DDL for View SUBMISSIONS_DENTAL_AGE_MONTH_V
+--------------------------------------------------------
+
+CREATE OR REPLACE FORCE EDITIONABLE VIEW "GENERAL"."SUBMISSIONS_DENTAL_AGE_MONTH_V" ("ID", "DEPARTMENT", "COLOR", "PERMISSIONS", 
+                                          "SUBMISSIONS", "MONTHID", "AGE", "AGE_RANGE") AS 
+  SELECT tab.owner AS id,
+  cd.val_str1 AS department,
+  cc.val_str1 AS color,
+  cp.val_str1 AS permissions,
+  count(1) AS submissions,
+  to_char(ds.created_at, 'yyyy-mm') AS monthid,
+  GENERAL.GETAGERANGE(ds.date_of_birth) AS age_range
+  FROM DENTAL.DENTAL_SERVICE ds
+    LEFT JOIN all_tables tab ON tab.table_name = 'DENTAL_SERVICE'
+    LEFT JOIN GENERAL.config cd ON cd.type = 'SCHEMA_TITLE' AND cd.name = tab.owner
+    LEFT JOIN GENERAL.config cc ON cc.type = 'STATUS_CHART_COLOR' AND cc.name = tab.owner AND cc.val_str2 = GENERAL.GETAGERANGE(ds.date_of_birth)
+    LEFT JOIN GENERAL.config cp ON cp.type = 'SCHEMA_PERMISSION_VIEW' AND cp.name = tab.owner
+  GROUP BY tab.owner, (to_char(ds.created_at, 'yyyy-mm')), cd.val_str1, cp.val_str1, cc.val_str1, (GENERAL.GETAGERANGE(ds.date_of_birth))
+;
+
+--------------------------------------------------------
+--  DDL for View SUBMISSIONS_DENTAL_GENDER_WEEK_V
+--------------------------------------------------------
+
+CREATE OR REPLACE FORCE EDITIONABLE VIEW "GENERAL"."SUBMISSIONS_DENTAL_GENDER_WEEK_V" ("ID", "DEPARTMENT", "COLOR", "PERMISSIONS",
+                                          "SUBMISSIONS", "GENDER_NAME", "GENDER_ID") AS
+SELECT
+    tab.owner AS id,
+    cd.val_str1 AS department,
+    cc.val_str1 AS color,
+    cp.val_str1 AS permissions,
+    COUNT(1) AS submissions,
+    dsg.NAME as gender_name,
+		cc.val_int2
+FROM
+    DENTAL.DENTAL_SERVICE ds
+    LEFT JOIN all_tables tab ON tab.table_name = 'DENTAL_SERVICE'
+		LEFT JOIN DENTAL.DENTAL_SERVICE_GENDER dsg ON ds.GENDER = dsg.NAME
+    LEFT JOIN GENERAL.config cd ON cd.type = 'SCHEMA_TITLE' AND cd.name = tab.owner
+    JOIN GENERAL.config cc ON cc.val_str3 = 'DENTAL_CHART_COLOR' AND cc.val_int2 = dsg.ID AND cc.name = tab.owner
+    LEFT JOIN GENERAL.config cp ON cp.type = 'SCHEMA_PERMISSION_VIEW' AND cp.name = tab.owner
+WHERE
+    ds.created_at > (CURRENT_DATE - INTERVAL '7' DAY)
+GROUP BY
+    tab.owner, cd.val_str1, cc.val_str1, cp.val_str1, dsg.NAME, cc.val_int2
+;
+
+--------------------------------------------------------
+--  DDL for View SUBMISSIONS_DENTAL_GENDER_MONTH_V
+--------------------------------------------------------
+
+CREATE OR REPLACE FORCE EDITIONABLE VIEW "GENERAL"."SUBMISSIONS_DENTAL_GENDER_MONTH_V" ("ID", "DEPARTMENT", "COLOR", "PERMISSIONS",
+                                          "SUBMISSIONS", "MONTHID", "GENDER_NAME", "GENDER_ID") AS
+SELECT tab.owner AS id,
+    cd.val_str1 AS department,
+		cc.val_str1 AS color,
+    cp.val_str1 AS permissions,
+    count(1) AS submissions,
+    to_char(ds.created_at, 'yyyy-mm') AS monthid,
+		dsg.NAME as gender_name,
+		cc.val_int2
+  FROM DENTAL.DENTAL_SERVICE ds
+    LEFT JOIN all_tables tab ON tab.table_name = 'DENTAL_SERVICE'
+    LEFT JOIN DENTAL.DENTAL_SERVICE_GENDER dsg ON ds.GENDER = dsg.NAME
+    LEFT JOIN GENERAL.config cd ON cd.type = 'SCHEMA_TITLE' AND cd.name = tab.owner
+    JOIN GENERAL.config cc ON cc.val_str3 = 'DENTAL_CHART_COLOR' AND cc.val_int2 = dsg.ID AND cc.name = tab.owner
+    LEFT JOIN GENERAL.config cp ON cp.type = 'SCHEMA_PERMISSION_VIEW' AND cp.name = tab.owner
+  GROUP BY tab.owner, (to_char(ds.created_at, 'yyyy-mm')), cd.val_str1, cp.val_str1, cc.val_str1, dsg.NAME, cc.val_int2
+;
+
+--------------------------------------------------------
 --  DDL for Index CONSTELLATION_DUPLICATED_REQUESTS_PK
 --------------------------------------------------------
 
@@ -1219,6 +1311,28 @@ BEGIN
 END;
 /
 ALTER TRIGGER "DENTAL"."DENTAL_SERVICE_DUPLICATED_REQUESTS" ENABLE;
+
+--------------------------------------------------------
+--  DDL for Function GETAGERANGE
+--------------------------------------------------------
+CREATE OR REPLACE FUNCTION "GETAGERANGE"(p_date_of_birth IN DATE)
+  RETURN VARCHAR2
+AS
+  v_age NUMBER;
+BEGIN
+  v_age := TRUNC(MONTHS_BETWEEN(SYSDATE, p_date_of_birth) / 12);
+
+  IF v_age < 18 THEN
+    RETURN '<18';
+  ELSIF v_age BETWEEN 19 AND 30 THEN
+    RETURN '19-30';
+  ELSIF v_age BETWEEN 31 AND 50 THEN
+    RETURN '31-50';
+  ELSE
+    RETURN '>51';
+  END IF;
+END;
+
 --------------------------------------------------------
 --  DDL for Function GETTRANSFORMVALUE
 --------------------------------------------------------

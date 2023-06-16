@@ -13,6 +13,15 @@ export interface SubmissionsTotalDTO extends SubmissionsDTO {
     date_code: string
 }
 
+export interface SubmissionsAgeDTO extends SubmissionsDTO {
+    age_range: string;
+}
+
+export interface SubmissionsGenderDTO extends SubmissionsDTO {
+    gender_name: string;
+    gender_id: number;
+}
+
 export interface AuditBaseDTO {
     id: number;
     event_type: number;

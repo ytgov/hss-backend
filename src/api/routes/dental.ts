@@ -36,14 +36,11 @@ dentalRouter.get("/submissions/:action_id/:action_value", [
         const actionId = req.params.action_id;
         const actionVal = req.params.action_value;
         const permissions = req.user?.db_user.permissions ?? [];
-        console.log(SCHEMA_DENTAL);
-        console.log(actionId);
-        console.log(actionVal);
-        console.log(permissions);
+
         const result = await submissionStatusRepo.getModuleSubmissions(SCHEMA_DENTAL, actionId, actionVal, permissions);
         const groupedId = groupBy(result, i => i.id);
         const labels = groupBy(result, i => i.date_code);
-        console.log(groupedId);
+
         res.send(
             {
                 data: groupedId,
@@ -145,9 +142,8 @@ dentalRouter.patch("/changeStatus", async (req: Request, res: Response) => {
     try {
         var dentalService_id = req.body.params.requests;
         var status_id = req.body.params.requestStatus;
-        console.log(dentalService_id);
-        console.log(status_id);
         var updateStatus = await db(`${SCHEMA_DENTAL}.DENTAL_SERVICE`).update({STATUS: status_id}).whereIn("ID", dentalService_id);
+
         if(updateStatus) {
             let type = "success";
             let message = "Status changed successfully.";
@@ -830,7 +826,7 @@ dentalRouter.post("/deleteFile", async (req: Request, res: Response) => {
         var file = sanitize(req.body.params.file);
         let pathPublicFront = path.join(__dirname, "../../");
         var filePath = pathPublicFront+"web/public/"+file;
-        console.log(filePath);
+
         if(fs.existsSync(filePath)) {
             fs.unlinkSync(filePath);
         }
