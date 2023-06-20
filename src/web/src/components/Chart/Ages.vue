@@ -46,24 +46,31 @@ export default {
 			immediate: true,
 			handler(newData) {
 				this.hasData = false;
-				if (newData.datasets[0].data.length > 0) {
-					this.hasData = true;
-					const total = newData.datasets[0].data.reduce((x,y) => parseInt(x)+parseInt(y));
-					dtOptions.value = {
-						responsive: true,
-						maintainAspectRatio: false,
-						plugins: {
-							legend: {
-								title: {
-								display: true,
-								text: `Total: ${total}`,
-								align: "start"
-								},
-								position: "right",
-								align: "end"
+
+				if(newData.datasets[0].data.length > 0) {
+					const zeroValueValidate = newData.datasets.every(dataset =>
+						dataset.data.every(value => value !== 0)
+					);
+
+					if(zeroValueValidate) {
+						this.hasData = true;
+						const total = newData.datasets[0].data.reduce((x,y) => parseInt(x)+parseInt(y));
+						dtOptions.value = {
+							responsive: true,
+							maintainAspectRatio: false,
+							plugins: {
+								legend: {
+									title: {
+									display: true,
+									text: `Total: ${total}`,
+									align: "start"
+									},
+									position: "right",
+									align: "end"
+								}
 							}
-						}
-					};
+						};
+					}
 				}
 			}
 		}

@@ -2,7 +2,7 @@
     <div class="home">
         <div class="row">
             <div :class="divChartsClass">
-                <div class="row">
+                <div :class="divChartsRowClass">
                     <v-card :class="cardsChartsClass" color="#ffffff">
                         <SubmissionsChart :title="'Submissions'" :data="submissionsData" @filterSelected="sFilterSelected"></SubmissionsChart>
                     </v-card>
@@ -10,7 +10,7 @@
                         <StatusChart :title="'Status'" :data="statusData" @filterSelected="scFilterSelected"></StatusChart>
                     </v-card>
                 </div>
-                <div class="row" v-if="checkPermissions('dental_view')">
+                <div class="row" v-if="showDentalCharts">
                     <v-card class="mt-3 col-md-6" color="#ffffff">
                         <AgesChart :title="'Age'" :data="submissionsAgeData" @filterSelected="aFilterSelected"></AgesChart>
                     </v-card>
@@ -85,10 +85,12 @@ const getSubmissionsAgeDataFromApi = (actionId, actionVal) => {
     .get(`${SUBMISSION_AGE_URL}/${actionId}/${actionVal}`)
     .then((resp) => {
 
-        const curData = resp.data.data.DENTAL;
-        const data = curData.map(x => x.submissions);
-        const labels = curData.map(x => ({label: x.age_range, color: x.color}))
-        saData.value = setSubmissionsAgeData(data, labels);
+        if (Object.keys(resp.data.data).length !== 0) {
+            const curData = resp.data.data.DENTAL;
+            const data = curData.map(x => x.submissions);
+            const labels = curData.map(x => ({label: x.age_range, color: x.color}))
+            saData.value = setSubmissionsAgeData(data, labels);
+        }
 
     })
     .catch((err) => console.error(err));
@@ -121,11 +123,23 @@ export default {
         dbUser: null,
         cardsChartsClass: "mt-5",
         divChartsClass: "col-md-7",
-        divTimelineClass: "col-md-5"
+        divTimelineClass: "col-md-5",
+        divChartsRowClass: "",
+        showDentalCharts: false
     }),
-    created: async function() {
+    beforeCreate: async function() {
         await store.dispatch("checkAuthentication");
+
         this.dbUser = store.getters.dbUser;
+        this.showDentalCharts = this.checkPermissions("dental_view");
+
+        if (this.showDentalCharts) {
+            this.divChartsRowClass = "row";
+            this.cardsChartsClass = "mt-3 col-md-6";
+            this.divChartsClass = "col-md-9";
+            this.divTimelineClass = "col-md-3";
+        }
+
     },
     computed: {
         showClass() {
@@ -150,18 +164,7 @@ export default {
             getSubmissionsGenderDataFromApi(actionId, val);
         },
         checkPermissions(permission) {
-            const userPermissions = this.dbUser?.permission;
-            if (userPermissions) {
-                this.cardsChartsClass = "mt-3 col-md-6";
-                this.divChartsClass = "col-md-9";
-                this.divTimelineClass = "col-md-3";
-
-                return permission.every((x) => {
-                    return userPermissions.find((p) => p.permission_name === x) !== undefined;
-                });
-            }
-
-            return false;
+            return this.dbUser.permissions.some(permission => permission.permission_name == "dental_view");
         }
     },
     mounted() {

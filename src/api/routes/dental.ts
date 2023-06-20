@@ -997,7 +997,7 @@ dentalRouter.post("/store", async (req: Request, res: Response) => {
 
         res.json({ status:200, message: 'Request saved' });
 
-    } catch(e) {
+    } catch(e) { 
         console.log(e);  // debug if needed
         res.send( {
             status: 400,
