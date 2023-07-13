@@ -71,7 +71,8 @@
 					color="#DC4405"
 					class="pull-right"
 					@click="editSubmission"
-					v-if="showExport"
+					v-if="showEdit"
+					hidden
 				>
 					Edit submission
 					<v-icon
@@ -169,6 +170,7 @@ export default {
 		bulkActions: [],
 		idStatusClosed: null,
 		showExport: true,
+		showEdit: false,
 		showExportClass: false,
 		idSubmission: null,
 		dbUser: null,
