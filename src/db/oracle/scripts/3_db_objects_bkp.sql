@@ -1347,7 +1347,7 @@ BEGIN
 		VALUES (v_cur_schema, v_cur_table, :new.id, 5, 'INSERT', 'system', NULL, v_guid, :NEW.ROWID);
 END;
 /
-ALTER TRIGGER "DENTAL"."DENTAL_SERVICE_LOG_INTERNAL_FIELDS" ENABLE;
+ALTER TRIGGER "DENTAL"."DENTAL_SERVICE_LOG_INTERNAL_FIELDS" DISABLE;
 
 --------------------------------------------------------
 --  Trigger DENTAL_SERVICE_LOG_COMMENTS
@@ -1375,7 +1375,7 @@ BEGIN
 		VALUES (v_cur_schema, v_cur_table, :new.id, 6, 'INSERT', 'system', NULL, v_guid, :NEW.ROWID);
 END;
 /
-ALTER TRIGGER "DENTAL"."DENTAL_SERVICE_LOG_COMMENTS" ENABLE;
+ALTER TRIGGER "DENTAL"."DENTAL_SERVICE_LOG_COMMENTS" DISABLE;
 
 --------------------------------------------------------
 --  DDL for Function GETAGERANGE
