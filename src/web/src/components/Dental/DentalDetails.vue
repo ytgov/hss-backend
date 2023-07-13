@@ -1,6 +1,5 @@
 <template>
 	<div class="dental-service details">
-<!--     <v-container> -->
 		<Notifications ref="notifier"></Notifications>
 		<v-row class="mb-6" no-gutters>
 			<v-col class="d-flex align-top">
@@ -66,10 +65,6 @@
 			</v-col>
 			<v-col lg="1"> </v-col>
 		</v-row>
-<!--
-    </v-container>
-    <v-container>
--->
 		<v-row no-gutters>
 			<v-col id="dentalPanels">
 				<v-btn
@@ -141,8 +136,6 @@
 			</v-col>
 			<v-col lg="1"> </v-col>
 		</v-row>
-<!--     </v-container> -->
-
 	</div>
 </template>
 

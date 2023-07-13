@@ -321,7 +321,10 @@ const routes = [
     name: "Dental Warnings Details",
     component: DentalWarningsDetails,
     meta: {
-      requiresAuth: true
+      requiresAuth: true,
+      permissions: [
+        "dental_view"
+      ]
     }
   },
   {

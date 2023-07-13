@@ -844,7 +844,7 @@ dentalRouter.get("/downloadFile/:dentalFile_id",[param("dentalFile_id").isInt().
         var buffer = Buffer.from(dentalFiles.file_data.toString(), 'base64');
         let safeName = (Math.random() + 1).toString(36).substring(7)+'_'+dentalFiles.file_name;
         let pathPublicFront = path.join(__dirname, "../../");
-        pathFile = pathPublicFront+"/web/public/"+safeName+"."+dentalFiles.file_type;
+        pathFile = pathPublicFront+"dist/web/"+safeName+"."+dentalFiles.file_type;
 
         fs.writeFileSync(pathFile, buffer);
 
@@ -873,7 +873,7 @@ dentalRouter.post("/deleteFile", async (req: Request, res: Response) => {
         var fs = require("fs");
         var file = sanitize(req.body.params.file);
         let pathPublicFront = path.join(__dirname, "../../");
-        var filePath = pathPublicFront+"web/public/"+file;
+        var filePath = pathPublicFront+"dist/web/"+file;
 
         if(fs.existsSync(filePath)) {
             fs.unlinkSync(filePath);
@@ -1082,17 +1082,7 @@ dentalRouter.post("/storeInternalFields", async (req: Request, res: Response) =>
             internalFields.DENTAL_SERVICE_ID = data.idSubmission;
             internalFields.PROGRAM_YEAR = data.programYear;
             internalFields.INCOME_AMOUNT = data.income;
-
-            /*if(!_.isEmpty(data.dateEnrollment)){
-                data.dateEnrollment = new Date(data.dateEnrollment);
-                let result: string =   data.dateEnrollment.toISOString().split('T')[0];
-                internalFields.DATE_ENROLLMENT  = db.raw("TO_DATE( ? ,'YYYY-MM-DD') ", result);
-            }else{
-                internalFields.DATE_ENROLLMENT = null;
-            }*/
-
             internalFields.DATE_ENROLLMENT = dateEnrollment;
-
             internalFields.POLICY_NUMBER = data.policy;
 
             internalFieldsSaved = await db(`${SCHEMA_DENTAL}.DENTAL_SERVICE_INTERNAL_FIELDS`).insert(internalFields).into(`${SCHEMA_DENTAL}.DENTAL_SERVICE_INTERNAL_FIELDS`);
