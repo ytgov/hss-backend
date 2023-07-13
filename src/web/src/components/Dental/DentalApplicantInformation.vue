@@ -163,9 +163,9 @@
 								<td>{{ (dentalService.other_coverage) }}</td>
 							</tr>
 
-							<tr v-if="dentalService.are_you_eligible_for_the_pharmacare_and_extended_health_care_ben">
+							<tr v-if="dentalService.eligible_pharmacare">
 								<td>Are you eligible for the Pharmacare and Extended Health Care Benefits program?</td>
-								<td>{{ dentalService.are_you_eligible_for_the_pharmacare_and_extended_health_care_ben }}</td>
+								<td>{{ dentalService.eligible_pharmacare }}</td>
 							</tr>
 
 							<tr v-if="dentalService.email_instead">

@@ -227,15 +227,18 @@ export default {
 				this.dateDisabled = true;
 				this.date = null;
 				this.dateEnd = null;
+				this.selected = [];
 				this.getDataFromApi();
 			}
 		},
 		updateDate(){
 			if(this.date !== null && this.dateEnd !== null) {
+				this.selected = [];
 				this.getDataFromApi();
 			}
 		},
 		changeSelect(){
+			this.selected = [];
 			this.getDataFromApi();
 		},
 		getDataFromApi() {
@@ -272,6 +275,7 @@ export default {
 			this.selectedStatus = null;
 			this.dateYear = null;
 			this.selectedYear = null;
+			this.selected = [];
 			this.getDataFromApi();
 		},
 		exportFile () {

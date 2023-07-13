@@ -31,7 +31,18 @@ import { getFilterList } from "../../helper/index"
 
 CharJS.register(ArcElement, Tooltip, Legend, BarElement, CategoryScale, LinearScale);
 
-const dtOptions =  ref({});
+const dtOptions =  ref({
+        tooltips: {
+            enabled: false
+        },
+        indexAxis: 'y',
+        plugins: {
+            legend: {
+                display: false
+            }
+        }
+    });
+
 const filterList = getFilterList();
 const hasData = ref(false);
 

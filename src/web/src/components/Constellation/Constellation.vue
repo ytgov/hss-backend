@@ -130,6 +130,7 @@
           v-model="selected"
           show-select
           item-key="constellation_health_id"
+          checkbox-color="black"
           :items="items"
           :headers="headers"
           :options.sync="options"
@@ -236,10 +237,12 @@
     },
     methods: {
         changeStatusSelect(){
+            this.selected = [];
             this.getDataFromApi();
         },
         updateDate(){
             if(this.date !== null && this.dateEnd !== null){
+                this.selected = [];
                 this.getDataFromApi();
             }
         },
@@ -252,6 +255,7 @@
             this.statusSelected = null;
             this.bulkSelected = null;
             this.applyDisabled = true;
+            this.selected = [];
             this.getDataFromApi();
         },
         getDataFromApi() {

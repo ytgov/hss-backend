@@ -20,6 +20,8 @@
 								<th v-if="dentalServiceDuplicated">
 									<b>Value&nbsp;(Duplicated Request)</b>
 								</th>
+								<th v-else>
+								</th>
 							</tr>
                         </thead>
                         <tbody v-if="dentalServiceDuplicated" >
@@ -73,7 +75,7 @@
 										</v-icon>
 									</v-btn>
 								</td>
-								<td v-else>
+								<td class="td-file-download" v-else>
 								</td>
 							</tr>
 

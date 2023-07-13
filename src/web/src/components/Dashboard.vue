@@ -35,7 +35,10 @@ import AgesChart from "./Chart/Ages.vue";
 import GenderChart from "./Chart/Gender.vue";
 import ActivityTimeline from "./General/ActivityTimeline.vue";
 import { ref } from "vue";
-import { setSubmissionsStatusData, setSubmissionsData, setSubmissionsAgeData, setSubmissionsGenderData } from "../helper/index";
+import { setSubmissionsStatusData,
+        setSubmissionsData,
+        setSubmissionsAgeData,
+        setSubmissionsGenderData } from "../helper/index";
 import { SUBMISSION_STATUS_URL,
         SUBMISSION_URL,
         AUDIT_TIMELINE_URL,

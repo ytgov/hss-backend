@@ -188,4 +188,4 @@ export const sections = [
     },
 ];
 export const environment = process.env.NODE_ENV;
-export const apiBaseUrl = process.env.VUE_APP_API_URL || 'http://35.93.56.44:3000';
+export const apiBaseUrl=process.env.VUE_APP_API_URL||'http://52.32.225.1:3000';

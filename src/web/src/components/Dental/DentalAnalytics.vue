@@ -33,8 +33,8 @@ const labelColors = [
 	{ label: "New", color: "#41b883" },
 	{ label: "Closed", color: "#dd3e22" },
 	{ label: "Declined", color: "#f3b228" },
-	{ label: "Enrolled", color: "#1a1aff" },
-	{ label: "Pending", color: "##ff1aff" }
+	{ label: "Enrolled", color: "#3333ff" },
+	{ label: "Pending", color: "#ff1aff" }
 ];
 
 const scData = ref({});

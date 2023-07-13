@@ -6,11 +6,13 @@
 		</v-expansion-panel-header>
 		<v-expansion-panel-content>
 		<v-expansion-panels
-			v-for="(items, index) in dentalDependents"
-			:key="index"
-			v-model="modelPanel[0]"
+			v-model="modelDependents"
+			multiple
 		>
-			<v-expansion-panel>
+			<v-expansion-panel
+				v-for="(items, index) in dentalDependents"
+				:key="index"
+			>
 				<v-expansion-panel-header class="panel-header-dependent">
 					{{ items.c_firstname }}&nbsp;{{ items.c_lastname }}
 				</v-expansion-panel-header>
@@ -69,12 +71,17 @@ export default {
 	data() {
 		return {
 			modelPanel: this.panelModel,
+			modelDependents: []
 		};
 	},
 	watch: {
 		panelModel(newValue) {
 			this.modelPanel = newValue;
 		},
+	},
+	created() {
+		const count = Object.keys(this.dentalDependents).length;
+		this.modelDependents = Array.from({ length: count }, (_, index) => index);
 	},
 };
 </script>

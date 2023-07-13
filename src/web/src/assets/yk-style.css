@@ -238,7 +238,8 @@ a {
     background: #d4d4d4;
 }
 
-.theme--light.v-data-table tbody tr:nth-of-type(even) {
+.theme--light.v-data-table tbody tr:nth-of-type(even),
+.bg-grey {
     background-color: #EDEDED;
 }
 
@@ -413,13 +414,37 @@ div.row.container-actions.align-center{
     align-items: baseline;
 }
 
-.internal-field-row{
-    align-items: baseline;
-}
-
 .td-file-download{
     display: flex;
     align-items: center;
+}
+
+.custom-text-field {
+    display: flex;
+    flex-direction: column;
+}
+
+.custom-text-field label {
+    margin-bottom: 8px;
+}
+
+.custom-hr {
+    width: calc(100% - 32px);
+    margin: 15px;
+}
+
+.d-block{
+    display: block;
+}
+
+.div-shadow{
+    box-shadow: 0 3px 1px -2px rgba(0,0,0,.2),
+                0 2px 2px 0 rgba(0,0,0,.14),
+                0 1px 5px 0 rgba(0,0,0,.12);
+}
+
+.internal-field-print{
+    margin: 10px;
 }
 
 @-moz-keyframes loader {

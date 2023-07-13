@@ -145,8 +145,6 @@ export default {
                 params: {
                     dateFrom: this.date,
                     dateTo: this.dateEnd,
-
-
                 }
             })
             .then((resp) => {

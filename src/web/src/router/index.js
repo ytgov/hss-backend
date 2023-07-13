@@ -26,6 +26,7 @@ import MidwiferyWarnings from "../components/Midwifery/MidwiferyWarnings";
 import MidwiferyWarningsDetails from "../components/Midwifery/MidwiferyWarningsDetails";
 import Dental from "../components/Dental/Dental";
 import DentalDetails from "../components/Dental/DentalDetails";
+import DentalEditSubmission from "../components/Dental/DentalEditSubmission";
 import DentalExport from "../components/Dental/DentalExport";
 import DentalWarnings from "../components/Dental/DentalWarnings";
 import DentalWarningsDetails from "../components/Dental/DentalWarningsDetails";
@@ -275,6 +276,17 @@ const routes = [
     path: "/dental/show/:dentalService_id",
     name: "Dental Service Details",
     component: DentalDetails,
+    meta: {
+      requiresAuth: true,
+      permissions: [
+        "dental_view"
+      ]
+    }
+  },
+  {
+    path: "/dental/edit/:dentalService_id",
+    name: "Dental Service Edit Submission",
+    component: DentalEditSubmission,
     meta: {
       requiresAuth: true,
       permissions: [

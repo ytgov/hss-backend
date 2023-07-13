@@ -140,6 +140,7 @@
 			dense
 			v-model="selected"
 			show-select
+			checkbox-color="black"
 			:items="items"
 			:headers="headers"
 			:options.sync="options"
@@ -211,6 +212,7 @@
 		},
 		{ text: "Dependents", value: "dependent", sortable: true },
 		{ text: "Proof of income", value: "file_dental", sortable: true },
+		{ text: "Comments", value: "has_comments", sortable: true },
 		{ text: "Created", value: "created_at", width: "15%", sortable: true },
 		{ text: "Status", value: "status_description", sortable: true },
 		{ text: "", value: "showurl", sortable: false },
@@ -261,14 +263,17 @@
 				this.dateDisabled = true;
 				this.date = null;
 				this.dateEnd = null;
+				this.selected = [];
 				this.getDataFromApi();
 			}
 		},
 		changeStatusSelect(){
+			this.selected = [];
 			this.getDataFromApi();
 		},
 		updateDate(){
 			if(this.date !== null && this.dateEnd !== null){
+				this.selected = [];
 				this.getDataFromApi();
 			}
 		},
@@ -283,6 +288,7 @@
 			this.applyDisabled = true;
 			this.dateYear = null;
 			this.selectedYear = null;
+			this.selected = [];
 			this.getDataFromApi();
 		},
 		getDataFromApi() {
@@ -336,6 +342,7 @@
 					})
 					.then((resp) => {
 						this.$refs.notifier.showSuccess(resp.data.message);
+						this.selected = [];
 						this.getDataFromApi();
 					})
 					.catch((err) => console.error(err))
