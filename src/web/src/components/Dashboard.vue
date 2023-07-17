@@ -166,8 +166,13 @@ export default {
             const actionId = val.slice(0, 1) === "W" ? "week" : "month";
             getSubmissionsGenderDataFromApi(actionId, val);
         },
-        checkPermissions(permission) {
-            return this.dbUser.permissions.some(permission => permission.permission_name == "dental_view");
+        checkPermissions() {
+            if(this.dbUser && this.dbUser.permissions){
+                return this.dbUser.permissions.some(permission => permission.permission_name == "dental_view");
+            }
+            else{
+                return false;
+            }
         }
     },
     mounted() {
