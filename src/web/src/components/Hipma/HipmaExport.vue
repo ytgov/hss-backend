@@ -60,47 +60,24 @@
 				</v-menu>
 			</v-col>
 			<v-col sm="auto">
-          <v-icon @click="resetInputs"> mdi-filter-remove </v-icon>
-      </v-col>
-			<v-col
-				cols="6"
-				sm="12"
-				md="4">
-				<v-btn
-					:loading="loadingExport"
-					:disabled="loadingExport"
-					color="#F3A901"
-					class="pull-right ma-2 white--text apply-btn"
-					@click="exportFile()"
-					id="export-btn"
-				>
-					Export
-					<v-icon
-						right
-						dark
-					>
-						mdi-cloud-download
-					</v-icon>
-				</v-btn>
-				&nbsp;
-				<!--v-btn
-					:loading="loadingReset"
-					:disabled="loadingReset"
-					color="#F3A901"
-					class="pull-right ma-2 white--text apply-btn"
-					@click="resetInputs()"
-					id="export-btn"
-				>
-					Reset
-					<v-icon
-						right
-						dark
-					>
-						mdi-restore
-					</v-icon>
-				</v-btn-->
+				<v-icon @click="resetInputs"> mdi-filter-remove </v-icon>
 			</v-col>
-
+			<v-btn
+				:loading="loadingExport"
+				:disabled="loadingExport"
+				color="#F3A901"
+				class="pull-right ma-2 white--text apply-btn"
+				@click="exportFile()"
+				id="export-btn"
+			>
+				Export
+				<v-icon
+					right
+					dark
+				>
+					mdi-cloud-download
+				</v-icon>
+			</v-btn>
 		</v-row>
 		<br>
 		<v-data-table
@@ -175,6 +152,7 @@ export default {
 	methods: {
 		updateDate(){
 			if(this.date !== null && this.dateEnd !== null){
+				this.selected = [];
 				this.getDataFromApi();
 			}
 		},
@@ -208,6 +186,7 @@ export default {
 			this.loader = 'loadingReset';
 			this.date = null;
 			this.dateEnd = null;
+			this.selected = [];
 			this.getDataFromApi();
 		},
 		exportFile () {

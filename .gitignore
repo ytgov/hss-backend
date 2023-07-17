@@ -106,3 +106,6 @@ dist
 .tern-port
 .DS_Store
 
+ecosystem.config.js
+src/api/instant-client-tools.rpm
+src/api/instant-client.rpm

@@ -716,12 +716,14 @@ constellationRouter.post("/duplicates", async (req: Request, res: Response) => {
             .join(`${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH`, 'CONSTELLATION_DUPLICATED_REQUESTS.ORIGINAL_ID', '=', 'CONSTELLATION_HEALTH.ID')
             .join(`${SCHEMA_CONSTELLATION}.CONSTELLATION_STATUS`, 'CONSTELLATION_HEALTH.STATUS', '=', 'CONSTELLATION_STATUS.ID')
             .select('CONSTELLATION_HEALTH.YOUR_LEGAL_NAME',
+                    'CONSTELLATION_HEALTH.STATUS',
                     'CONSTELLATION_STATUS.DESCRIPTION AS STATUS_DESCRIPTION',
                     'CONSTELLATION_HEALTH.ID AS CONSTELLATION_HEALTH_ID',
+                    'CONSTELLATION_DUPLICATED_REQUESTS.ORIGINAL_ID',
+                    'CONSTELLATION_DUPLICATED_REQUESTS.DUPLICATED_ID',
                     db.raw("TO_CHAR(CONSTELLATION_HEALTH.CREATED_AT, 'YYYY-MM-DD HH24:MI:SS') AS CREATED_AT,"+
                     "(CONSTELLATION_DUPLICATED_REQUESTS.ID|| '-'|| CONSTELLATION_HEALTH.ID) AS UNIQUE_ID, "+
                     "TO_CHAR(CONSTELLATION_HEALTH.DATE_OF_BIRTH, 'YYYY-MM-DD') AS DATE_OF_BIRTH"))
-            .where('CONSTELLATION_HEALTH.STATUS', '<>', 4 )
             .orderBy("CONSTELLATION_HEALTH.CREATED_AT").then((rows: any) => {
                 let arrayResult = Object();
 
@@ -733,41 +735,45 @@ constellationRouter.post("/duplicates", async (req: Request, res: Response) => {
             });
 
         constellationDuplicate = await db(`${SCHEMA_CONSTELLATION}.CONSTELLATION_DUPLICATED_REQUESTS`)
-        .join(`${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH`, 'CONSTELLATION_DUPLICATED_REQUESTS.ORIGINAL_ID', '=', 'CONSTELLATION_HEALTH.ID')
-        .join(`${SCHEMA_CONSTELLATION}.CONSTELLATION_STATUS`, 'CONSTELLATION_HEALTH.STATUS', '=', 'CONSTELLATION_STATUS.ID')
-        .select('CONSTELLATION_HEALTH.YOUR_LEGAL_NAME',
-                'CONSTELLATION_DUPLICATED_REQUESTS.ID',
-                'CONSTELLATION_STATUS.DESCRIPTION AS STATUS_DESCRIPTION',
-                'CONSTELLATION_HEALTH.ID AS CONSTELLATION_HEALTH_ID',
-                db.raw("TO_CHAR(CONSTELLATION_HEALTH.CREATED_AT, 'YYYY-MM-DD HH24:MI:SS') AS CREATED_AT,"+
-                    "(CONSTELLATION_DUPLICATED_REQUESTS.ID|| '-'|| CONSTELLATION_HEALTH.ID) AS UNIQUE_ID, "+
-                    "TO_CHAR(CONSTELLATION_HEALTH.DATE_OF_BIRTH, 'YYYY-MM-DD') AS DATE_OF_BIRTH"))
-        .where('CONSTELLATION_HEALTH.STATUS', '<>', 4 )
-        .orderBy("CONSTELLATION_HEALTH.CREATED_AT");
+            .join(`${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH`, 'CONSTELLATION_DUPLICATED_REQUESTS.DUPLICATED_ID', '=', 'CONSTELLATION_HEALTH.ID')
+            .join(`${SCHEMA_CONSTELLATION}.CONSTELLATION_STATUS`, 'CONSTELLATION_HEALTH.STATUS', '=', 'CONSTELLATION_STATUS.ID')
+            .select('CONSTELLATION_HEALTH.YOUR_LEGAL_NAME',
+                    'CONSTELLATION_HEALTH.STATUS',
+                    'CONSTELLATION_DUPLICATED_REQUESTS.ID',
+                    'CONSTELLATION_STATUS.DESCRIPTION AS STATUS_DESCRIPTION',
+                    'CONSTELLATION_HEALTH.ID AS CONSTELLATION_HEALTH_ID',
+                    'CONSTELLATION_DUPLICATED_REQUESTS.ORIGINAL_ID',
+                    'CONSTELLATION_DUPLICATED_REQUESTS.DUPLICATED_ID',
+                    db.raw("TO_CHAR(CONSTELLATION_HEALTH.CREATED_AT, 'YYYY-MM-DD HH24:MI:SS') AS CREATED_AT,"+
+                        "(CONSTELLATION_DUPLICATED_REQUESTS.ID|| '-'|| CONSTELLATION_HEALTH.ID) AS UNIQUE_ID, "+
+                        "TO_CHAR(CONSTELLATION_HEALTH.DATE_OF_BIRTH, 'YYYY-MM-DD') AS DATE_OF_BIRTH"))
+            .orderBy("CONSTELLATION_HEALTH.CREATED_AT");
 
         let index = 0;
 
         constellationDuplicate.forEach(function (value: any) {
+            if(value.status !== 4 && constellationOriginal[value.original_id].status !== 4){
 
-            let url = "constellationWarnings/details/"+value.id;
+                let url = "constellationWarnings/details/"+value.id;
 
-            delete value.id;
+                delete value.id;
 
-            constellation.push({
-                constellation_health_id: null,
-                id: null,
-                constellation_health_original_id: null,
-                constellation_health_duplicated_id: null,
-                your_legal_name: 'Duplicated #'+(index+1),
-                date_of_birth: null,
-                status_description: null,
-                created_at: 'ACTIONS:',
-                showUrl: url
-            });
+                constellation.push({
+                    constellation_health_id: null,
+                    id: null,
+                    constellation_health_original_id: null,
+                    constellation_health_duplicated_id: null,
+                    your_legal_name: 'Duplicated #'+(index+1),
+                    date_of_birth: null,
+                    status_description: null,
+                    created_at: 'ACTIONS:',
+                    showUrl: url
+                });
 
-            constellation.push(constellationOriginal[value.constellation_health_original_id]);
-            constellation.push(value);
-            index = index + 1;
+                constellation.push(constellationOriginal[value.original_id]);
+                constellation.push(value);
+                index = index + 1;
+            }
         });
 
         res.send({data: constellation});

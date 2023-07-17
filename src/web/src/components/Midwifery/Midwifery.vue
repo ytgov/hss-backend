@@ -113,8 +113,6 @@
             </v-col>
         </v-row>
 
-        <!-- <v-text-field v-model="search" label="Search"></v-text-field> -->
-
         <v-data-table
             dense
             :items="items"
@@ -154,7 +152,7 @@ export default {
     items: [],
     itemsUnfiltered: [],
     alertMessage: "",
-    alertType: "",
+    alertType: null,
     search: "",
     options: {},
     flagAlert: false,
@@ -216,10 +214,12 @@ export default {
     },
     methods: {
         changeStatusSelect(){
+            this.selected = [];
             this.getDataFromApi();
         },
         updateDate(){
             if(this.date !== null && this.dateEnd !== null){
+                this.selected = [];
                 this.getDataFromApi();
             }
         },
@@ -265,6 +265,7 @@ export default {
             this.statusSelected = null;
             this.selectedStatus = null;
             this.applyDisabled = true;
+            this.selected = [];
             this.getDataFromApi();
         },
         changeStatus(){
@@ -289,6 +290,7 @@ export default {
                     this.selectedStatus = null;
                     this.flagAlert = true;
                     this.applyDisabled = true;
+                    this.selected = [];
                 })
                 .catch((err) => console.error(err))
                 .finally(() => {

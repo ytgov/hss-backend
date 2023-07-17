@@ -203,10 +203,12 @@ export default {
 	methods: {
 		updateDate(){
 			if(this.date !== null && this.dateEnd !== null) {
+        this.selected = [];
         this.getDataFromApi();
       }
     },
     changeSelect(){
+      this.selected = [];
       this.getDataFromApi();
     },
     getDataFromApi() {
@@ -240,6 +242,7 @@ export default {
 			this.date = null;
 			this.dateEnd = null;
 			this.selectedStatus = null;
+      this.selected = [];
 			this.getDataFromApi();
 		},
 		exportFile () {
