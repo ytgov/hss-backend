@@ -23,7 +23,7 @@
 <script>
 const axios = require("axios");
 import store from "../../store";
-import FormApplicantInformation from './SubmissionForm/FormApplicantInformation.vue';
+//import FormApplicantInformation from './SubmissionForm/FormApplicantInformation.vue';
 import { DENTAL_SHOW_URL } from "../../urls.js";
 
 export default {
@@ -40,7 +40,7 @@ export default {
 		dbUser: null,
 	}),
 	components: {
-		FormApplicantInformation
+		//FormApplicantInformation
 	},
 	beforeCreate: async function() {
         await store.dispatch("checkAuthentication");
