@@ -1,6 +1,6 @@
 <template>
 	<div class="dental-service details">
-		<v-row class="mb-6" no-gutters>
+		<!-- <v-row class="mb-6" no-gutters>
 			<v-col class="d-flex align-top">
 				<span class="title-service">Edit Submission</span>
 			</v-col>
@@ -16,7 +16,7 @@
 
 			</v-col>
 			<v-col lg="1"> </v-col>
-		</v-row>
+		</v-row> -->
 	</div>
 </template>
 
