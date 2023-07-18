@@ -210,6 +210,7 @@ export default {
     methods: {
         updateDate(){
             if(this.date !== null && this.dateEnd !== null){
+                this.selected = [];
                 this.getDataFromApi();
             }
         },
@@ -221,6 +222,7 @@ export default {
             this.dateEnd = null;
             this.selectedStatus = null;
             this.applyDisabled = true;
+            this.selected = [];
             this.getDataFromApi();
         },
         getDataFromApi() {
@@ -235,8 +237,6 @@ export default {
             })
             .then((resp) => {
                 this.items = resp.data.data;
-                //this.pagination.totalLength = resp.data.meta.count;
-                //this.totalLength = resp.data.meta.count;
                 this.loading = false;
             })
             .catch((err) => console.error(err))
@@ -278,6 +278,7 @@ export default {
                 this.getDataFromApi();
                 this.selectedStatus = null;
                 this.applyDisabled = true;
+                this.selected = [];
                 this.$refs.notifier.showSuccess(resp.data.message);
             })
             .catch((err) => console.error(err))

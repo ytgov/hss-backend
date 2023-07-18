@@ -1,9 +1,9 @@
 <template>
-	<div class="midwifery-warnings details">
+	<div class="constellation-warnings details">
 		<v-container>
 			<v-row class="mb-6" no-gutters>
 				<v-col class="align-center" cols="6">
-					<span class="title-service">Midwifery Warnings Details</span>
+					<span class="title-service">Constellation Health Warnings Details</span>
 				</v-col>
 				<v-col
 					cols="3"
@@ -17,7 +17,7 @@
 						width="500"
 					>
 						<template v-slot:activator="{ on, attrs }">
-						<v-btn
+							<v-btn
 								color="#F3A901"
 								class="ma-2 white--text apply-btn"
 								v-bind="attrs"
@@ -219,7 +219,7 @@ export default {
 		itemsConstellationFamilyDuplicated: [],
 		dialog: false,
 		dialogReject: false,
-		panelModel: [0],
+		panelModel: [0, 1],
 		fileName: "",
 		primaryValue: null,
 		confirmDisabled: true,

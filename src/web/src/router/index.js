@@ -24,6 +24,13 @@ import MidwiferyExport from "../components/Midwifery/MidwiferyExport";
 import MidwiferyAnalytics from "../components/Midwifery/MidwiferyAnalytics";
 import MidwiferyWarnings from "../components/Midwifery/MidwiferyWarnings";
 import MidwiferyWarningsDetails from "../components/Midwifery/MidwiferyWarningsDetails";
+import Dental from "../components/Dental/Dental";
+import DentalDetails from "../components/Dental/DentalDetails";
+import DentalEditSubmission from "../components/Dental/DentalEditSubmission";
+import DentalExport from "../components/Dental/DentalExport";
+import DentalWarnings from "../components/Dental/DentalWarnings";
+import DentalWarningsDetails from "../components/Dental/DentalWarningsDetails";
+import DentalAnalytics from "../components/Dental/DentalAnalytics";
 
 import Dashboard from "../components/Dashboard.vue";
 
@@ -252,6 +259,83 @@ const routes = [
     component: ConstellationWarningsDetails,
     meta: {
       requiresAuth: true
+    }
+  },
+  {
+    path: "/dental",
+    name: "Dental Service",
+    component: Dental,
+    meta: {
+      requiresAuth: true,
+      permissions: [
+        "dental_view"
+      ]
+    }
+  },
+  {
+    path: "/dental/show/:dentalService_id",
+    name: "Dental Service Details",
+    component: DentalDetails,
+    meta: {
+      requiresAuth: true,
+      permissions: [
+        "dental_view"
+      ]
+    }
+  },
+  {
+    path: "/dental/edit/:dentalService_id",
+    name: "Dental Service Edit Submission",
+    component: DentalEditSubmission,
+    meta: {
+      requiresAuth: true,
+      permissions: [
+        "dental_view"
+      ]
+    }
+  },
+  {
+    path: "/dentalExport",
+    name: "Dental Export",
+    component: DentalExport,
+    meta: {
+      requiresAuth: true,
+      permissions: [
+        "dental_view"
+      ]
+    }
+  },
+  {
+    path: "/dentalWarnings",
+    name: "Dental Warnings",
+    component: DentalWarnings,
+    meta: {
+      requiresAuth: true,
+      permissions: [
+        "dental_view"
+      ]
+    }
+  },
+  {
+    path: "/dentalWarnings/details/:duplicate_id",
+    name: "Dental Warnings Details",
+    component: DentalWarningsDetails,
+    meta: {
+      requiresAuth: true,
+      permissions: [
+        "dental_view"
+      ]
+    }
+  },
+  {
+    path: "/dentalAnalytics",
+    name: "Dental Analytics",
+    component: DentalAnalytics,
+    meta: {
+      requiresAuth: true,
+      permissions: [
+        "dental_view"
+      ]
     }
   },
 ];

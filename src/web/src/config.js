@@ -145,6 +145,47 @@ export const sections = [
             }
         ]
     },
+    {
+        header: "Dental",
+        icon: "/MS.png",
+        permissions: [
+            "dental_view"
+        ],
+        data:[
+            {
+                name: "Submissions",
+                url: "/dental",
+                icon: "fa-regular fa-rectangle-list",
+                permissions: [
+                    "dental_view"
+                ]
+            },
+            {
+                name: "Warnings",
+                url: "/dentalWarnings",
+                icon: "fas fa-exclamation-triangle",
+                permissions: [
+                    "dental_view"
+                ]
+            },
+            {
+                name: "Analytics",
+                url: "/dentalAnalytics",
+                icon: "fa-solid fa-chart-line",
+                permissions: [
+                    "dental_view"
+                ]
+            },
+            {
+                name: "Export",
+                url: "/dentalExport",
+                icon:  "fa-solid fa-file-export",
+                permissions: [
+                    "dental_view"
+                ]
+            },
+        ]
+    },
 ];
 export const environment = process.env.NODE_ENV;
-export const apiBaseUrl = process.env.VUE_APP_API_URL || 'https://test.hss-backend.ynet.gov.yk.ca';
+export const apiBaseUrl=process.env.VUE_APP_API_URL||'https://test.hss-backend.ynet.gov.yk.ca';

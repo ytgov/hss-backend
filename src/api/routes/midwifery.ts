@@ -891,6 +891,7 @@ midwiferyRouter.post("/duplicates", async (req: Request, res: Response) => {
                     'MIDWIFERY_SERVICES.LAST_NAME',
                     'MIDWIFERY_SERVICES.PREFERRED_EMAIL',
                     'MIDWIFERY_SERVICES.PREFERRED_PHONE',
+                    'MIDWIFERY_SERVICES.STATUS',
                     'MIDWIFERY_DUPLICATED_REQUESTS.ORIGINAL_ID',
                     'MIDWIFERY_DUPLICATED_REQUESTS.DUPLICATED_ID',
                     'MIDWIFERY_STATUS.DESCRIPTION AS STATUS_DESCRIPTION',
@@ -899,7 +900,6 @@ midwiferyRouter.post("/duplicates", async (req: Request, res: Response) => {
                     db.raw("TO_CHAR(MIDWIFERY_SERVICES.CREATED_AT, 'YYYY-MM-DD HH24:MI:SS') AS CREATED_AT,"+
                         "TO_CHAR(midwifery_services.date_of_birth, 'YYYY-MM-DD') as date_of_birth")
             )
-            .where('MIDWIFERY_SERVICES.STATUS', '<>', 4 )
             .orderBy("MIDWIFERY_SERVICES.CREATED_AT").then((rows: any) => {
                 let arrayResult = Object();
 
@@ -920,6 +920,7 @@ midwiferyRouter.post("/duplicates", async (req: Request, res: Response) => {
                     'MIDWIFERY_SERVICES.LAST_NAME',
                     'MIDWIFERY_SERVICES.PREFERRED_EMAIL',
                     'MIDWIFERY_SERVICES.PREFERRED_PHONE',
+                    'MIDWIFERY_SERVICES.STATUS',
                     'MIDWIFERY_DUPLICATED_REQUESTS.ID',
                     'MIDWIFERY_DUPLICATED_REQUESTS.ORIGINAL_ID',
                     'MIDWIFERY_DUPLICATED_REQUESTS.DUPLICATED_ID',
@@ -929,34 +930,35 @@ midwiferyRouter.post("/duplicates", async (req: Request, res: Response) => {
                     db.raw("TO_CHAR(MIDWIFERY_SERVICES.CREATED_AT, 'YYYY-MM-DD HH24:MI:SS') AS CREATED_AT,"+
                         "TO_CHAR(MIDWIFERY_SERVICES.DATE_OF_BIRTH, 'YYYY-MM-DD') AS DATE_OF_BIRTH")
             )
-            .where('MIDWIFERY_SERVICES.STATUS', '<>', 4 )
             .orderBy("MIDWIFERY_SERVICES.CREATED_AT");
 
         let index = 0;
 
         midwiferyDuplicate.forEach(function (value: any) {
+            if(value.status !== 4 && midwiferyOriginal[value.original_id].status !== 4){
 
-            let url = "midwiferyWarnings/details/"+value.id;
+                let url = "midwiferyWarnings/details/"+value.id;
 
-            delete value.id;
+                delete value.id;
 
-            midwifery.push({
-                midwifery_services_id: null,
-                original_id: null,
-                duplicated_id: null,
-                first_name: 'Duplicated #'+(index+1),
-                last_name: null,
-                preferred_email: null,
-                preferred_phone: null,
-                date_of_birth: null,
-                status_description: null,
-                created_at: 'ACTIONS:',
-                showUrl: url
-            });
+                midwifery.push({
+                    midwifery_services_id: null,
+                    original_id: null,
+                    duplicated_id: null,
+                    first_name: 'Duplicated #'+(index+1),
+                    last_name: null,
+                    preferred_email: null,
+                    preferred_phone: null,
+                    date_of_birth: null,
+                    status_description: null,
+                    created_at: 'ACTIONS:',
+                    showUrl: url
+                });
 
-            midwifery.push(midwiferyOriginal[value.original_id]);
-            midwifery.push(value);
-            index = index + 1;
+                midwifery.push(midwiferyOriginal[value.original_id]);
+                midwifery.push(value);
+                index = index + 1;
+            }
         });
         res.send({data: midwifery});
 
