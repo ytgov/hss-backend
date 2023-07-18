@@ -134,7 +134,7 @@ export default {
         await store.dispatch("checkAuthentication");
 
         this.dbUser = store.getters.dbUser;
-        this.showDentalCharts = this.checkPermissions("dental_view");
+        this.showDentalCharts = this.checkPermissions();
 
         if (this.showDentalCharts) {
             this.divChartsRowClass = "row";
@@ -146,7 +146,7 @@ export default {
     },
     computed: {
         showClass() {
-            return this.checkPermissions("dental_view");
+            return this.checkPermissions();
         }
     },
     methods: {
@@ -167,12 +167,7 @@ export default {
             getSubmissionsGenderDataFromApi(actionId, val);
         },
         checkPermissions() {
-            if(this.dbUser && this.dbUser.permissions){
-                return this.dbUser.permissions.some(permission => permission.permission_name == "dental_view");
-            }
-            else{
-                return false;
-            }
+            return this.dbUser.permissions.some(permission => permission.permission_name == "dental_view");
         }
     },
     mounted() {
