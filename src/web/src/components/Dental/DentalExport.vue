@@ -354,6 +354,23 @@ export default {
 				{ origin: "A1" }
 				);
 
+				const ws3 = utils.json_to_sheet(resp.data.dataInternalFields);
+				utils.book_append_sheet(wb, ws3, "Dental Service Internal Fields");
+				utils.sheet_add_aoa(
+				ws3,
+				[
+						[
+						"APPLICANT NAME",
+						"PROGRAM YEAR",
+						"INCOME AMOUNT",
+						"DATE OF ENROLLMENT",
+						"POLICY NUMBER",
+						"CREATED AT",
+						],
+				],
+				{ origin: "A1" }
+				);
+
 				writeFileXLSX(wb, "DentalService_Requests.xlsx");
 
 				this.loading = false;

@@ -243,7 +243,7 @@ export default {
 		itemsDentalFilesDuplicated: [],
 		flagDependents: null,
 		flagDemographic: null,
-		flagFile: null,
+		flagFile: false,
 		dialog: false,
 		dialogReject: false,
 		panelModel: [0],
