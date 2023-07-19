@@ -364,6 +364,7 @@ dentalRouter.post("/export/", async (req: Request, res: Response) => {
         var dateTo = req.body.params.dateTo;
         var dateYear = req.body.params.dateYear
         const idSubmission: number[] = [];
+        var dentalInternalFields = Object();
 
         let query  = db(`${SCHEMA_DENTAL}.DENTAL_SERVICE_SUBMISSIONS_DETAILS`)
                     .where('DENTAL_SERVICE_SUBMISSIONS_DETAILS.STATUS', '<>', 4);
@@ -429,6 +430,7 @@ dentalRouter.post("/export/", async (req: Request, res: Response) => {
 
             delete value.id;
             delete value.status;
+            delete value.are_you_eligible_for_the_pharmacare_and_extended_health_care_ben;
             delete value.file_id;
             delete value.file_name;
             delete value.file_type;
@@ -465,7 +467,23 @@ dentalRouter.post("/export/", async (req: Request, res: Response) => {
             }
         });
 
-        res.json({ status: 200, dataDental: dentalService, dataDependents: dentalServiceDependents});
+        dentalInternalFields = await db(`${SCHEMA_DENTAL}.DENTAL_SERVICE_INTERNAL_FIELDS`)
+                                .leftJoin(`${SCHEMA_DENTAL}.DENTAL_SERVICE`, 'DENTAL_SERVICE_INTERNAL_FIELDS.DENTAL_SERVICE_ID', 'DENTAL_SERVICE.ID')
+                                .select(db.raw("(DENTAL_SERVICE.FIRST_NAME ||' '|| DENTAL_SERVICE.LAST_NAME) AS APPLICANT_NAME" ),
+                                        'DENTAL_SERVICE_INTERNAL_FIELDS.PROGRAM_YEAR',
+                                        db.raw(`CASE
+                                                WHEN INCOME_AMOUNT = TRUNC(INCOME_AMOUNT)
+                                                THEN TO_CHAR(INCOME_AMOUNT, 'FM9999999')
+                                                ELSE TO_CHAR(INCOME_AMOUNT, 'FM9999999.99')
+                                                END AS INCOME_AMOUNT`),
+                                        db.raw("TO_CHAR(DENTAL_SERVICE_INTERNAL_FIELDS.DATE_ENROLLMENT, 'YYYY-MM-DD') AS DATE_ENROLLMENT"),
+                                        'DENTAL_SERVICE_INTERNAL_FIELDS.POLICY_NUMBER',
+                                        db.raw("TO_CHAR(DENTAL_SERVICE_INTERNAL_FIELDS.CREATED_AT, 'YYYY-MM-DD HH24:MI:SS') AS CREATED_AT")
+                                )
+                                .whereIn('DENTAL_SERVICE_INTERNAL_FIELDS.DENTAL_SERVICE_ID', idSubmission);
+
+        res.json({ status: 200, dataDental: dentalService, dataDependents: dentalServiceDependents,
+                    dataInternalFields: dentalInternalFields});
     } catch(e) {
         console.log(e);  // debug if needed
         res.send( {
@@ -629,16 +647,30 @@ dentalRouter.get("/duplicates/details/:duplicate_id",[param("duplicate_id").isIn
                     .whereNot('STATUS', '4');
 
         dependentsOriginal = await db(`${SCHEMA_DENTAL}.DENTAL_SERVICE_DEPENDENTS`)
-                    .select('DENTAL_SERVICE_DEPENDENTS.*')
+                    .select('DENTAL_SERVICE_DEPENDENTS.ID',
+                            'DENTAL_SERVICE_DEPENDENTS.DENTAL_SERVICE_ID',
+                            'DENTAL_SERVICE_DEPENDENTS.C_FIRSTNAME',
+                            'DENTAL_SERVICE_DEPENDENTS.C_LASTNAME',
+                            db.raw("TO_CHAR(DENTAL_SERVICE_DEPENDENTS.C_DOB, 'YYYY-MM-DD') AS C_DOB"),
+                            'DENTAL_SERVICE_DEPENDENTS.C_HEALTHCARE',
+                            'DENTAL_SERVICE_DEPENDENTS.C_APPLY'
+                    )
                     .where('DENTAL_SERVICE_DEPENDENTS.DENTAL_SERVICE_ID', duplicateEntry.original);
 
         dependentsDuplicated = await db(`${SCHEMA_DENTAL}.DENTAL_SERVICE_DEPENDENTS`)
-                    .select('DENTAL_SERVICE_DEPENDENTS.*')
+                    .select('DENTAL_SERVICE_DEPENDENTS.ID',
+                        'DENTAL_SERVICE_DEPENDENTS.DENTAL_SERVICE_ID',
+                        'DENTAL_SERVICE_DEPENDENTS.C_FIRSTNAME',
+                        'DENTAL_SERVICE_DEPENDENTS.C_LASTNAME',
+                        db.raw("TO_CHAR(DENTAL_SERVICE_DEPENDENTS.C_DOB, 'YYYY-MM-DD') AS C_DOB"),
+                        'DENTAL_SERVICE_DEPENDENTS.C_HEALTHCARE',
+                        'DENTAL_SERVICE_DEPENDENTS.C_APPLY'
+                    )
                     .where('DENTAL_SERVICE_DEPENDENTS.DENTAL_SERVICE_ID', duplicateEntry.duplicated);
 
         dentalFiles = await db(`${SCHEMA_DENTAL}.DENTAL_SERVICE_FILES`)
             .where("DENTAL_SERVICE_ID", duplicateEntry.original).select().then((data:any) => {
-                return data[0];
+                return data.length > 0 ? data[0] : null;
             });
 
         if(!_.isEmpty(dentalFiles)){
@@ -648,7 +680,7 @@ dentalRouter.get("/duplicates/details/:duplicate_id",[param("duplicate_id").isIn
 
         dentalFilesDuplicated = await db(`${SCHEMA_DENTAL}.DENTAL_SERVICE_FILES`)
             .where("DENTAL_SERVICE_ID", duplicateEntry.duplicated).select().then((data:any) => {
-                return data[0];
+                return data.length > 0 ? data[0] : null;
             });
 
         if(!_.isEmpty(dentalFilesDuplicated)){

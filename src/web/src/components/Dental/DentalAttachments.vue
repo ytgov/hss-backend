@@ -27,7 +27,7 @@
                         <tbody v-if="dentalServiceDuplicated" >
 							<tr>
 								<td>Proof of income</td>
-								<td class="td-file-download">
+								<td v-if="dentalFiles" class="td-file-download">
 									<v-icon
 										right
 										light
@@ -50,6 +50,8 @@
 										mdi-cloud-download
 										</v-icon>
 									</v-btn>
+								</td>
+								<td v-else>
 								</td>
 								<td  v-if="dentalFilesDuplicated" class="td-file-download">
 									<v-icon
@@ -75,7 +77,7 @@
 										</v-icon>
 									</v-btn>
 								</td>
-								<td class="td-file-download" v-else>
+								<td v-else>
 								</td>
 							</tr>
 
