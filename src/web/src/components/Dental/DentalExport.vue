@@ -333,6 +333,11 @@ export default {
 					"SERVICES NEEDED",
 					"CREATED AT",
 					"PROOF OF INCOME ATTACHMENT",
+					"PROGRAM YEAR",
+					"INCOME AMOUNT",
+					"DATE OF ENROLLMENT",
+					"POLICY NUMBER",
+					"INTERNAL FIELD CREATED AT"
 					],
 				],
 				{ origin: "A1" }
@@ -350,23 +355,6 @@ export default {
 					"HEALTHCARE",
 					"APPLY",
 					],
-				],
-				{ origin: "A1" }
-				);
-
-				const ws3 = utils.json_to_sheet(resp.data.dataInternalFields);
-				utils.book_append_sheet(wb, ws3, "Dental Service Internal Fields");
-				utils.sheet_add_aoa(
-				ws3,
-				[
-						[
-						"APPLICANT NAME",
-						"PROGRAM YEAR",
-						"INCOME AMOUNT",
-						"DATE OF ENROLLMENT",
-						"POLICY NUMBER",
-						"CREATED AT",
-						],
 				],
 				{ origin: "A1" }
 				);

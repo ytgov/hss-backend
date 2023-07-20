@@ -140,11 +140,10 @@ generalRouter.get("/submissions/age/:action_id/:action_value", [
         const actionVal = req.params.action_value;
         const permissions = req.user?.db_user.permissions ?? [];
         const result = await submissionStatusRepo.getAgeSubmissions(actionId, actionVal, permissions);
-        const groupedId = groupBy(result, i => i.id);
         const labels = groupBy(result, i => i.age_range);
         res.send(
             {
-                data: groupedId,
+                data: result,
                 labels: labels
             });
 
