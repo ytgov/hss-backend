@@ -391,6 +391,22 @@ dentalRouter.post("/export/", async (req: Request, res: Response) => {
         query.orderBy('ID', 'ASC');
         const dentalService = await query;
 
+        const submissionsId: number[] = dentalService.map(item => item.id);
+
+        dentalInternalFields = await db(`${SCHEMA_DENTAL}.DENTAL_SERVICE_INTERNAL_FIELDS`)
+        .select('DENTAL_SERVICE_ID',
+                'PROGRAM_YEAR',
+                db.raw(`CASE
+                        WHEN INCOME_AMOUNT = TRUNC(INCOME_AMOUNT)
+                        THEN TO_CHAR(INCOME_AMOUNT, 'FM9999999')
+                        ELSE TO_CHAR(INCOME_AMOUNT, 'FM9999999.99')
+                        END AS INCOME_AMOUNT`),
+                db.raw("TO_CHAR(DATE_ENROLLMENT, 'YYYY-MM-DD') AS DATE_ENROLLMENT"),
+                'POLICY_NUMBER',
+                db.raw("TO_CHAR(CREATED_AT, 'YYYY-MM-DD HH24:MI:SS') AS CREATED_AT")
+        )
+        .whereIn('DENTAL_SERVICE_ID', submissionsId);
+
         dentalService.forEach(function (value: any) {
             idSubmission.push(value.id);
 
@@ -426,6 +442,22 @@ dentalRouter.post("/export/", async (req: Request, res: Response) => {
                 value.file_fullName = value.file_name+"."+value.file_type;
             }else{
                 value.file_fullName = "";
+            }
+
+            let internalField = dentalInternalFields.find((obj: any) => obj.dental_service_id === value.id);
+
+            if(internalField) {
+                value.program_year = internalField.program_year;
+                value.income_amount = internalField.income_amount;
+                value.date_enrollment = internalField.date_enrollment;
+                value.policy_number = internalField.policy_number;
+                value.created_at_if = internalField.created_at;
+            }else{
+                value.program_year = "";
+                value.income_amount = "";
+                value.date_enrollment = "";
+                value.policy_number = "";
+                value.created_at_if = "";
             }
 
             delete value.id;
@@ -466,21 +498,6 @@ dentalRouter.post("/export/", async (req: Request, res: Response) => {
                 valueDependents["c_apply"] = "No, they alredy have coverage";
             }
         });
-
-        dentalInternalFields = await db(`${SCHEMA_DENTAL}.DENTAL_SERVICE_INTERNAL_FIELDS`)
-                                .leftJoin(`${SCHEMA_DENTAL}.DENTAL_SERVICE`, 'DENTAL_SERVICE_INTERNAL_FIELDS.DENTAL_SERVICE_ID', 'DENTAL_SERVICE.ID')
-                                .select(db.raw("(DENTAL_SERVICE.FIRST_NAME ||' '|| DENTAL_SERVICE.LAST_NAME) AS APPLICANT_NAME" ),
-                                        'DENTAL_SERVICE_INTERNAL_FIELDS.PROGRAM_YEAR',
-                                        db.raw(`CASE
-                                                WHEN INCOME_AMOUNT = TRUNC(INCOME_AMOUNT)
-                                                THEN TO_CHAR(INCOME_AMOUNT, 'FM9999999')
-                                                ELSE TO_CHAR(INCOME_AMOUNT, 'FM9999999.99')
-                                                END AS INCOME_AMOUNT`),
-                                        db.raw("TO_CHAR(DENTAL_SERVICE_INTERNAL_FIELDS.DATE_ENROLLMENT, 'YYYY-MM-DD') AS DATE_ENROLLMENT"),
-                                        'DENTAL_SERVICE_INTERNAL_FIELDS.POLICY_NUMBER',
-                                        db.raw("TO_CHAR(DENTAL_SERVICE_INTERNAL_FIELDS.CREATED_AT, 'YYYY-MM-DD HH24:MI:SS') AS CREATED_AT")
-                                )
-                                .whereIn('DENTAL_SERVICE_INTERNAL_FIELDS.DENTAL_SERVICE_ID', idSubmission);
 
         res.json({ status: 200, dataDental: dentalService, dataDependents: dentalServiceDependents,
                     dataInternalFields: dentalInternalFields});

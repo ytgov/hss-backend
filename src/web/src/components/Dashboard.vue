@@ -88,12 +88,10 @@ const getSubmissionsAgeDataFromApi = (actionId, actionVal) => {
     .get(`${SUBMISSION_AGE_URL}/${actionId}/${actionVal}`)
     .then((resp) => {
 
-        if (Object.keys(resp.data.data).length !== 0) {
-            const curData = resp.data.data.DENTAL;
-            const data = curData.map(x => x.submissions);
-            const labels = curData.map(x => ({label: x.age_range, color: x.color}))
-            saData.value = setSubmissionsAgeData(data, labels);
-        }
+        const curData = resp.data.data;
+        const data = curData.map(x => x.submissions);
+        const labels = curData.map(x => ({label: x.age_range, color: x.color}))
+        saData.value = setSubmissionsAgeData(data, labels);
 
     })
     .catch((err) => console.error(err));
