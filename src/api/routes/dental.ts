@@ -319,6 +319,8 @@ dentalRouter.get("/show/:dentalService_id", checkPermissions("dental_view"), [pa
             dentalService.services_needed = getBlobField(dentalService.services_needed);
         }
 
+        var dentalCityTown = await getCatalogueSelect('DENTAL_SERVICE_CITY_TOWN');
+
         var statusDental =  await db(`${SCHEMA_DENTAL}.DENTAL_STATUS`).where("DESCRIPTION", "Closed").select().first();
 
         let today = new Date();
@@ -338,7 +340,8 @@ dentalRouter.get("/show/:dentalService_id", checkPermissions("dental_view"), [pa
             fileName:fileName,
             dentalFiles:dentalFiles,
             dataDentalInternalFields: dentalInternalFields || {},
-            dataDentalComments: dentalComments
+            dataDentalComments: dentalComments,
+            dataDentalCityTown: dentalCityTown
         });
     } catch(e) {
         console.log(e);  // debug if needed
@@ -1192,6 +1195,192 @@ dentalRouter.post("/storeComments", async (req: Request, res: Response) => {
 });
 
 /**
+ * Update Submission
+ *
+ * @param {idSubmission} id of submission
+ * @param {data} submission fields
+ * @return json
+ */
+
+dentalRouter.patch("/update", async (req: Request, res: Response) => {
+    try {
+
+        var idSubmission = req.body.params.idSubmission;
+        var data = req.body.params.data;
+        var dataFile = req.body.params.dataFile;
+        var dentalFiles = Object();
+        var currentDependents = Object();
+        var newDependents = req.body.params.dataDependents.newDependents;
+        var updatedDependents = req.body.params.dataDependents.updatedDependents;
+        var deletedDependents = req.body.params.dataDependents.deletedDependents;
+        var have_children = req.body.params.dataDependents.haveChildren;
+
+        if(!_.isEmpty(data.DATE_OF_BIRTH)){
+            let dob = new Date(data.DATE_OF_BIRTH);
+            let result: string =   dob.toISOString().split('T')[0];
+            data.DATE_OF_BIRTH  = db.raw("TO_DATE( ? ,'YYYY-MM-DD') ", result);
+        }else{
+            data.DATE_OF_BIRTH = null;
+        }
+
+        if(_.isNull(dataFile.FILE_ID) && !_.isNull(dataFile.FILE_NAME) && !dataFile.PROOF_INCOME){
+            var filesInsert = Array();
+
+            dentalFiles.DENTAL_SERVICE_ID = idSubmission;
+            dentalFiles.DESCRIPTION = dataFile.DESCRIPTION;
+            dentalFiles.FILE_NAME = dataFile.FILE_NAME;
+            dentalFiles.FILE_TYPE = dataFile.FILE_TYPE;
+            dentalFiles.FILE_SIZE = dataFile.FILE_SIZE;
+
+            let array_file = dataFile.FILE_DATA.match(/.{1,4000}/g)
+            let query = '';
+
+            array_file.forEach((element: string) => {
+                query = query + " DBMS_LOB.APPEND(v_long_text, to_blob(utl_raw.cast_to_raw('" +element+"'))); ";
+            });
+
+            filesInsert.push(dentalFiles);
+
+            var filesSaved = await db.raw(`
+                DECLARE
+                    v_long_text BLOB;
+                BEGIN
+                    DBMS_LOB.CREATETEMPORARY(v_long_text,true);`
+                    + query +
+                `
+                    INSERT INTO ${SCHEMA_DENTAL}.DENTAL_SERVICE_FILES (DENTAL_SERVICE_ID, DESCRIPTION, FILE_NAME, FILE_TYPE, FILE_SIZE, FILE_DATA) VALUES (?,?,?,?, ?,v_long_text);
+                END;
+                `, [idSubmission, dataFile.DESCRIPTION, dataFile.FILE_NAME, dataFile.FILE_TYPE, dataFile.FILE_SIZE]);
+
+            if(!filesSaved){
+                res.json({ status:400, message: 'Request could not be processed' });
+            }
+
+        }else if(!_.isNull(dataFile.FILE_ID) && dataFile.PROOF_INCOME){
+
+            var deleteFile = await db(`${SCHEMA_DENTAL}.DENTAL_SERVICE_FILES`).where("ID", dataFile.FILE_ID).del();
+
+            if(!deleteFile){
+                res.json({ status:400, message: 'Request could not be processed' });
+            }
+
+        }else if(!_.isNull(dataFile.FILE_ID) && !_.isNull(dataFile.DATA) && !dataFile.PROOF_INCOME){
+
+            dentalFiles.DENTAL_SERVICE_ID = idSubmission;
+            dentalFiles.DESCRIPTION = dataFile.DESCRIPTION;
+            dentalFiles.FILE_NAME = dataFile.FILE_NAME;
+            dentalFiles.FILE_TYPE = dataFile.FILE_TYPE;
+            dentalFiles.FILE_SIZE = dataFile.FILE_SIZE;
+            dentalFiles.FILE_DATA = dataFile.FILE_DATA;
+
+            var updateFile = await db(`${SCHEMA_DENTAL}.DENTAL_SERVICE_FILES`).update(dentalFiles).where("ID", dataFile.FILE_ID);
+
+            if(!updateFile){
+                res.json({ status:400, message: 'Request could not be processed' });
+            }
+
+        }
+
+        currentDependents = await db(`${SCHEMA_DENTAL}.DENTAL_SERVICE_DEPENDENTS`)
+                                        .select('ID',
+                                                'DENTAL_SERVICE_ID',
+                                                'C_FIRSTNAME',
+                                                'C_LASTNAME',
+                                                'C_HEALTHCARE',
+                                                'C_APPLY',
+                                                'C_DOB'
+                                        )
+                                        .where('DENTAL_SERVICE_DEPENDENTS.DENTAL_SERVICE_ID', idSubmission);
+
+        if(currentDependents.length > 0 && have_children.key == 2){
+            var deleteDependets = await db(`${SCHEMA_DENTAL}.DENTAL_SERVICE_DEPENDENTS`).where("DENTAL_SERVICE_ID", idSubmission).del();
+
+            if(!deleteDependets){
+                res.json({ status:400, message: 'Request could not be processed' });
+            }
+        }
+
+        if(newDependents.length > 0){
+
+            _.forEach(newDependents, function(value: any) {
+                if(!_.isEmpty(value.C_DOB)){
+                    let dob = new Date(value.C_DOB);
+                    let result: string =   dob.toISOString().split('T')[0];
+                    value.C_DOB  = db.raw("TO_DATE( ? ,'YYYY-MM-DD') ", result);
+                }else{
+                    value.C_DOB = null;
+                }
+            });
+
+            let dependentCreation = await db(`${SCHEMA_DENTAL}.DENTAL_SERVICE_DEPENDENTS`)
+                                    .insert(newDependents)
+                                    .into(`${SCHEMA_DENTAL}.DENTAL_SERVICE_DEPENDENTS`);
+
+            if(!dependentCreation){
+                res.json({ status:400, message: 'Request could not be processed' });
+            }
+
+        }
+
+        if(updatedDependents.length > 0){
+
+            for (const row of updatedDependents) {
+
+                if(!_.isEmpty(row.C_DOB)){
+                    let dob = new Date(row.C_DOB);
+                    let result: string = dob.toISOString().split('T')[0];
+                    row.C_DOB  = db.raw("TO_DATE( ? ,'YYYY-MM-DD') ", result);
+                }else{
+                    row.C_DOB = null;
+                }
+
+                var dependentUpdate = await db(`${SCHEMA_DENTAL}.DENTAL_SERVICE_DEPENDENTS`)
+                                        .update(row)
+                                        .where("ID", row.ID);
+
+                if(!dependentUpdate){
+                    res.json({ status:400, message: 'Request could not be processed' });
+                }
+
+            }
+        }
+
+        if(deletedDependents.length > 0){
+
+            const idSubmission: number[] = [];
+
+            _.forEach(deletedDependents, function(value: any) {
+                idSubmission.push(value.ID);
+            });
+
+            var dependentDelete = await db(`${SCHEMA_DENTAL}.DENTAL_SERVICE_DEPENDENTS`).whereIn("ID", idSubmission).del();
+
+            if(!dependentDelete){
+                res.json({ status:400, message: 'Request could not be processed' });
+            }
+        }
+
+        data.HAVE_CHILDREN = have_children.text;
+
+        var updateSubmission = await db(`${SCHEMA_DENTAL}.DENTAL_SERVICE`).update(data).where("ID", idSubmission);
+
+        if(updateSubmission) {
+            let type = "success";
+            let message = "Submission updated successfully.";
+
+            res.json({ status:200, message: message, type: type });
+        }
+
+    } catch(e) {
+        console.log(e);  // debug if needed
+        res.send( {
+            status: 400,
+            message: 'Request could not be processed'
+        });
+    }
+});
+
+/**
  * Obtains string of Blob field
  *
  * @param {idDentalService}
@@ -1238,6 +1427,23 @@ async function getAllStatus(){
     });
     return dentalServiceStatus;
 }
+
+async function getCatalogueSelect(table: any){
+    var arrayData = Array();
+
+    arrayData = await db(`${SCHEMA_DENTAL}.${table}`).select().then((rows: any) => {
+        let arrayResult = Array();
+
+        for (let row of rows) {
+            arrayResult.push({text: row['description'], value: row['id']});
+        }
+
+        return arrayResult;
+    });
+
+    return arrayData;
+}
+
 /**
  * Obtain file characteristics
  *
