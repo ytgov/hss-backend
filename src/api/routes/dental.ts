@@ -278,7 +278,7 @@ dentalRouter.get("/show/:dentalService_id", checkPermissions("dental_view"), [pa
 
         dentalService.flagDependents = false;
 
-        if(!_.isEmpty(dentalServiceDependents)){
+        if(!_.isEmpty(dentalServiceDependents) && !dentalService.have_children.includes("No, I don't have children")){
             dentalService.flagDependents = true;
 
             _.forEach(dentalServiceDependents, function(valueDependents: any, key: any) {
@@ -319,7 +319,41 @@ dentalRouter.get("/show/:dentalService_id", checkPermissions("dental_view"), [pa
             dentalService.services_needed = getBlobField(dentalService.services_needed);
         }
 
-        var dentalCityTown = await getCatalogueSelect('DENTAL_SERVICE_CITY_TOWN');
+        var dentalCityTown = await getCatalogSelect('DENTAL_SERVICE_CITY_TOWN');
+
+        var dentalGroupsCommunities = await db(`${SCHEMA_DENTAL}.DENTAL_SERVICE_GROUPS_COMMUNITIES`).select();
+
+        var dentalGenders = await db(`${SCHEMA_DENTAL}.DENTAL_SERVICE_GENDERS`)
+                            .select("ID AS key",
+                                    "NAME AS text",
+                                    "NAME AS value"
+                            );
+
+        var dentalEducationLevels = await db(`${SCHEMA_DENTAL}.DENTAL_SERVICE_EDUCATION_LEVELS`)
+                            .select("ID AS key",
+                                    "DESCRIPTION AS text",
+                                    "DESCRIPTION AS value"
+                            );
+
+        var dentalOften = await getCatalogSelect('DENTAL_SERVICE_OFTEN');
+
+        var dentalStates = await getCatalogSelect('DENTAL_SERVICE_STATES');
+
+        var dentalTimePeriods = await db(`${SCHEMA_DENTAL}.DENTAL_SERVICE_TIME_PERIODS`)
+                            .select("ID AS key",
+                                    "DESCRIPTION AS text",
+                                    "DESCRIPTION AS value"
+                            );
+
+        var dentalReasons = await db(`${SCHEMA_DENTAL}.DENTAL_SERVICE_REASONS_DENTIST`).select();
+
+        var dentalPaymentMethods = await db(`${SCHEMA_DENTAL}.DENTAL_SERVICE_PAYMENT_METHODS`).select();
+
+        var dentalBarriers = await db(`${SCHEMA_DENTAL}.DENTAL_SERVICE_BARRIERS`).select();
+
+        var dentalProblems = await db(`${SCHEMA_DENTAL}.DENTAL_SERVICE_PROBLEMS`).select();
+
+        var dentalNeedServices = await db(`${SCHEMA_DENTAL}.DENTAL_SERVICE_NEED_SERVICES`).select();
 
         var statusDental =  await db(`${SCHEMA_DENTAL}.DENTAL_STATUS`).where("DESCRIPTION", "Closed").select().first();
 
@@ -329,6 +363,23 @@ dentalRouter.get("/show/:dentalService_id", checkPermissions("dental_view"), [pa
         let yyyy = today.getFullYear();
         let todayDate = mm+'_'+dd+'_'+yyyy;
         let fileName = 'dental_service_request_details_'+todayDate+".pdf";
+
+        const internalFieldsYears = [];
+        const currentYear = new Date().getFullYear();
+        const startYear = 1950;
+
+        for (let year = currentYear; year >= startYear; year -= 2) {
+            const dateFrom = year;
+            const dateTo = year + 1;
+            const value = `${dateFrom}-${dateTo}`;
+
+            internalFieldsYears.push({
+                text: value,
+                value: value,
+                dateFrom: dateFrom,
+                dateTo: dateTo
+            });
+        }
 
         var dentalStatus = await getAllStatus();
 
@@ -341,7 +392,19 @@ dentalRouter.get("/show/:dentalService_id", checkPermissions("dental_view"), [pa
             dentalFiles:dentalFiles,
             dataDentalInternalFields: dentalInternalFields || {},
             dataDentalComments: dentalComments,
-            dataDentalCityTown: dentalCityTown
+            internalFieldsYears: internalFieldsYears,
+            dataDentalCityTown: dentalCityTown,
+            dataDentalGroups: dentalGroupsCommunities,
+            dataDentalGenders: dentalGenders,
+            dataEducationLevels: dentalEducationLevels,
+            dataDentalOften: dentalOften,
+            dataDentalStates: dentalStates,
+            dataTimePeriods: dentalTimePeriods,
+            dataDentalReasons: dentalReasons,
+            dataPaymentMethods: dentalPaymentMethods,
+            dataDentalBarriers: dentalBarriers,
+            dataDentalProblems: dentalProblems,
+            dataDentalNeedServices: dentalNeedServices
         });
     } catch(e) {
         console.log(e);  // debug if needed
@@ -896,7 +959,7 @@ dentalRouter.get("/downloadFile/:dentalFile_id",[param("dentalFile_id").isInt().
         var buffer = Buffer.from(dentalFiles.file_data.toString(), 'base64');
         let safeName = (Math.random() + 1).toString(36).substring(7)+'_'+dentalFiles.file_name;
         let pathPublicFront = path.join(__dirname, "../../");
-        pathFile = pathPublicFront+"dist/web/"+safeName+"."+dentalFiles.file_type;
+        pathFile = pathPublicFront+"/web/public/"+safeName+"."+dentalFiles.file_type;
 
         fs.writeFileSync(pathFile, buffer);
 
@@ -925,7 +988,7 @@ dentalRouter.post("/deleteFile", async (req: Request, res: Response) => {
         var fs = require("fs");
         var file = sanitize(req.body.params.file);
         let pathPublicFront = path.join(__dirname, "../../");
-        var filePath = pathPublicFront+"dist/web/"+file;
+        var filePath = pathPublicFront+"/web/public/"+file;
 
         if(fs.existsSync(filePath)) {
             fs.unlinkSync(filePath);
@@ -1264,7 +1327,7 @@ dentalRouter.patch("/update", async (req: Request, res: Response) => {
                 res.json({ status:400, message: 'Request could not be processed' });
             }
 
-        }else if(!_.isNull(dataFile.FILE_ID) && !_.isNull(dataFile.DATA) && !dataFile.PROOF_INCOME){
+        }else if(!_.isNull(dataFile.FILE_ID) && !_.isNull(dataFile.FILE_DATA) && !dataFile.PROOF_INCOME){
 
             dentalFiles.DENTAL_SERVICE_ID = idSubmission;
             dentalFiles.DESCRIPTION = dataFile.DESCRIPTION;
@@ -1273,7 +1336,30 @@ dentalRouter.patch("/update", async (req: Request, res: Response) => {
             dentalFiles.FILE_SIZE = dataFile.FILE_SIZE;
             dentalFiles.FILE_DATA = dataFile.FILE_DATA;
 
-            var updateFile = await db(`${SCHEMA_DENTAL}.DENTAL_SERVICE_FILES`).update(dentalFiles).where("ID", dataFile.FILE_ID);
+            let array_file = dataFile.FILE_DATA.match(/.{1,4000}/g)
+            let query = '';
+
+            array_file.forEach((element: string) => {
+                query = query + " DBMS_LOB.APPEND(v_long_text, to_blob(utl_raw.cast_to_raw('" +element+"'))); ";
+            });
+
+            var updateFile = await db.raw(`
+                DECLARE
+                    v_long_text BLOB;
+                BEGIN
+                    DBMS_LOB.CREATETEMPORARY(v_long_text,true);`
+                    + query +
+                `
+                    UPDATE ${SCHEMA_DENTAL}.DENTAL_SERVICE_FILES SET
+                        DESCRIPTION = ?,
+                        FILE_NAME = ?,
+                        FILE_TYPE = ?,
+                        FILE_SIZE = ?,
+                        FILE_DATA = v_long_text
+                    WHERE
+                        DENTAL_SERVICE_ID = ?;
+                END;
+                `, [dentalFiles.DESCRIPTION,dentalFiles.FILE_NAME,dentalFiles.FILE_TYPE,dentalFiles.FILE_SIZE,dentalFiles.DENTAL_SERVICE_ID]);
 
             if(!updateFile){
                 res.json({ status:400, message: 'Request could not be processed' });
@@ -1360,7 +1446,46 @@ dentalRouter.patch("/update", async (req: Request, res: Response) => {
             }
         }
 
+        if(data.ASK_DEMOGRAPHIC.key == 1){
+            if(_.isEmpty(data.IDENTIFY_GROUPS) && !_.isArray(data.IDENTIFY_GROUPS)) {
+                data.IDENTIFY_GROUPS = null;
+            }else{
+                data.IDENTIFY_GROUPS =  db.raw("utl_raw.cast_to_raw(?) ", JSON.stringify(data.IDENTIFY_GROUPS));
+            }
+
+            if(_.isEmpty(data.REASON_FOR_DENTIST) && !_.isArray(data.REASON_FOR_DENTIST)) {
+                data.REASON_FOR_DENTIST = null;
+            }else{
+                data.REASON_FOR_DENTIST =  db.raw("utl_raw.cast_to_raw(?) ", JSON.stringify(data.REASON_FOR_DENTIST));
+            }
+
+            if(_.isEmpty(data.PAY_FOR_VISIT) && !_.isArray(data.PAY_FOR_VISIT)) {
+                data.PAY_FOR_VISIT = null;
+            }else{
+                data.PAY_FOR_VISIT =  db.raw("utl_raw.cast_to_raw(?) ", JSON.stringify(data.PAY_FOR_VISIT));
+            }
+
+            if(_.isEmpty(data.BARRIERS) && !_.isArray(data.BARRIERS)) {
+                data.BARRIERS = null;
+            }else{
+                data.BARRIERS =  db.raw("utl_raw.cast_to_raw(?) ", JSON.stringify(data.BARRIERS));
+            }
+
+            if(_.isEmpty(data.PROBLEMS) && !_.isArray(data.PROBLEMS)) {
+                data.PROBLEMS = null;
+            }else{
+                data.PROBLEMS =  db.raw("utl_raw.cast_to_raw(?) ", JSON.stringify(data.PROBLEMS));
+            }
+
+            if(_.isEmpty(data.SERVICES_NEEDED) && !_.isArray(data.SERVICES_NEEDED)) {
+                data.SERVICES_NEEDED = null;
+            }else{
+                data.SERVICES_NEEDED =  db.raw("utl_raw.cast_to_raw(?) ", JSON.stringify(data.SERVICES_NEEDED));
+            }
+        }
+
         data.HAVE_CHILDREN = have_children.text;
+        data.ASK_DEMOGRAPHIC = data.ASK_DEMOGRAPHIC.text;
 
         var updateSubmission = await db(`${SCHEMA_DENTAL}.DENTAL_SERVICE`).update(data).where("ID", idSubmission);
 
@@ -1428,7 +1553,7 @@ async function getAllStatus(){
     return dentalServiceStatus;
 }
 
-async function getCatalogueSelect(table: any){
+async function getCatalogSelect(table: any){
     var arrayData = Array();
 
     arrayData = await db(`${SCHEMA_DENTAL}.${table}`).select().then((rows: any) => {

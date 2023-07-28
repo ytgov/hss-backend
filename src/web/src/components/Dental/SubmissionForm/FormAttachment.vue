@@ -2,7 +2,6 @@
 	<v-expansion-panels
         multiple
 		v-model="modelPanel"
-		readonly="readonly"
     >
         <v-expansion-panel class="mb-6">
 			<v-expansion-panel-header>Proof of income</v-expansion-panel-header>
@@ -10,9 +9,9 @@
                 <v-row no-gutters v-if="showFileRow">
 					<v-col
 						cols="12"
-						sm="6"
-						md="6"
-						lg="6"
+						sm="8"
+						md="8"
+						lg="8"
 						class="ma-5"
 						v-if="showFile"
 					>
@@ -63,12 +62,35 @@
 					>
 						<v-file-input
 							v-model="fileProofIncome"
+							ref="fileInput"
 							clearable
 							label="Attach your proof of income"
 							outlined
 							show-size
+							accept=".pdf,.doc,.docx,.txt,.jpg,.jpeg,.png"
+							@change="validateFile"
 						>
 						</v-file-input>
+						<v-row class="red--text ma-3" v-if="showAttachmentSize">
+								<v-icon
+									right
+									light
+									color="red"
+								>
+								mdi-alert
+								</v-icon>
+								&nbsp;The attachment must not be larger than 5MB
+						</v-row>
+						<v-row class="red--text ma-3" v-if="showAttachmentType">
+								<v-icon
+									right
+									light
+									color="red"
+								>
+								mdi-alert
+								</v-icon>
+								&nbsp;Allowed attachment types: PDF, DOC, DOCX, JPG, JPEG, PNG
+						</v-row>
 					</v-col>
 				</v-row>
 
@@ -104,7 +126,11 @@ export default {
 			fileFullName: null,
 			fileId: null,
 			fileProofIncome: null,
-			base64: null
+			base64: null,
+			showAttachmentType: false,
+			allowedExtensions: ["pdf", "doc", "docx", "jpg", "jpeg", "png"],
+			showAttachmentSize: false,
+			maxFileSize: 5 * 1024 * 1024, // 5 MB in bytes
 		};
 	},
 	watch: {
@@ -134,6 +160,32 @@ export default {
 		}
 	},
 	methods: {
+		validateFile(){
+			if(this.fileProofIncome){
+				let flagReset = false;
+
+				if(this.fileProofIncome.size > this.maxFileSize){
+					this.showAttachmentSize = true;
+					flagReset = true;
+				}else{
+					this.showAttachmentSize = false;
+				}
+
+				let fileType = this.fileProofIncome.name.split('.')[1];
+
+				if(!this.allowedExtensions.includes(fileType)){
+					this.showAttachmentType = true;
+					flagReset = true;
+				}else{
+					this.showAttachmentType = false;
+				}
+
+				if(flagReset){
+					this.fileProofIncome = null;
+					this.$refs.fileInput.reset();
+				}
+			}
+		},
 		createBase64Image(FileObject) {
 			const reader = new FileReader();
 			reader.onload = (event) => {
@@ -197,7 +249,7 @@ export default {
 
 			if(this.fileProofIncome && !this.checkProofIncome){
 				attachmentData.FILE_NAME = this.fileProofIncome.name.split('.')[0];
-				attachmentData.FILE_TYPE = this.fileProofIncome.type.split('/')[1];
+				attachmentData.FILE_TYPE = this.fileProofIncome.name.split('.')[1];
 				attachmentData.FILE_SIZE = this.fileProofIncome.size;
 				attachmentData.FILE_DATA = this.base64.split(',')[1];
 			}else{

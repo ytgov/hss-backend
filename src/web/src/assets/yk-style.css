@@ -416,6 +416,7 @@ div.row.container-actions.align-center{
 
 .td-file-download{
     display: flex;
+    justify-content: center;
     align-items: center;
 }
 
@@ -445,6 +446,14 @@ div.row.container-actions.align-center{
 
 .internal-field-print{
     margin: 10px;
+}
+
+.maxh-10{
+    max-height: 10px;
+}
+
+.h-100{
+    height: 100%;
 }
 
 @-moz-keyframes loader {

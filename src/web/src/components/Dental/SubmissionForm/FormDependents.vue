@@ -2,7 +2,6 @@
 	<v-expansion-panels
         multiple
 		v-model="modelPanel"
-		readonly="readonly"
     >
         <v-expansion-panel class="mb-6">
 			<v-expansion-panel-header>Children's information</v-expansion-panel-header>

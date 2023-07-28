@@ -71,8 +71,7 @@
 					color="#DC4405"
 					class="pull-right"
 					@click="editSubmission"
-					v-if="showEdit"
-					hidden
+					v-if="showExport"
 				>
 					Edit submission
 					<v-icon
@@ -118,6 +117,7 @@
 					v-bind:dentalService="itemsDental"
 					v-bind:idSubmission="idSubmission"
 					v-bind:dentalInternalFields="itemsDentalInternalFields"
+					v-bind:internalFieldsYears="itemsInternalFieldsYears"
 					v-bind:panelModel="panelModel"
 					v-bind:showSubmit="showExport"
 					v-bind:exportPDF="showExportClass"
@@ -170,11 +170,11 @@ export default {
 		bulkActions: [],
 		idStatusClosed: null,
 		showExport: true,
-		showEdit: false,
 		showExportClass: false,
 		idSubmission: null,
 		dbUser: null,
 		itemsDentalInternalFields: [],
+		itemsInternalFieldsYears: [],
 		itemsDentalComments: [],
 	}),
 	components: {
@@ -226,6 +226,7 @@ export default {
 				this.idStatusClosed = resp.data.dentalStatusClosed;
 				this.bulkActions = resp.data.dataStatus;
 				this.selectAction = resp.data.dataDentalService.status;
+				this.itemsInternalFieldsYears = resp.data.internalFieldsYears;
 			})
 			.catch((err) => console.error(err))
 			.finally(() => {

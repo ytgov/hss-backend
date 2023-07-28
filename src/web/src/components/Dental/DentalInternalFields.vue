@@ -15,14 +15,14 @@
 					>
 						<div class="custom-text-field" :class="{ 'internal-field-print': exportClass }">
 							<label class="ml-5">Program Year</label>
-							<v-text-field
+							<v-select
 								solo
 								class="ml-5 mr-5"
 								v-model="programYear"
-								type="number"
+								:items="internalFieldsYears"
 								:rules="[rules.year]"
 							>
-							</v-text-field>
+							</v-select>
 						</div>
 					</v-col>
 					<v-col
@@ -118,7 +118,14 @@ import { DENTAL_STORE_INTERNAL_FIELDS_URL } from "../../urls.js";
 
 export default {
 	name: "DentalInternalFields",
-	props: ["dentalService", "dentalInternalFields", "idSubmission", "panelModel", "showSubmit", "exportPDF"],
+	props: ["dentalService",
+			"dentalInternalFields",
+			"internalFieldsYears",
+			"idSubmission",
+			"panelModel",
+			"showSubmit",
+			"exportPDF"
+	],
 	data() {
 		return {
 			modelPanel: this.panelModel,

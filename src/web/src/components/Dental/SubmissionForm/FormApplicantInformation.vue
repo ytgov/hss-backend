@@ -2,15 +2,15 @@
 	<v-expansion-panels
         multiple
 		v-model="modelPanel"
-		readonly="readonly"
     >
         <v-expansion-panel class="mb-6">
-			<v-expansion-panel-header>Personal Information</v-expansion-panel-header>
+			<v-expansion-panel-header>Applicant Information</v-expansion-panel-header>
 			<v-expansion-panel-content>
                 <v-row no-gutters>
 					<v-col
 						cols="12"
-						sm="6"
+						sm="4"
+						xs="6"
 						md="3"
 						lg="3"
 						class="ma-5"
@@ -24,7 +24,7 @@
 					</v-col>
 					<v-col
 						cols="12"
-						sm="6"
+						sm="4"
 						md="3"
 						lg="3"
 						class="ma-5"
@@ -37,8 +37,8 @@
 						</v-text-field>
 					</v-col>
 					<v-col
-						cols="12"
-						sm="6"
+
+						sm="4"
 						md="3"
 						lg="3"
 						class="ma-5"
@@ -55,7 +55,7 @@
 				<v-row no-gutters>
 					<v-col
 						cols="12"
-						sm="6"
+						sm="4"
 						md="3"
 						lg="3"
 						class="ma-5"
@@ -85,9 +85,9 @@
 					</v-col>
 					<v-col
 						cols="12"
-						sm="6"
-						md="7"
-						lg="7"
+						sm="4"
+						md="3"
+						lg="3"
 						class="ma-5"
 					>
 						<v-text-field
@@ -148,8 +148,8 @@
 					<v-col
 						cols="12"
 						sm="6"
-						md="7"
-						lg="7"
+						md="4"
+						lg="4"
 						class="ma-5"
 					>
 						<v-text-field
@@ -165,8 +165,8 @@
 					<v-col
 						cols="12"
 						sm="6"
-						md="5"
-						lg="5"
+						md="3"
+						lg="3"
 						class="ma-5"
 					>
 						<v-text-field
@@ -179,8 +179,8 @@
 					<v-col
 						cols="12"
 						sm="6"
-						md="5"
-						lg="5"
+						md="4"
+						lg="4"
 						class="ma-5"
 					>
 						<v-text-field
@@ -192,54 +192,53 @@
 					</v-col>
 				</v-row>
 
+				<v-row no-gutters>
+					<v-col
+						cols="12"
+						sm="12"
+						md="12"
+						lg="12"
+						class="ma-5"
+					>
+						<v-radio-group v-model="selectedCoverage">
+							<label class="mb-5">
+								<b>Do you have coverage for dental services under any other program, plan or insurance group?</b>
+							</label>
+							<v-radio
+								v-for="option in optionsCoverage"
+								:key="option.key"
+								:label="option.text"
+								:value="option.value"
+								@change="coveragePharmacare(option.key)"
+							></v-radio>
+						</v-radio-group>
+					</v-col>
+				</v-row>
+
+				<v-row no-gutters>
+					<v-col
+						cols="12"
+						sm="12"
+						md="12"
+						lg="12"
+						class="ma-5"
+					>
+						<v-radio-group v-if="showPharmacare" v-model="selectedPharmacare">
+							<label class="mb-5">
+								<b>Are you eligible for the Pharmacare and Extended Health Care Benefits program?</b>
+							</label>
+							<v-radio
+								v-for="option in optionsPharmacare"
+								:key="option.key"
+								:label="option.text"
+								:value="option.value"
+							></v-radio>
+						</v-radio-group>
+					</v-col>
+				</v-row>
+
 			</v-expansion-panel-content>
         </v-expansion-panel>
-
-		<v-row no-gutters>
-			<v-col
-				cols="12"
-				sm="12"
-				md="12"
-				lg="12"
-				class="ma-5"
-			>
-				<v-radio-group v-model="selectedCoverage">
-					<label class="mb-5">
-						<b>Do you have coverage for dental services under any other program, plan or insurance group?</b>
-					</label>
-					<v-radio
-						v-for="option in optionsCoverage"
-						:key="option.key"
-						:label="option.text"
-						:value="option.value"
-						@change="coveragePharmacare(option.key)"
-					></v-radio>
-				</v-radio-group>
-			</v-col>
-		</v-row>
-
-		<v-row no-gutters>
-			<v-col
-				cols="12"
-				sm="12"
-				md="12"
-				lg="12"
-				class="ma-5"
-			>
-				<v-radio-group v-if="showPharmacare" v-model="selectedPharmacare">
-					<label class="mb-5">
-						<b>Are you eligible for the Pharmacare and Extended Health Care Benefits program?</b>
-					</label>
-					<v-radio
-						v-for="option in optionsPharmacare"
-						:key="option.key"
-						:label="option.text"
-						:value="option.value"
-					></v-radio>
-				</v-radio-group>
-			</v-col>
-		</v-row>
-
 	</v-expansion-panels>
 </template>
 <script>
