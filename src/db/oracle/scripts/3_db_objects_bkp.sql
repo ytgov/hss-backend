@@ -452,8 +452,6 @@ CREATE OR REPLACE FORCE EDITIONABLE VIEW "GENERAL"."SUBMISSIONS_DENTAL_AGE_WEEK_
 --------------------------------------------------------
 --  DDL for View SUBMISSIONS_DENTAL_AGE_MONTH_V
 --------------------------------------------------------
-
-
 CREATE OR REPLACE FORCE EDITIONABLE VIEW "GENERAL"."SUBMISSIONS_DENTAL_AGE_MONTH_V" ("ID", "DEPARTMENT", "COLOR", "PERMISSIONS", "SUBMISSIONS", "MONTHID", "AGE_RANGE") AS 
   SELECT tab.owner AS id,
   cd.val_str1 AS department,
@@ -467,7 +465,8 @@ CREATE OR REPLACE FORCE EDITIONABLE VIEW "GENERAL"."SUBMISSIONS_DENTAL_AGE_MONTH
     LEFT JOIN GENERAL.config cd ON cd.type = 'SCHEMA_TITLE' AND cd.name = tab.owner
     LEFT JOIN GENERAL.config cc ON cc.type = 'STATUS_CHART_COLOR' AND cc.name = tab.owner AND cc.val_str2 = GENERAL.GETAGERANGE(ds.date_of_birth)
     LEFT JOIN GENERAL.config cp ON cp.type = 'SCHEMA_PERMISSION_VIEW' AND cp.name = tab.owner
-  GROUP BY tab.owner, (to_char(ds.created_at, 'yyyy-mm')), cd.val_str1, cp.val_str1, cc.val_str1, (GENERAL.GETAGERANGE(ds.date_of_birth));
+  GROUP BY tab.owner, (to_char(ds.created_at, 'yyyy-mm')), cd.val_str1, cp.val_str1, cc.val_str1, (GENERAL.GETAGERANGE(ds.date_of_birth))
+; 
 --------------------------------------------------------
 --  DDL for View SUBMISSIONS_DENTAL_GENDER_WEEK_V
 --------------------------------------------------------
