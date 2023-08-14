@@ -77,15 +77,3 @@ INSERT INTO "GENERAL".USER_ROLES (USER_ID, ROLE_ID) VALUES(66, 66, 2);
 
 
 INSERT INTO "GENERAL".USER_ROLES (USER_ID, ROLE_ID) VALUES(22, 21, 4);
-
-
-
-
-1	Admin
-2	Constellation Admin
-3	Contellation Editor
-4	Hipma Admin
-5	Hipma Editor
-6	Midwifery Admin
-7	Dental Admin
-8	Dental Editor
