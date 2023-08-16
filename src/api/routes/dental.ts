@@ -366,9 +366,16 @@ dentalRouter.get("/show/:dentalService_id", checkPermissions("dental_view"), [pa
 
         const internalFieldsYears = [];
         const currentYear = new Date().getFullYear();
-        const startYear = 1950;
+        const targetYear = 2050;
 
-        for (let year = currentYear; year >= startYear; year -= 2) {
+        internalFieldsYears.push({
+            text: currentYear,
+            value: currentYear,
+            dateFrom: currentYear,
+            dateTo: currentYear
+        });
+
+        for (let year = currentYear; year <= targetYear; year += 2) {
             const dateFrom = year;
             const dateTo = year + 1;
             const value = `${dateFrom}-${dateTo}`;
@@ -1541,7 +1548,9 @@ function getDependents(idDentalService: any, arrayDependets: any){
 async function getAllStatus(){
     var dentalServiceStatus = Array();
 
-    dentalServiceStatus = await db(`${SCHEMA_DENTAL}.DENTAL_STATUS`).select().then((rows: any) => {
+    dentalServiceStatus = await db(`${SCHEMA_DENTAL}.DENTAL_STATUS`).select()
+    .whereNot('ID', 4).then((rows: any) => {
+
         let arrayResult = Array();
 
         for (let row of rows) {

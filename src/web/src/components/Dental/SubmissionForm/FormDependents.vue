@@ -27,7 +27,7 @@
 					v-for="(items, index) in listDependents"
 					:key="index"
 				>
-					<v-col cols="2" class="mr-1">
+					<v-col cols="10" sm="10" xs="10" md="2" lg="2" class="mr-1">
 						<v-text-field
 							outlined
 							label="First name"
@@ -35,7 +35,7 @@
 						>
 						</v-text-field>
 					</v-col>
-					<v-col cols="2" class="mr-1">
+					<v-col cols="10" sm="10" xs="10" md="2" lg="2" class="mr-1">
 						<v-text-field
 							outlined
 							label="Last name"
@@ -43,7 +43,7 @@
 						>
 						</v-text-field>
 					</v-col>
-					<v-col cols="2" class="mr-1">
+					<v-col cols="10" sm="10" xs="10" md="2" lg="2" class="mr-1">
 						<v-menu
 							ref="menu"
 							v-model="items.menu"
@@ -69,7 +69,7 @@
 							</v-date-picker>
 						</v-menu>
 					</v-col>
-					<v-col cols="2" class="mr-1">
+					<v-col cols="10" sm="10" xs="10" md="2" lg="2" class="mr-1">
 						<v-text-field
 							outlined
 							label="YHCIP number"
@@ -77,7 +77,7 @@
 						>
 						</v-text-field>
 					</v-col>
-					<v-col cols="2" class="mr-1">
+					<v-col cols="10" sm="10" xs="10" md="2" lg="2" class="mr-1">
 						<v-select
 							outlined
 							v-model="items.c_apply"

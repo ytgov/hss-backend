@@ -456,6 +456,13 @@ div.row.container-actions.align-center{
     height: 100%;
 }
 
+@media (max-width: 600px){
+    .maxh-10{
+        max-height: 40px;
+    }
+
+}
+
 @-moz-keyframes loader {
     from {
         transform: rotate(0);

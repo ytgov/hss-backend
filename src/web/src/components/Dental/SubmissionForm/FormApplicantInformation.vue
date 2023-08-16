@@ -8,9 +8,9 @@
 			<v-expansion-panel-content>
                 <v-row no-gutters>
 					<v-col
-						cols="12"
+						cols="10"
 						sm="4"
-						xs="6"
+						xs="4"
 						md="3"
 						lg="3"
 						class="ma-5"
@@ -23,7 +23,7 @@
 						</v-text-field>
 					</v-col>
 					<v-col
-						cols="12"
+						cols="10"
 						sm="4"
 						md="3"
 						lg="3"
@@ -37,7 +37,7 @@
 						</v-text-field>
 					</v-col>
 					<v-col
-
+						cols="10"
 						sm="4"
 						md="3"
 						lg="3"
@@ -54,7 +54,7 @@
 
 				<v-row no-gutters>
 					<v-col
-						cols="12"
+						cols="10"
 						sm="4"
 						md="3"
 						lg="3"
@@ -84,7 +84,7 @@
 						</v-menu>
 					</v-col>
 					<v-col
-						cols="12"
+						cols="10"
 						sm="4"
 						md="3"
 						lg="3"
@@ -107,7 +107,7 @@
 			<v-expansion-panel-content>
                 <v-row no-gutters>
 					<v-col
-						cols="12"
+						cols="10"
 						sm="10"
 						md="10"
 						lg="10"
@@ -124,7 +124,7 @@
 
 				<v-row no-gutters>
 					<v-col
-						cols="12"
+						cols="10"
 						sm="6"
 						md="3"
 						lg="3"
@@ -146,7 +146,7 @@
 						</v-text-field>
 					</v-col>
 					<v-col
-						cols="12"
+						cols="10"
 						sm="6"
 						md="4"
 						lg="4"
@@ -163,7 +163,7 @@
 
 				<v-row no-gutters>
 					<v-col
-						cols="12"
+						cols="10"
 						sm="6"
 						md="3"
 						lg="3"
@@ -177,7 +177,7 @@
 						</v-text-field>
 					</v-col>
 					<v-col
-						cols="12"
+						cols="10"
 						sm="6"
 						md="4"
 						lg="4"
@@ -194,7 +194,7 @@
 
 				<v-row no-gutters>
 					<v-col
-						cols="12"
+						cols="10"
 						sm="12"
 						md="12"
 						lg="12"
@@ -217,7 +217,7 @@
 
 				<v-row no-gutters>
 					<v-col
-						cols="12"
+						cols="10"
 						sm="12"
 						md="12"
 						lg="12"

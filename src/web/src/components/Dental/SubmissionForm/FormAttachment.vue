@@ -8,7 +8,7 @@
 			<v-expansion-panel-content>
                 <v-row no-gutters v-if="showFileRow">
 					<v-col
-						cols="12"
+						cols="10"
 						sm="8"
 						md="8"
 						lg="8"
@@ -53,7 +53,7 @@
 						</v-btn>
 					</v-col>
 					<v-col
-						cols="12"
+						cols="10"
 						sm="6"
 						md="6"
 						lg="6"
