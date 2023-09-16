@@ -61,8 +61,8 @@
     >
       <!-- <v-icon color="#f3b228" class="mr-5">{{ applicationIcon }}</v-icon> -->
       <img src="/yukon.svg" style="margin: -8px 155px 0 0" height="44" />
-      <v-toolbar-title>
-        <span style="font-weight: 700">{{ applicationName }}</span>
+      <v-toolbar-title class="text-xs-center">
+        <span class="font-weight-bold xs12 sm6 md4">{{ applicationName }}</span>
 
         <v-progress-circular
           :class="loadingClass"

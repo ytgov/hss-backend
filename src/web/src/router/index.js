@@ -262,9 +262,10 @@ const routes = [
     }
   },
   {
-    path: "/dental",
+    path: "/dental/:type?",
     name: "Dental Service",
     component: Dental,
+    props: true,
     meta: {
       requiresAuth: true,
       permissions: [

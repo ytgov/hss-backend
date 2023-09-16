@@ -94,9 +94,9 @@ dentalRouter.get("/submissions/status/:action_id/:action_value", [
 dentalRouter.post("/", async (req: Request, res: Response) => {
 
     try {
-        var dateFrom = req.body.params.dateFrom //? new Date(req.body.params.dateFrom) : '';
-        var dateTo = req.body.params.dateTo //? new Date(req.body.params.dateTo) : '';
-        var dateYear = req.body.params.dateYear
+        var dateFrom = req.body.params.dateFrom;
+        var dateTo = req.body.params.dateTo;
+        var dateYear = req.body.params.dateYear;
         let status_request = req.body.params.status;
 
         let query = db(`${SCHEMA_DENTAL}.DENTAL_SERVICE_SUBMISSIONS`)
@@ -143,10 +143,32 @@ dentalRouter.patch("/changeStatus", async (req: Request, res: Response) => {
         var dentalService_id = req.body.params.requests;
         var status_id = req.body.params.requestStatus;
         var updateStatus = await db(`${SCHEMA_DENTAL}.DENTAL_SERVICE`).update({STATUS: status_id}).whereIn("ID", dentalService_id);
+        var statusData = await db(`${SCHEMA_DENTAL}.DENTAL_STATUS`).where('ID', status_id).first();
+        var logFields = Array();
 
         if(updateStatus) {
             let type = "success";
             let message = "Status changed successfully.";
+
+            _.forEach(dentalService_id, function(value: any) {
+                logFields.push({
+                    ACTION_TYPE: 4,
+                    TITLE: "Submission updated to status "+statusData.description,
+                    SCHEMA_NAME: SCHEMA_DENTAL,
+                    TABLE_NAME: "DENTAL_SERVICE",
+                    SUBMISSION_ID: value,
+                    USER_ID: req.user?.db_user.user.id
+                });
+            });
+
+            let loggedAction = helper.insertLog(logFields);
+
+            if(!loggedAction){
+                res.send( {
+                    status: 400,
+                    message: 'The action could not be logged'
+                });
+            }
 
             res.json({ status:200, message: message, type: type });
         }
@@ -170,9 +192,9 @@ dentalRouter.get("/validateRecord/:dentalService_id",[param("dentalService_id").
     try {
         var dentalService_id = Number(req.params.dentalService_id);
         var dentalService = Object();
-        var flagExists= true;
-        var message= "";
-        var type= "error";
+        var flagExists = true;
+        var message = "";
+        var type = "error";
 
         dentalService = await db(`${SCHEMA_DENTAL}.DENTAL_SERVICE`)
             .join(`${SCHEMA_DENTAL}.DENTAL_STATUS`, 'DENTAL_SERVICE.STATUS', '=', 'DENTAL_STATUS.ID')
@@ -185,7 +207,7 @@ dentalRouter.get("/validateRecord/:dentalService_id",[param("dentalService_id").
 
         if(!dentalService || dentalService.status_description == "closed"){
             flagExists= false;
-            message= "The request you are consulting is closed or non existant, please choose a valid request.";
+            message= "The submission you are consulting is closed or non existant, please choose a valid submission.";
         }
 
         res.json({ status: 200, flagDental: flagExists, message: message, type: type});
@@ -572,6 +594,29 @@ dentalRouter.post("/export/", async (req: Request, res: Response) => {
             }
         });
 
+
+        var logFields = Array();
+
+        _.forEach(idSubmission, function(value: any) {
+            logFields.push({
+                ACTION_TYPE: 5,
+                TITLE: "Export submission",
+                SCHEMA_NAME: SCHEMA_DENTAL,
+                TABLE_NAME: "DENTAL_SERVICE",
+                SUBMISSION_ID: value,
+                USER_ID: req.user?.db_user.user.id
+            });
+        });
+
+        let loggedAction = helper.insertLog(logFields);
+
+        if(!loggedAction){
+            res.send( {
+                status: 400,
+                message: 'The action could not be logged'
+            });
+        }
+
         res.json({ status: 200, dataDental: dentalService, dataDependents: dentalServiceDependents,
                     dataInternalFields: dentalInternalFields});
     } catch(e) {
@@ -917,21 +962,66 @@ dentalRouter.patch("/duplicates/primary", async (req: Request, res: Response) =>
         var type = req.body.params.type;
         var updateRequest = Object();
         var rejectWarning = Object();
+        var logTitle = "";
+        var updatedFields = Object();
+        var fieldList = Object();
+        var primarySubmission = Number();
+        var logFields = Array();
 
         if(!request){
             rejectWarning = await db(`${SCHEMA_DENTAL}.DENTAL_DUPLICATED_REQUESTS`).where("ID", warning).del();
+            logTitle = "Duplicated Warning Rejected";
         }else{
             var warningRequest = await db(`${SCHEMA_DENTAL}.DENTAL_DUPLICATED_REQUESTS`).where("ID", warning).first();
 
             if(type == 'O'){
                 updateRequest = await db(`${SCHEMA_DENTAL}.DENTAL_SERVICE`).update({STATUS: "4"}).where("ID", warningRequest.duplicated_id);
+                primarySubmission = warningRequest.duplicated_id;
             }else if(type == 'D'){
                 updateRequest = await db(`${SCHEMA_DENTAL}.DENTAL_SERVICE`).update({STATUS: "4"}).where("ID", warningRequest.original_id);
+                primarySubmission = warningRequest.original_id;
             }
+
+            logFields.push({
+                ACTION_TYPE: 4,
+                TITLE: "Submission updated to status Closed",
+                SCHEMA_NAME: SCHEMA_DENTAL,
+                TABLE_NAME: "DENTAL_SERVICE",
+                SUBMISSION_ID: primarySubmission,
+                USER_ID: req.user?.db_user.user.id
+            });
 
             if(updateRequest){
                 rejectWarning = await db(`${SCHEMA_DENTAL}.DENTAL_DUPLICATED_REQUESTS`).where("ID", warning).del();
+                logTitle = "Duplicated Warning Resolved";
+                updatedFields.ORIGINAL_ID = warningRequest.original_id;
+                updatedFields.DUPLICATED_ID = warningRequest.duplicated_id;
             }
+        }
+
+        if(!_.isEmpty(updatedFields)) {
+            fieldList =  db.raw("utl_raw.cast_to_raw(?) ", JSON.stringify(updatedFields));
+        }else{
+            fieldList = null;
+        }
+
+        logFields.push({
+                ACTION_TYPE: 7,
+                TITLE: logTitle,
+                SCHEMA_NAME: SCHEMA_DENTAL,
+                TABLE_NAME: "DENTAL_DUPLICATED_REQUESTS",
+                SUBMISSION_ID: warning,
+                USER_ID: req.user?.db_user.user.id,
+                ACTION_DATA: fieldList
+        });
+
+        let loggedAction = helper.insertLog(logFields);
+
+        if(!loggedAction){
+            res.send( {
+                status: 400,
+                message: 'The action could not be logged'
+            });
         }
 
         if(rejectWarning) {
@@ -1165,9 +1255,26 @@ dentalRouter.post("/store", async (req: Request, res: Response) => {
 
         }
 
+        let logFields = {
+            ACTION_TYPE: 2,
+            TITLE: "Insert submission",
+            SCHEMA_NAME: SCHEMA_DENTAL,
+            TABLE_NAME: "DENTAL_SERVICE",
+            SUBMISSION_ID: dentalId.id
+        };
+
+        let loggedAction = helper.insertLog(logFields);
+
+        if(!loggedAction){
+            res.send( {
+                status: 400,
+                message: 'The action could not be logged'
+            });
+        }
+
         res.json({ status:200, message: 'Request saved' });
 
-    } catch(e) { 
+    } catch(e) {
         console.log(e);  // debug if needed
         res.send( {
             status: 400,
@@ -1284,6 +1391,8 @@ dentalRouter.patch("/update", async (req: Request, res: Response) => {
         var updatedDependents = req.body.params.dataDependents.updatedDependents;
         var deletedDependents = req.body.params.dataDependents.deletedDependents;
         var have_children = req.body.params.dataDependents.haveChildren;
+        var updatedFields = req.body.params.dataUpdatedFields;
+        var fieldList = Object();
 
         if(!_.isEmpty(data.DATE_OF_BIRTH)){
             let dob = new Date(data.DATE_OF_BIRTH);
@@ -1501,6 +1610,31 @@ dentalRouter.patch("/update", async (req: Request, res: Response) => {
             let message = "Submission updated successfully.";
 
             res.json({ status:200, message: message, type: type });
+        }
+
+        if(!_.isEmpty(updatedFields)) {
+            fieldList =  db.raw("utl_raw.cast_to_raw(?) ", JSON.stringify(updatedFields));
+        }else{
+            fieldList = null;
+        }
+
+        let logFields = {
+            ACTION_TYPE: 3,
+            TITLE: "Update submission",
+            SCHEMA_NAME: SCHEMA_DENTAL,
+            TABLE_NAME: "DENTAL_SERVICE",
+            SUBMISSION_ID: idSubmission,
+            USER_ID: req.user?.db_user.user.id,
+            ACTION_DATA: fieldList
+        };
+
+        let loggedAction = helper.insertLog(logFields);
+
+        if(!loggedAction){
+            res.send( {
+                status: 400,
+                message: 'The action could not be logged'
+            });
         }
 
     } catch(e) {

@@ -1,7 +1,9 @@
 
 <template>
     <div class="constellation-service">
-        <p class="title-service mb-6">Constellation Possible Duplicates</p>
+        <v-row class="mb-5" no-gutters>
+            <span class="title-service">Constellation Possible Duplicates</span>
+        </v-row>
 
         <ModuleAlert v-bind:alertMessage="alertMessage"  v-bind:alertType="alertType"/>
         <Notifications ref="notifier"></Notifications>

@@ -12,12 +12,16 @@
 					v-bind:dentalService="itemsDental"
 					v-bind:panelModel="panelModel"
 					v-bind:cityTown="itemsDentalCityTown"
+					v-bind:editFields="updatedFields"
+					@addField="addUpdatedFields"
 				/>
 
 				<FormAttachment
 					ref="FormAttachment"
 					v-bind:dentalService="itemsDental"
 					v-bind:panelModel="panelModel"
+					v-bind:editFields="updatedFields"
+					@addField="addUpdatedFields"
 				/>
 
 				<FormDependents
@@ -26,6 +30,8 @@
 					v-bind:dentalDependents="itemsDentalDependents"
 					v-bind:idSubmission="idSubmission"
 					v-bind:panelModel="panelModel"
+					v-bind:editFields="updatedFields"
+					@addField="addUpdatedFields"
 				/>
 
 				<FormDemographic
@@ -44,6 +50,8 @@
 					v-bind:services="itemsDentalServices"
 					v-bind:idSubmission="idSubmission"
 					v-bind:panelModel="panelModel"
+					v-bind:editFields="updatedFields"
+					@addField="addUpdatedFields"
 				/>
 
 			<v-col lg="1"> </v-col>
@@ -101,7 +109,8 @@ export default {
 		dataAttachment: {},
 		dataDependents: {},
 		dataDemographic: {},
-		dataSubmission: {}
+		dataSubmission: {},
+		updatedFields: []
 
 	}),
 	components: {
@@ -179,7 +188,8 @@ export default {
 					idSubmission: this.idSubmission,
 					data: this.dataSubmission,
 					dataFile: this.dataAttachment,
-					dataDependents: this.dataDependents
+					dataDependents: this.dataDependents,
+					dataUpdatedFields: this.updatedFields
 				}
 			})
 			.then((resp) => {
@@ -189,6 +199,9 @@ export default {
 			})
 			.catch((err) => console.error(err));
 
+		},
+		addUpdatedFields(fields) {
+			this.updatedFields.push(fields);
 		},
 	},
 };

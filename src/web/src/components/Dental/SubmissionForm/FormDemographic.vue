@@ -16,7 +16,7 @@
 						:key="option.key"
 						:label="option.text"
 						:value="option.value"
-						@change="provideDemographic(option.key)"
+						@change="provideDemographic(option.key, 'C')"
 					></v-radio>
 				</v-radio-group>
 
@@ -37,6 +37,7 @@
 									v-model="selectedGroups"
 									:label="item.description"
 									:value="item.id"
+									@change="updateField('IDENTIFY_GROUPS')"
 								>
 								</v-checkbox>
 						</v-col>
@@ -74,6 +75,7 @@
 								:key="option.key"
 								:label="option.text"
 								:value="option.value"
+								@change="updateField('EDUCATION')"
 							></v-radio>
 						</v-radio-group>
 					</v-row>
@@ -91,6 +93,7 @@
 								v-model="selectedOftenBrush"
 								:items="often"
 								label="How often do you brush your teeth?"
+								@change="updateField('OFTEN_BRUSH')"
 							></v-select>
 						</v-col>
 						<v-col
@@ -105,6 +108,7 @@
 								v-model="selectedStateTeeth"
 								:items="states"
 								label="How would you describe the state of your teeth?"
+								@change="updateField('STATE_TEETH')"
 							></v-select>
 						</v-col>
 					</v-row>
@@ -122,6 +126,7 @@
 								v-model="selectedOftenFloss"
 								:items="often"
 								label="How often do you floss your teeth?"
+								@change="updateField('OFTEN_FLOSS')"
 							></v-select>
 						</v-col>
 						<v-col
@@ -136,6 +141,7 @@
 								v-model="selectedStateGums"
 								:items="states"
 								label="How would you describe the state of your gums?"
+								@change="updateField('STATE_GUMS')"
 							></v-select>
 						</v-col>
 					</v-row>
@@ -150,6 +156,7 @@
 								:key="option.key"
 								:label="option.text"
 								:value="option.value"
+								@change="updateField('LAST_SAW_DENTIST')"
 							>
 							</v-radio>
 						</v-radio-group>
@@ -171,6 +178,7 @@
 									v-model="selectedReasons"
 									:label="item.description"
 									:value="item.id"
+									@change="updateField('REASON_FOR_DENTIST')"
 								>
 								</v-checkbox>
 						</v-col>
@@ -186,6 +194,7 @@
 								:key="option.key"
 								:label="option.text"
 								:value="option.value"
+								@change="updateField('BUY_SUPPLIES')"
 							>
 							</v-radio>
 						</v-radio-group>
@@ -400,7 +409,8 @@ export default {
 			showCustomProblem: false,
 			customProblem: null,
 			showCustomService: false,
-			customService: null
+			customService: null,
+			updatedFields: []
 		};
 	},
 	watch: {
@@ -413,7 +423,7 @@ export default {
 				const result = this.optionsDemographic.find(item => item.value === newValue.ask_demographic);
 
 				this.selectedDemographic = result.value;
-				this.provideDemographic(result.key);
+				this.provideDemographic(result.key, 'D');
 			}
 
 			if(newValue.identify_groups) {
@@ -616,7 +626,7 @@ export default {
 		}
 	},
 	methods: {
-		provideDemographic(key) {
+		provideDemographic(key, type) {
 			if (key === 1) {
 				this.showDemographicFields = true;
 			} else {
@@ -631,6 +641,11 @@ export default {
 				key: options.key,
 				value: options.value
 			}
+
+			if (type == 'C' && !this.updatedFields.includes("ASK_DEMOGRAPHIC")) {
+				this.updatedFields.push("ASK_DEMOGRAPHIC");
+				this.$emit('addField', "ASK_DEMOGRAPHIC");
+			}
 		},
 		validateGender(value){
 			const genderData = this.genders.find(item => item.value === value);
@@ -640,6 +655,11 @@ export default {
 			}else{
 				this.showCustomGender = false;
 				this.customGender = null;
+			}
+
+			if (!this.updatedFields.includes("GENDER")) {
+				this.updatedFields.push("GENDER");
+				this.$emit('addField', "GENDER");
 			}
 		},
 		validatePaymentMethod(value){
@@ -657,6 +677,12 @@ export default {
 				}
 
 			}
+
+			if (!this.updatedFields.includes("PAY_FOR_VISIT")) {
+				this.updatedFields.push("PAY_FOR_VISIT");
+				this.$emit('addField', "PAY_FOR_VISIT");
+			}
+
 		},
 		validateBarrier(value){
 			const barrierData = this.barriers.find(item => item.id === value);
@@ -672,6 +698,12 @@ export default {
 				}
 
 			}
+
+			if (!this.updatedFields.includes("BARRIERS")) {
+				this.updatedFields.push("BARRIERS");
+				this.$emit('addField', "BARRIERS");
+			}
+
 		},
 		validateProblem(value){
 			const problemData = this.problems.find(item => item.id === value);
@@ -687,6 +719,12 @@ export default {
 				}
 
 			}
+
+			if (!this.updatedFields.includes("PROBLEMS")) {
+				this.updatedFields.push("PROBLEMS");
+				this.$emit('addField', "PROBLEMS");
+			}
+
 		},
 		validateService(value){
 			const serviceData = this.services.find(item => item.id === value);
@@ -702,6 +740,12 @@ export default {
 				}
 
 			}
+
+			if (!this.updatedFields.includes("SERVICES_NEEDED")) {
+				this.updatedFields.push("SERVICES_NEEDED");
+				this.$emit('addField', "SERVICES_NEEDED");
+			}
+
 		},
 		escapeRegExp(string) {
 			return string.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
@@ -853,6 +897,12 @@ export default {
 			this.selectedServices = [];
 			this.showCustomService = false;
 			this.customService = null;
+		},
+		updateField(field){
+			if (!this.updatedFields.includes(field)) {
+				this.updatedFields.push(field);
+				this.$emit('addField', field);
+			}
 		}
 	}
 };

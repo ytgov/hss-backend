@@ -83,8 +83,8 @@
 				<v-row no-gutters>
 					<v-col
 						cols="12"
-						sm="3"
-						md="3"
+						sm="10"
+						md="10"
 						lg="3"
 					>
 						<div class="custom-text-field" :class="{ 'internal-field-print': exportClass }">
@@ -97,16 +97,23 @@
 							</v-text-field>
 						</div>
 					</v-col>
-					<v-btn
-						color="#F3A901"
-						class="mt-8 white--text details-btn"
-						id="apply-btn"
-						:disabled="applyDisabled"
-						v-show="showSubmitButton"
-						@click="storeInternalFields"
+					<v-col
+						cols="12"
+						sm="10"
+						md="10"
+						lg="3"
 					>
-						Submit
-					</v-btn>
+						<v-btn
+							color="#F3A901"
+							class="mt-8 ml-4 white--text details-btn"
+							id="apply-btn"
+							:disabled="applyDisabled"
+							v-show="showSubmitButton"
+							@click="storeInternalFields"
+						>
+							Submit
+						</v-btn>
+					</v-col>
 				</v-row>
 			</v-expansion-panel-content>
 		</v-expansion-panel>

@@ -4,10 +4,14 @@ import * as ExpressSession from "express-session";
 import { AuthUser } from "../models/auth";
 import { AUTH_REDIRECT, FRONTEND_URL } from "../config";
 import axios from 'axios';
+import knex from "knex";
+import { DB_CONFIG_DENTAL, SCHEMA_GENERAL } from "../config";
+import { helper } from "../utils";
 var RateLimit = require('express-rate-limit');
 
 const {auth} = require('express-openid-connect')
 const userRepo = new UserPermissionRepository();
+const db = knex(DB_CONFIG_DENTAL);
 
 export function configureAuthentication(app: Express) {
   app.use(RateLimit({
@@ -54,7 +58,23 @@ export function configureAuthentication(app: Express) {
             oid_user: user,
             db_user: await userRepo.getUserByEmail(req.oidc.user.email)
           };
-          console.log("USER", user);
+
+          let logFields = {
+            ACTION_TYPE: 1,
+            TITLE: "Login",
+            SCHEMA_NAME: SCHEMA_GENERAL,
+            USER_ID: req.user.db_user.user.id
+          };
+
+          let loggedAction = helper.insertLog(logFields);
+
+          if(!loggedAction){
+            res.send( {
+                status: 400,
+                message: 'The action could not be logged'
+            });
+          }
+
           res.redirect(AUTH_REDIRECT);
       }
       else {

@@ -182,13 +182,13 @@ a {
         background-position: 200% 0%;
     }
 
-    #container-main{
+    /*#container-main{
         content: '';
         top: 0;
         background: url("/assets/Aurora-small-mobile.svg");
         background-repeat: no-repeat;
         background-position: 200% 0%;
-    }
+    }*/
 
     #container-row{
         margin-top: 10%;
@@ -202,12 +202,18 @@ a {
 
 /* Scroll styling */
 
-@media only screen and (min-width: 600px) {
+@media only screen and (min-width: 350px) {
     .v-navigation-drawer__content {
-        height: 85%;
+        height: 100%;
         overflow-y: scroll;
         overflow-x: hidden;
+        margin-bottom: 125px;
     }
+}
+
+.v-navigation-drawer__content {
+    position: sticky;
+    bottom: 0;
 }
 
 .v-navigation-drawer__content::-webkit-scrollbar {
@@ -252,7 +258,7 @@ a {
     background-color: #ffffff;
 }
 
-.v-navigation-drawer .v-list-item--active,
+.v-navigation-drawer .section-container .v-item-group .v-list-item--active,
 .theme--light.v-data-table>.v-data-table__wrapper>table>thead.table-details-header{
     background-color: #244C5A;
     border-radius: 0px;
@@ -414,6 +420,11 @@ div.row.container-actions.align-center{
     align-items: baseline;
 }
 
+.submission-filters-details{
+    justify-content: right;
+    align-items: baseline;
+}
+
 .td-file-download{
     display: flex;
     justify-content: center;
@@ -456,9 +467,31 @@ div.row.container-actions.align-center{
     height: 100%;
 }
 
+.btn-reset{
+    margin-top: 1%;
+    text-align: center;
+}
+
+.row-filter{
+    text-align: center;
+    align-items: center;
+}
+
 @media (max-width: 600px){
     .maxh-10{
         max-height: 40px;
+    }
+
+    #warning-radio-group div.v-radio label{
+        white-space: normal;
+    }
+
+    #warning-radio-group div.btn-radio.v-item--active{
+        height: 52px;
+    }
+
+    #warning-radio-group div.btn-radio{
+        padding: 5px 16px 0px 5px;
     }
 
 }

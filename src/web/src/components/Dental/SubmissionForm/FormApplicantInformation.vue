@@ -18,6 +18,7 @@
 						<v-text-field
 							outlined
 							label="First name"
+							@change="updateField('FIRST_NAME')"
 							v-model="dentalServiceData.first_name"
 						>
 						</v-text-field>
@@ -30,6 +31,7 @@
 						class="ma-5"
 					>
 						<v-text-field
+							@change="updateField('MIDDLE_NAME')"
 							outlined
 							label="Middle name"
 							v-model="dentalServiceData.middle_name"
@@ -44,6 +46,7 @@
 						class="ma-5"
 					>
 						<v-text-field
+							@change="updateField('LAST_NAME')"
 							outlined
 							label="Last name"
 							v-model="dentalServiceData.last_name"
@@ -69,6 +72,7 @@
 						>
 							<template v-slot:activator="{ on, attrs }">
 								<v-text-field
+									@change="updateField('DATE_OF_BIRTH')"
 									outlined
 									label="Date of Birth"
 									v-model="dentalServiceData.date_of_birth"
@@ -91,6 +95,7 @@
 						class="ma-5"
 					>
 						<v-text-field
+							@change="updateField('HEALTH_CARD_NUMBER')"
 							outlined
 							label="Yukon health care card number"
 							v-model="dentalServiceData.health_card_number"
@@ -114,6 +119,7 @@
 						class="ma-5"
 					>
 						<v-text-field
+							@change="updateField('MAILING_ADDRESS')"
 							outlined
 							label="Mailing address"
 							v-model="dentalServiceData.mailing_address"
@@ -153,6 +159,7 @@
 						class="ma-5"
 					>
 						<v-text-field
+							@change="updateField('POSTAL_CODE')"
 							outlined
 							label="Postal Code"
 							v-model="dentalServiceData.postal_code"
@@ -170,6 +177,7 @@
 						class="ma-5"
 					>
 						<v-text-field
+							@change="updateField('PHONE')"
 							outlined
 							label="Phone Number"
 							v-model="dentalServiceData.phone"
@@ -184,6 +192,7 @@
 						class="ma-5"
 					>
 						<v-text-field
+							@change="updateField('EMAIL')"
 							outlined
 							label="Email Address"
 							v-model="dentalServiceData.email"
@@ -232,6 +241,7 @@
 								:key="option.key"
 								:label="option.text"
 								:value="option.value"
+								@change="updateField('ARE_YOU_ELIGIBLE_FOR_THE_PHARMACARE_AND_EXTENDED_HEALTH_CARE_BEN')"
 							></v-radio>
 						</v-radio-group>
 					</v-col>
@@ -263,7 +273,8 @@ export default {
 			optionsPharmacare: [
 				{ text: "Yes, I am eligible", value: "Yes, I am eligible", key: 1,},
 				{ text: "No, I am not eligible", value: "No, I am not eligible", key: 2 },
-			]
+			],
+			updatedFields: []
 		};
 	},
 	watch: {
@@ -311,6 +322,11 @@ export default {
 				this.showPharmacare = false;
 				this.selectedPharmacare = null;
 			}
+
+			if (!this.updatedFields.includes("OTHER_COVERAGE")) {
+				this.updatedFields.push("OTHER_COVERAGE");
+				this.$emit('addField', "OTHER_COVERAGE");
+			}
 		},
 		validateCityTown(){
 			const cityData = this.cityTown.find(item => item.value === this.selectedCityTown);
@@ -320,6 +336,11 @@ export default {
 			}else{
 				this.showCustomCityTown = false;
 				this.customCityTown = null;
+			}
+
+			if (!this.updatedFields.includes("CITY_OR_TOWN")) {
+				this.updatedFields.push("CITY_OR_TOWN");
+				this.$emit('addField', "CITY_OR_TOWN");
 			}
 		},
 		getApplicantInformation() {
@@ -345,6 +366,12 @@ export default {
 				OTHER_COVERAGE: this.selectedCoverage,
 				ARE_YOU_ELIGIBLE_FOR_THE_PHARMACARE_AND_EXTENDED_HEALTH_CARE_BEN: this.selectedPharmacare
 			};
+		},
+		updateField(field){
+			if (!this.updatedFields.includes(field)) {
+				this.updatedFields.push(field);
+				this.$emit('addField', field);
+			}
 		}
 	}
 };

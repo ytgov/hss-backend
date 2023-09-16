@@ -16,7 +16,7 @@
 						:key="option.key"
 						:label="option.text"
 						:value="option.value"
-						@change="haveDependents(option.key)"
+						@change="haveDependents(option.key, 'C')"
 					></v-radio>
 				</v-radio-group>
 
@@ -120,7 +120,8 @@ export default {
 			listDependents: [],
 			newDependents: [],
 			updatedDependents: [],
-			deletedDependents: []
+			deletedDependents: [],
+			updatedFields: []
 		};
 	},
 	watch: {
@@ -133,7 +134,7 @@ export default {
 			if(newValue.have_children) {
 				let option = this.optionsDependents.find(option => option.value == newValue.have_children);
 				this.selectedDependent = option.value;
-				this.haveDependents(option.key);
+				this.haveDependents(option.key, 'D');
 			}
 
 			this.newDependentsCounter = Object.keys(this.dentalDependents).length;
@@ -173,13 +174,23 @@ export default {
 				menu: false,
 				id: this.newDependentsCounter
 			});
+
+			if (!this.updatedFields.includes("HAVE_CHILDREN")) {
+				this.updatedFields.push("HAVE_CHILDREN");
+				this.$emit('addField', "HAVE_CHILDREN");
+			}
 		},
 		deleteRow(index) {
 			//let deletedElement = this.listDependents.pop();
 			let deletedElement = this.listDependents.splice(index, 1)[0];
 			this.deletedDependents.push(deletedElement);
+
+			if (!this.updatedFields.includes("HAVE_CHILDREN")) {
+				this.updatedFields.push("HAVE_CHILDREN");
+				this.$emit('addField', "HAVE_CHILDREN");
+			}
 		},
-		haveDependents(key) {
+		haveDependents(key, type) {
 			this.showDependentsList = key === 1 ? true : false;
 
 			let options = this.optionsDependents.find(option => option.key == key);
@@ -188,6 +199,11 @@ export default {
 				text: options.text,
 				key: options.key,
 				value: options.key == 1 ? 'Yes' : 'No'
+			}
+
+			if (type == 'C' && !this.updatedFields.includes("HAVE_CHILDREN")) {
+				this.updatedFields.push("HAVE_CHILDREN");
+				this.$emit('addField', "HAVE_CHILDREN");
 			}
 		},
 		getDependents() {

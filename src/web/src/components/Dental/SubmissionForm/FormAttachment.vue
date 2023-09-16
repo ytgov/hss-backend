@@ -130,7 +130,8 @@ export default {
 			showAttachmentType: false,
 			allowedExtensions: ["pdf", "doc", "docx", "jpg", "jpeg", "png"],
 			showAttachmentSize: false,
-			maxFileSize: 5 * 1024 * 1024, // 5 MB in bytes
+			maxFileSize: 5 * 1024 * 1024, // 5 MB in bytes,
+			updatedFields: []
 		};
 	},
 	watch: {
@@ -151,6 +152,12 @@ export default {
 		fileProofIncome(newVal) {
 			if(newVal) {
 				this.createBase64Image(newVal);
+
+				if (!this.updatedFields.includes("PROOF_INCOME")) {
+					this.updatedFields.push("PROOF_INCOME");
+					this.$emit('addField', "PROOF_INCOME");
+				}
+
 			} else {
 				this.base64 = null;
 			}
@@ -195,6 +202,11 @@ export default {
 		},
 		submitSeparately(){
 			this.showFileRow = this.checkProofIncome ? false : true;
+
+			if (!this.updatedFields.includes("PROOF_INCOME")) {
+				this.updatedFields.push("PROOF_INCOME");
+				this.$emit('addField', "PROOF_INCOME");
+			}
 		},
 		downloadFile(){
 			axios
@@ -239,6 +251,11 @@ export default {
 			this.showFile = false;
 			this.showFileInput = true;
 			this.checkProofIncome = true;
+
+			if (!this.updatedFields.includes("PROOF_INCOME")) {
+				this.updatedFields.push("PROOF_INCOME");
+				this.$emit('addField', "PROOF_INCOME");
+			}
 		},
 		getAttachment() {
 

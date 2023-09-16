@@ -1,13 +1,17 @@
 <template>
     <div class="dental-service">
-		<span class="title-service">Dental Service Requests</span>
-		<ModuleAlert v-bind:alertMessage="alertMessage"  v-bind:alertType="alertType"/>
+		<v-row class="mb-5" no-gutters>
+			<span class="title-service">Dental Service Requests</span>
+		</v-row>
+
 		<Notifications ref="notifier"></Notifications>
-		<br><br>
-		<v-row class="submission-filters" no-gutters>
+		<br>
+		<v-row class="submission-filters mb-5" no-gutters>
 			<v-col
 				cols="12"
-				sm="2"
+                sm="12"
+                md="12"
+                lg="2"
 				class="actions"
 			>
 				<v-select
@@ -27,7 +31,9 @@
 			<v-col
 				class="align-start"
 				cols="12"
-				sm="1"
+                sm="12"
+                md="12"
+                lg="1"
 			>
 				<v-btn
 					color="#F3A901"
@@ -42,7 +48,9 @@
 
 			<v-col
 				cols="12"
-				sm="2"
+                sm="12"
+                md="12"
+                lg="2"
 			>
 				<v-select
 					v-model="statusSelected"
@@ -56,7 +64,9 @@
 			</v-col>
 			<v-col
 				cols="12"
-				sm="2"
+                sm="12"
+                md="12"
+                lg="2"
 			>
 				<v-text-field
 					v-model="selectedYear"
@@ -69,7 +79,9 @@
 			</v-col>
 			<v-col
 				cols="12"
-				sm="2"
+                sm="12"
+                md="12"
+                lg="2"
 			>
 				<v-menu
 					ref="menu"
@@ -100,7 +112,9 @@
 			</v-col>
 			<v-col
 				cols="12"
-				sm="2"
+                sm="12"
+                md="12"
+                lg="2"
 			>
 				<v-menu
 					ref="menuEnd"
@@ -128,10 +142,12 @@
 					></v-date-picker>
 				</v-menu>
 			</v-col>
-			<v-col 
-				align-self="center" 
+			<v-col
 				cols="12"
-				sm="1"
+                sm="12"
+                md="12"
+                lg="1"
+                class="btn-reset"
 				v-if="removeFilters">
 				<v-icon @click="resetInputs"> mdi-filter-remove </v-icon>
 			</v-col>
@@ -163,6 +179,7 @@
 
 	export default {
 	name: "DentalServiceIndex",
+	props: ['type'],
 	data: () => ({
 		loading: false,
 		bulkSelected: [],
@@ -180,12 +197,12 @@
 		bulkActions: [],
 		actionSelected: "",
 		itemsSelected: [],
-		alertMessage: "",
-		alertType: null,
 		search: "",
 		applyDisabled: true,
 		options: {},
 		flagAlert: false,
+		statusChangeMessage: "Status changed successfully.",
+		nonexistentMessage: "The submission you are consulting is closed or non existant, please choose a valid submission.",
 		headers: [
 		{
 			text: "First Name",
@@ -240,16 +257,13 @@
 			deep: true,
 		}
 	},
-	created() {
-	},
 	mounted() {
 
-		if (typeof this.$route.query.message !== undefined && typeof this.$route.query.type !== undefined){
-			if(this.$route.query.type == "success"){
-				this.$refs.notifier.showSuccess(this.$route.query.message);
-			}else{
-				this.alertMessage = this.$route.query.message;
-				this.alertType = this.$route.query.type;
+		if (typeof this.$route.query.type !== undefined){
+			if(this.$route.query.type == "status"){
+				this.$refs.notifier.showSuccess(this.statusChangeMessage);
+			}else if(this.$route.query.type == "nonexistent"){
+				this.$refs.notifier.showError(this.nonexistentMessage);
 			}
 		}
 

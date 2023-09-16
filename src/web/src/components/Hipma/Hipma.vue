@@ -1,16 +1,20 @@
 
 <template>
     <div class="hipma-service">
-        <span class="title-service">HIPMA Requests</span>
+        <v-row class="mb-5" no-gutters>
+            <span class="title-service">HIPMA Requests</span>
+        </v-row>
+
         <ModuleAlert v-bind:alertMessage="alertMessage"  v-bind:alertType="alertType"/>
+
         <Notifications ref="notifier"></Notifications>
 
-        <v-row>
+        <v-row class="row-filter">
             <v-col
-                class='d-flex'
-                cols="6"
-                sm="6"
-                md="6"
+                cols="10"
+				sm="10"
+				md="10"
+				lg="2"
             >
                 <v-menu
                     ref="menu"
@@ -36,6 +40,13 @@
                         @change="updateDate"
                     ></v-date-picker>
                 </v-menu>
+            </v-col>
+            <v-col
+				cols="10"
+				sm="10"
+				md="10"
+				lg="2"
+			>
                 <v-menu
                     ref="menuEnd"
                     v-model="menuEnd"
@@ -61,17 +72,26 @@
                     ></v-date-picker>
                 </v-menu>
             </v-col>
-            <v-col sm="auto" v-if="removeFilters">
+            <v-col
+                cols="10"
+				sm="10"
+				md="10"
+				lg="1"
+				class="btn-reset"
+                v-if="removeFilters"
+            >
                 <v-icon @click="resetInputs"> mdi-filter-remove </v-icon>
             </v-col>
         </v-row>
-        <v-row 
-            align="center" 
+        <v-row
+            align="center"
             class="container-actions"
         >
             <v-col
-                cols="12"
-                sm="3"
+                cols="10"
+				sm="10"
+				md="10"
+				lg="3"
                 class="actions"
             >
                 <v-select
@@ -87,10 +107,12 @@
                     id="bulk-accion-select"
                 ></v-select>
             </v-col>
-            <v-col 
+            <v-col
                 class="align-start"
-                cols="12"
-                sm="3"
+                cols="10"
+				sm="10"
+				md="10"
+				lg="3"
             >
                 <v-btn
                     color="#F3A901"

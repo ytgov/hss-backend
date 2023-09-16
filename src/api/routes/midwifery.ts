@@ -4,7 +4,7 @@ import { body, param } from "express-validator";
 import { SubmissionStatusRepository } from "../repository/oracle/SubmissionStatusRepository";
 import knex from "knex";
 import { DB_CONFIG_MIDWIFERY, SCHEMA_MIDWIFERY } from "../config";
-import { groupBy } from "../utils/groupBy";
+import { groupBy , helper } from "../utils";
 
 var RateLimit = require('express-rate-limit');
 
@@ -832,6 +832,28 @@ midwiferyRouter.post("/export", async (req: Request, res: Response) => {
         let random = (Math.random() + 1).toString(36).substring(7);
         let fileName = 'midwifery_'+random+'_requests_'+todayDate+".xlsx";
 
+        var logFields = Array();
+
+        _.forEach(requests, function(value: any) {
+            logFields.push({
+                ACTION_TYPE: 5,
+                TITLE: "Export submission",
+                SCHEMA_NAME: SCHEMA_MIDWIFERY,
+                TABLE_NAME: "MIDWIFERY_SERVICES",
+                SUBMISSION_ID: value,
+                USER_ID: req.user?.db_user.user.id
+            });
+        });
+
+        let loggedAction = helper.insertLog(logFields);
+
+        if(!loggedAction){
+            res.send( {
+                status: 400,
+                message: 'The action could not be logged'
+            });
+        }
+
         res.json({ data:midwifery, fileName:fileName });
 
     } catch(e) {
@@ -856,10 +878,32 @@ midwiferyRouter.patch("/changeStatus", async (req: Request, res: Response) => {
         var status_id = req.body.params.requestStatus;
 
         var updateStatus = await db(`${SCHEMA_MIDWIFERY}.MIDWIFERY_SERVICES`).update({STATUS: status_id}).whereIn("MIDWIFERY_SERVICES.ID", midwifery_id);
+        var statusData = await db(`${SCHEMA_MIDWIFERY}.MIDWIFERY_STATUS`).where('ID', status_id).first();
+        var logFields = Array();
 
         if(updateStatus) {
             let type = "success";
             let message = "Status changed successfully.";
+
+            _.forEach(midwifery_id, function(value: any) {
+                logFields.push({
+                    ACTION_TYPE: 4,
+                    TITLE: "Submission updated to status "+statusData.description,
+                    SCHEMA_NAME: SCHEMA_MIDWIFERY,
+                    TABLE_NAME: "MIDWIFERY_SERVICES",
+                    SUBMISSION_ID: value,
+                    USER_ID: req.user?.db_user.user.id
+                });
+            });
+
+            let loggedAction = helper.insertLog(logFields);
+
+            if(!loggedAction){
+                res.send( {
+                    status: 400,
+                    message: 'The action could not be logged'
+                });
+            }
 
             res.json({ status:200, message: message, type: type });
         }
@@ -1231,21 +1275,66 @@ midwiferyRouter.patch("/duplicates/primary", async (req: Request, res: Response)
         var type = req.body.params.type;
         var updateRequest = Object();
         var rejectWarning = Object();
+        var logTitle = "";
+        var updatedFields = Object();
+        var fieldList = Object();
+        var primarySubmission = Number();
+        var logFields = Array();
 
         if(!request){
             rejectWarning = await db(`${SCHEMA_MIDWIFERY}.MIDWIFERY_DUPLICATED_REQUESTS`).where("ID", warning).del();
+            logTitle = "Duplicated Warning Rejected";
         }else{
             var warningRequest = await db(`${SCHEMA_MIDWIFERY}.MIDWIFERY_DUPLICATED_REQUESTS`).where("ID", warning).first();
 
             if(type == 'O'){
                 updateRequest = await db(`${SCHEMA_MIDWIFERY}.MIDWIFERY_SERVICES`).update({STATUS: "4"}).where("ID", warningRequest.duplicated_id);
+                primarySubmission = warningRequest.duplicated_id;
             }else if(type == 'D'){
                 updateRequest = await db(`${SCHEMA_MIDWIFERY}.MIDWIFERY_SERVICES`).update({STATUS: "4"}).where("ID", warningRequest.original_id);
+                primarySubmission = warningRequest.original_id;
             }
+
+            logFields.push({
+                ACTION_TYPE: 4,
+                TITLE: "Submission updated to status Closed",
+                SCHEMA_NAME: SCHEMA_MIDWIFERY,
+                TABLE_NAME: "MIDWIFERY_SERVICES",
+                SUBMISSION_ID: primarySubmission,
+                USER_ID: req.user?.db_user.user.id
+            });
 
             if(updateRequest){
                 rejectWarning = await db(`${SCHEMA_MIDWIFERY}.MIDWIFERY_DUPLICATED_REQUESTS`).where("ID", warning).del();
+                logTitle = "Duplicated Warning Resolved";
+                updatedFields.ORIGINAL_ID = warningRequest.original_id;
+                updatedFields.DUPLICATED_ID = warningRequest.duplicated_id;
             }
+        }
+
+        if(!_.isEmpty(updatedFields)) {
+            fieldList =  db.raw("utl_raw.cast_to_raw(?) ", JSON.stringify(updatedFields));
+        }else{
+            fieldList = null;
+        }
+
+        logFields.push({
+                ACTION_TYPE: 7,
+                TITLE: logTitle,
+                SCHEMA_NAME: SCHEMA_MIDWIFERY,
+                TABLE_NAME: "MIDWIFERY_DUPLICATED_REQUESTS",
+                SUBMISSION_ID: warning,
+                USER_ID: req.user?.db_user.user.id,
+                ACTION_DATA: fieldList
+        });
+
+        let loggedAction = helper.insertLog(logFields);
+
+        if(!loggedAction){
+            res.send( {
+                status: 400,
+                message: 'The action could not be logged'
+            });
         }
 
         if(rejectWarning) {

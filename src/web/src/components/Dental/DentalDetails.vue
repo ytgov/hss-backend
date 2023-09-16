@@ -1,16 +1,24 @@
 <template>
 	<div class="dental-service details">
+
 		<Notifications ref="notifier"></Notifications>
-		<v-row class="mb-6" no-gutters>
-			<v-col class="d-flex align-top">
-				<span class="title-service">Dental Requests</span>
-			</v-col>
+
+		<v-row class="mb-5" no-gutters>
+			<span class="title-service">Dental Requests</span>
+		</v-row>
+
+		<v-row class="submission-filters mb-4 text-right" no-gutters>
 			<v-col
-				cols="10"
-				sm="6"
-				md="10"
-				lg="2"
-				class="d-flex align-center"
+				cols="12"
+                sm="12"
+                md="12"
+                lg="6"
+			></v-col>
+			<v-col
+				cols="12"
+                sm="12"
+                md="12"
+                lg="3"
 			>
 				<v-select
 					v-model="selectAction"
@@ -28,45 +36,47 @@
 				>
 				</v-select>
 			</v-col>
-        <v-col md="auto" class="d-flex align-center">
-			<v-btn
-				color="#F3A901"
-				class="ma-2 white--text details-btn"
-				id="apply-btn"
-				@click="changeStatus"
+			<v-col
+				cols="12"
+                sm="12"
+                md="12"
+                lg="1"
 			>
-				Apply
-			</v-btn>
-			</v-col>
-
-				<v-col 
-					md="auto" 
-				class="d-flex align-center"
-					cols="2"
-					sm="6"
+				<v-btn
+					color="#F3A901"
+					class="white--text details-btn"
+					id="apply-btn"
+					@click="changeStatus"
 				>
-					<v-btn
-						color="#F3A901"
-						class="pull-right"
-						dark
-						@click="exportToPDF"
-					>
-
-						Export selected
-
-						<v-icon
-							right
-							dark
-						>
-						mdi-file-move
-						</v-icon>
-
-					</v-btn>
+					Apply
+				</v-btn>
 			</v-col>
-			<v-col lg="1"> </v-col>
+			<v-col
+				cols="12"
+                sm="12"
+                md="12"
+                lg="2"
+			>
+				<v-btn
+					color="#F3A901"
+					dark
+					@click="exportToPDF"
+				>
+
+					Export selected
+
+					<v-icon
+						right
+						dark
+					>
+					mdi-file-move
+					</v-icon>
+
+				</v-btn>
+			</v-col>
 		</v-row>
 		<v-row no-gutters>
-			<v-col id="dentalPanels">
+			<v-col cols="12" id="dentalPanels">
 				<v-btn
 					color="#DC4405"
 					class="pull-right"
@@ -203,7 +213,7 @@ export default {
 				if(!resp.data.flagDental){
 					this.$router.push({
 						path: '/dental',
-						query: { message: resp.data.message, type: resp.data.type}
+						query: { type: 'nonexistent' }
 					});
 				}else{
 					this.getDataFromApi();
@@ -250,8 +260,8 @@ export default {
 
 				if(this.actionSelected == this.idStatusClosed){
 					this.$router.push({
-					path: '/dental',
-					query: { message: resp.data.message, type: resp.data.type}
+						path: '/dental',
+						query: { type: 'status' }
 					});
 				}else{
 					this.$refs.notifier.showSuccess(resp.data.message);

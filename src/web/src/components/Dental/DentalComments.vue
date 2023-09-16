@@ -10,11 +10,11 @@
 					v-for="(items, index) in dentalComments"
 					:key="index"
 				>
-					<v-row no-gutters class="submission-filters">
+					<v-row no-gutters class="align-baseline">
 						<v-col
-							cols="2"
-							sm="4"
-							md="2"
+							cols="10"
+							sm="6"
+							md="6"
 							lg="2"
 							class="mt-5"
 						>
@@ -24,9 +24,9 @@
 						</v-col>
 						<v-col
 							cols="10"
-							sm="8"
-							md="10"
-							lg="10"
+							sm="6"
+							md="6"
+							lg="8"
 						>
 							<v-card-subtitle>
 								{{ items.created_at }}
