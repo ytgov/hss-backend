@@ -329,81 +329,81 @@ export default {
     },
     methods: {
         validateRecord() {
-        axios
+            axios
             .get(
             CONSTELLATION_VALIDATE_URL + this.$route.params.constellationHealth_id
             )
             .then((resp) => {
-            if (!resp.data.flagConstellation) {
-                this.$router.push({
-                path: "/constellation",
-                query: { message: resp.data.message, type: resp.data.type },
-                });
-            }else{
-                this.getDataFromApi();
-            }
+                if (!resp.data.flagConstellation) {
+                        this.$router.push({
+                        path: "/constellation",
+                        query: { type: 'nonexistent' }
+                    });
+                }else{
+                    this.getDataFromApi();
+                }
             })
             .catch((err) => console.error(err))
             .finally(() => {});
         },
         getDataFromApi() {
-        axios
+            axios
             .get(CONSTELLATION_SHOW_URL + this.$route.params.constellationHealth_id)
             .then((resp) => {
-            this.itemsConstellation = resp.data.dataConstellation;
-            this.validateFamily = resp.data.dataConstellation.include_family_members
-            this.itemsConstellationFamily = resp.data.dataConstellationFamily;
-            this.fileName = resp.data.fileName;
-            this.bulkActions = resp.data.dataStatus;
-            this.selectAction = resp.data.dataConstellation.status;
+                this.itemsConstellation = resp.data.dataConstellation;
+                this.validateFamily = resp.data.dataConstellation.include_family_members
+                this.itemsConstellationFamily = resp.data.dataConstellationFamily;
+                this.fileName = resp.data.fileName;
+                this.bulkActions = resp.data.dataStatus;
+                this.selectAction = resp.data.dataConstellation.status;
             })
             .catch((err) => console.error(err))
             .finally(() => {});
         },
         enterBulkAction(value) {
-        this.actionSelected = value;
+            this.actionSelected = value;
         },
         submitBulk() {
-        if (this.actionSelected != "") {
-            //Sent it as an array to use the same function for both single and bulk status changes
-            var constellationId = [Number(this.$route.params.constellationHealth_id)];
-            axios.patch(CONSTELLATION_CHANGE_STATUS_URL, {
-            params: {
-                requests: constellationId,
-                requestStatus: this.actionSelected
+            if (this.actionSelected != "") {
+                //Sent it as an array to use the same function for both single and bulk status changes
+                var constellationId = [Number(this.$route.params.constellationHealth_id)];
+                axios.patch(CONSTELLATION_CHANGE_STATUS_URL, {
+                params: {
+                    requests: constellationId,
+                    requestStatus: this.actionSelected
+                }
+                })
+                .then((resp) => {
+                    if(this.actionSelected == 4){
+                        this.$router.push({
+                            path: '/constellation',
+                            query: { type: 'status' }
+                        });
+                    }else{
+                        this.$refs.notifier.showSuccess(resp.data.message);
+                    }
+                })
+                .catch((err) => console.error(err))
             }
-            })
-            .then((resp) => {
-            if(this.actionSelected == 4){
-                this.$router.push({
-                path: '/constellation',
-                query: { message: resp.data.message, type: resp.data.type}
-                });
-            }else{
-                this.$refs.notifier.showSuccess(resp.data.message);
-            }
-            })
-            .catch((err) => console.error(err))
-        }
         },
         exportToPDF() {
-        this.panel = [0, 1];
-        this.panelModel = [0, 1];
-        const fileName =
+            this.panel = [0, 1];
+            this.panelModel = [0, 1];
+            const fileName =
             this.itemsConstellation.first_name +
             "_" +
             this.itemsConstellation.last_name +
             "_" +
             this.fileName;
-        setTimeout(function () {
-            html2pdf(document.getElementById("constellationPanelInformation"), {
-            margin: 10,
-            filename: fileName,
-            pagebreak: {
-                mode: ["avoid-all", "css", "legacy"],
-            },
-            });
-        }, 500);
+            setTimeout(function () {
+                html2pdf(document.getElementById("constellationPanelInformation"), {
+                margin: 10,
+                filename: fileName,
+                pagebreak: {
+                    mode: ["avoid-all", "css", "legacy"],
+                },
+                });
+            }, 500);
         },
     },
 };

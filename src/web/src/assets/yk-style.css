@@ -26,6 +26,10 @@ a {
     text-decoration: none;
 }
 
+.toolbar-img{
+    margin: -8px 125px 0 0;
+}
+
 .v-main .v-btn {
     text-transform: none;
     color: #ffffff;
@@ -174,6 +178,16 @@ a {
 }
 
 @media (max-width: 600px){
+
+    .toolbar-img{
+        margin: -8px 25px 0 0;
+    }
+
+    .toolbar-app-name{
+        font-size: 1rem;
+        white-space: normal;
+    }
+
     #footer-bg{
         content: '';
         top: 0;
@@ -196,6 +210,14 @@ a {
 
     .v-footer .v-card div.footer-details span{
         margin-left: 0%;
+    }
+
+    div.container.chart{
+        padding: 0px;
+    }
+
+    div.container.chart div.chart-header .title{
+        margin: 10px;
     }
 
 }

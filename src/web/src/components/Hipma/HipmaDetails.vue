@@ -101,7 +101,10 @@
 		</v-row>
 		<v-row no-gutters>
 			<v-col id="hipmaPanelInformation">
-				<HipmaInformation v-bind:hipma="itemsHipma" v-bind:panelModel="panelModel"/>
+				<HipmaInformation
+					v-bind:hipma="itemsHipma"
+					v-bind:panelModel="panelModel"
+				/>
 
 				<HipmaBehalf
 					v-if="itemsHipma.hipmasituations
@@ -112,11 +115,15 @@
 					|| itemsHipma.city_or_town_behalf
 					|| itemsHipma.postal_code_behalf
 					|| itemsHipma.email_address_behalf"
-					v-bind:hipma="itemsHipma" v-bind:hipmaFiles="itemsHipmaFiles"
+					v-bind:hipma="itemsHipma"
+					v-bind:hipmaFiles="itemsHipmaFiles"
 					v-bind:panelModel="panelModel"
 				/>
 
-				<HipmaApplicant v-bind:hipma="itemsHipma" v-bind:panelModel="panelModel"/>
+				<HipmaApplicant
+					v-bind:hipma="itemsHipma"
+					v-bind:panelModel="panelModel"
+				/>
 
 				<HipmaAttachments
 					v-if="flagHipmaFiles"
@@ -183,7 +190,7 @@ export default {
 				if(!resp.data.flagHipma){
 					this.$router.push({
 						path: '/hipma',
-						query: { message: resp.data.message, type: resp.data.type}
+						query: { type: 'nonexistent' }
 					});
 				}else{
 					this.getDataFromApi();
@@ -225,7 +232,7 @@ export default {
 			.then((resp) => {
 				this.$router.push({
 					path: '/hipma',
-					query: { message: resp.data.message, type: resp.data.type}
+					query: { type: 'status' }
 				});
 
 			})

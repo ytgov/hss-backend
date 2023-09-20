@@ -4,15 +4,13 @@
             <span class="title-service">Constellation Health Requests</span>
         </v-row>
 
-        <ModuleAlert v-bind:alertMessage="alertMessage"  v-bind:alertType="alertType"/>
-
         <Notifications ref="notifier"></Notifications>
-
+        <br>
         <v-row class="row-filter" no-gutters>
             <v-col
-                cols="10"
-                sm="10"
-                md="10"
+                cols="12"
+                sm="12"
+                md="12"
                 lg="4"
             >
                 <v-select
@@ -26,9 +24,9 @@
                 ></v-select>
             </v-col>
             <v-col
-                cols="10"
-                sm="10"
-                md="10"
+                cols="12"
+                sm="12"
+                md="12"
                 lg="3"
             >
                 <v-menu
@@ -57,9 +55,9 @@
                 </v-menu>
             </v-col>
             <v-col
-                cols="10"
-                sm="10"
-                md="10"
+                cols="12"
+                sm="12"
+                md="12"
                 lg="3"
             >
                 <v-menu
@@ -88,9 +86,9 @@
                 </v-menu>
             </v-col>
             <v-col
-                cols="10"
-                sm="10"
-                md="10"
+                cols="12"
+                sm="12"
+                md="12"
                 lg="1"
                 class="btn-reset"
                 v-if="removeFilters"
@@ -103,9 +101,9 @@
             class="container-actions"
         >
             <v-col
-                cols="10"
-				sm="10"
-				md="10"
+                cols="12"
+				sm="12"
+				md="12"
 				lg="3"
                 class="actions"
             >
@@ -125,9 +123,9 @@
             </v-col>
             <v-col
                 class="align-start"
-                cols="10"
-                sm="10"
-                md="10"
+                cols="12"
+                sm="12"
+                md="12"
                 lg="1"
             >
                 <v-btn
@@ -169,6 +167,7 @@ import Notifications from "../Notifications.vue";
 
 export default {
     name: "ConstellationIndex",
+    props: ['type'],
     data: () => ({
         loading: false,
         bulkSelected: [],
@@ -189,6 +188,8 @@ export default {
         applyDisabled: true,
         options: {},
         flagAlert: false,
+        statusChangeMessage: "Status changed successfully.",
+		nonexistentMessage: "The submission you are consulting is closed or non existant, please choose a valid submission.",
         headers: [
         {
             text: "Legal Name",
@@ -240,14 +241,13 @@ export default {
     },
     mounted() {
 
-        if (typeof this.$route.query.message !== undefined && typeof this.$route.query.type !== undefined){
-            if(this.$route.query.type == "success"){
-                this.$refs.notifier.showSuccess(this.$route.query.message);
-            }else{
-                this.alertMessage = this.$route.query.message;
-                this.alertType = this.$route.query.type;
-            }
-        }
+        if (typeof this.$route.query.type !== undefined){
+			if(this.$route.query.type == "status"){
+				this.$refs.notifier.showSuccess(this.statusChangeMessage);
+			}else if(this.$route.query.type == "nonexistent"){
+				this.$refs.notifier.showError(this.nonexistentMessage);
+			}
+		}
 
         this.getDataFromApi();
     },

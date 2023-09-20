@@ -1315,8 +1315,13 @@ BEGIN
         :OLD.CREATED_AT,
         :OLD.UPDATED_AT)
         RETURNING REV_ID INTO v_rev_id;
-        INSERT INTO GENERAL.events (schema_name, table_name, entity_id, event_type, title, event_by, entity_data, guid, uuid, rev_id)
-		VALUES (v_cur_schema, v_cur_table, :old.id, 3, 'UPDATE_OLD', 'system', NULL, v_guid, :OLD.ROWID, v_rev_id);
+        IF :OLD.STATUS = :NEW.STATUS THEN
+          INSERT INTO GENERAL.events (schema_name, table_name, entity_id, event_type, title, event_by, entity_data, guid, uuid, rev_id)
+          VALUES (v_cur_schema, v_cur_table, :old.id, 7, 'SUBMISSION_UPDATED', 'system', NULL, v_guid, :OLD.ROWID, v_rev_id);
+				ELSE
+          INSERT INTO GENERAL.events (schema_name, table_name, entity_id, event_type, title, event_by, entity_data, guid, uuid, rev_id)
+          VALUES (v_cur_schema, v_cur_table, :old.id, 3, 'UPDATE_OLD', 'system', NULL, v_guid, :OLD.ROWID, v_rev_id);
+        END IF;
     END IF;
 
     IF DELETING

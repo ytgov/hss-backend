@@ -5,15 +5,13 @@
             <span class="title-service">HIPMA Requests</span>
         </v-row>
 
-        <ModuleAlert v-bind:alertMessage="alertMessage"  v-bind:alertType="alertType"/>
-
         <Notifications ref="notifier"></Notifications>
-
+        <br>
         <v-row class="row-filter">
             <v-col
-                cols="10"
-				sm="10"
-				md="10"
+                cols="12"
+				sm="12"
+				md="12"
 				lg="2"
             >
                 <v-menu
@@ -42,9 +40,9 @@
                 </v-menu>
             </v-col>
             <v-col
-				cols="10"
-				sm="10"
-				md="10"
+				cols="12"
+				sm="12"
+				md="12"
 				lg="2"
 			>
                 <v-menu
@@ -73,9 +71,9 @@
                 </v-menu>
             </v-col>
             <v-col
-                cols="10"
-				sm="10"
-				md="10"
+                cols="12"
+				sm="12"
+				md="12"
 				lg="1"
 				class="btn-reset"
                 v-if="removeFilters"
@@ -88,9 +86,9 @@
             class="container-actions"
         >
             <v-col
-                cols="10"
-				sm="10"
-				md="10"
+                cols="12"
+				sm="12"
+				md="12"
 				lg="3"
                 class="actions"
             >
@@ -109,9 +107,9 @@
             </v-col>
             <v-col
                 class="align-start"
-                cols="10"
-				sm="10"
-				md="10"
+                cols="12"
+				sm="12"
+				md="12"
 				lg="3"
             >
                 <v-btn
@@ -154,78 +152,80 @@ import { HIPMA_URL } from "../../urls.js";
 import { HIPMA_CHANGE_STATUS_URL } from "../../urls.js";
 
 export default {
-  name: "HipmaIndex",
-  data: () => ({
-    loading: false,
-    date: null,
-    menu: false,
-    dateEnd: null,
-    menuEnd: false,
-    items: [],
-    alertMessage: "",
-    alertType: null,
-    search: "",
-    options: {},
-    flagAlert: false,
-    selected: [],
-    applyDisabled: true,
-    itemsBulk: [{
-        text: "Mark as closed",
-        value: "closed"
-    }],
-    selectedStatus: null,
-    loader: null,
-    loadingApply: false,
-    headers: [
-        { text: "Confirmation Number", value: "confirmation_number", sortable: true},
-        { text: "Request Type", value: "hipma_request_type_desc", sortable: true},
-        { text: "Request Access to personal information", value: "access_personal_health_information", sortable: true},
-        { text: "Applicant", value: "applicant_full_name", sortable: true},
-        { text: "Created", value: "created_at", sortable: true},
-        { text: "", value: "showUrl", sortable: false},
-    ],
-    page: 1,
-    pageCount: 0,
-    iteamsPerPage: 10,
-  }),
-  components: {
-    Notifications,
-    ModuleAlert
-  },
-  watch: {
-      options: {
-          handler() {
-          this.getDataFromApi();
-          },
-          deep: true,
-      },
-      search: {
-          handler() {
-              this.getDataFromApi();
-          },
-          deep: true,
-      },
-      loader () {
-          const l = this.loader
-          this[l] = !this[l]
+    name: "HipmaIndex",
+    props: ['type'],
+    data: () => ({
+        loading: false,
+        date: null,
+        menu: false,
+        dateEnd: null,
+        menuEnd: false,
+        items: [],
+        alertMessage: "",
+        alertType: null,
+        search: "",
+        options: {},
+        flagAlert: false,
+        selected: [],
+        applyDisabled: true,
+        itemsBulk: [{
+            text: "Mark as closed",
+            value: "closed"
+        }],
+        statusChangeMessage: "Status changed successfully.",
+		nonexistentMessage: "The submission you are consulting is closed or non existant, please choose a valid submission.",
+        selectedStatus: null,
+        loader: null,
+        loadingApply: false,
+        headers: [
+            { text: "Confirmation Number", value: "confirmation_number", sortable: true},
+            { text: "Request Type", value: "hipma_request_type_desc", sortable: true},
+            { text: "Request Access to personal information", value: "access_personal_health_information", sortable: true},
+            { text: "Applicant", value: "applicant_full_name", sortable: true},
+            { text: "Created", value: "created_at", sortable: true},
+            { text: "", value: "showUrl", sortable: false},
+        ],
+        page: 1,
+        pageCount: 0,
+        iteamsPerPage: 10,
+    }),
+    components: {
+        Notifications,
+        ModuleAlert
+    },
+    watch: {
+        options: {
+            handler() {
+            this.getDataFromApi();
+            },
+            deep: true,
+        },
+        search: {
+            handler() {
+                this.getDataFromApi();
+            },
+            deep: true,
+        },
+        loader () {
+            const l = this.loader
+            this[l] = !this[l]
 
-          setTimeout(() => (this[l] = false), 2000)
+            setTimeout(() => (this[l] = false), 2000)
 
-          this.loader = null
-      },
+            this.loader = null
+        },
     },
     created(){
     },
     mounted() {
 
-        if (typeof this.$route.query.message !== undefined && typeof this.$route.query.type !== undefined){
-            if(this.$route.query.type == "success"){
-                this.$refs.notifier.showSuccess(this.$route.query.message);
-            }else{
-                this.alertMessage = this.$route.query.message;
-                this.alertType = this.$route.query.type;
-            }
-        }
+        if (typeof this.$route.query.type !== undefined){
+			if(this.$route.query.type == "status"){
+				this.$refs.notifier.showSuccess(this.statusChangeMessage);
+			}else if(this.$route.query.type == "nonexistent"){
+				this.$refs.notifier.showError(this.nonexistentMessage);
+			}
+		}
 
         this.getDataFromApi();
     },
@@ -270,10 +270,10 @@ export default {
             this.$router.push({ path: route });
         },
         selectAll() {
-                //event.value - boolen value if needed
-                this.selected = this.selected.length === this.items.length
-                ? []
-                : this.items
+            //event.value - boolen value if needed
+            this.selected = this.selected.length === this.items.length
+            ? []
+            : this.items
         },
         changeSelect(){
             this.applyDisabled = false;
