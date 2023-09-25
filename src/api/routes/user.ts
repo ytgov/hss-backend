@@ -26,9 +26,9 @@ userRouter.get("/", EnsureAuthenticated, async (req: Request, res: Response) => 
 
 userRouter.get("/roles/options", EnsureAuthenticated, async (req: Request, res: Response) => {
     const email = req.oidc.user.email;
-    const result = await userRepo.getRolesByUserEmail(email);
-    
+    const userName = req.oidc.user.name;
+
     res.send({
-        data: result
-    });    
+        data: {email: email, userName: userName}
+    });
 });

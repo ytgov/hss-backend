@@ -1,14 +1,16 @@
 
 <template>
 	<div class="hipma-service">
-		<span class="title-service">Health Information Export</span>
+		<v-row class="mb-5" no-gutters>
+			<span class="title-service">Health Information Export</span>
+		</v-row>
 
-		<v-row>
+		<v-row class="row-filter">
 			<v-col
-				cols="6"
-				sm="12"
-				md="6"
-				class="d-flex"
+				cols="10"
+				sm="10"
+				md="10"
+				lg="2"
 			>
 				<v-menu
 					ref="menu"
@@ -34,6 +36,13 @@
 						@change="updateDate"
 					></v-date-picker>
 				</v-menu>
+			</v-col>
+			<v-col
+				cols="10"
+				sm="10"
+				md="10"
+				lg="2"
+			>
 				<v-menu
 					ref="menuEnd"
 					v-model="menuEnd"
@@ -59,25 +68,38 @@
 					></v-date-picker>
 				</v-menu>
 			</v-col>
-			<v-col sm="auto">
+			<v-col
+				cols="10"
+				sm="10"
+				md="10"
+				lg="1"
+				class="btn-reset"
+			>
 				<v-icon @click="resetInputs"> mdi-filter-remove </v-icon>
 			</v-col>
-			<v-btn
-				:loading="loadingExport"
-				:disabled="loadingExport"
-				color="#F3A901"
-				class="pull-right ma-2 white--text apply-btn"
-				@click="exportFile()"
-				id="export-btn"
+			<v-col
+				cols="10"
+				sm="10"
+				md="10"
+				lg="2"
 			>
-				Export
-				<v-icon
-					right
-					dark
+				<v-btn
+					:loading="loadingExport"
+					:disabled="loadingExport"
+					color="#F3A901"
+					class="ma-2 white--text apply-btn"
+					@click="exportFile()"
+					id="export-btn"
 				>
-					mdi-cloud-download
-				</v-icon>
-			</v-btn>
+					Export
+					<v-icon
+						right
+						dark
+					>
+						mdi-cloud-download
+					</v-icon>
+				</v-btn>
+			</v-col>
 		</v-row>
 		<br>
 		<v-data-table

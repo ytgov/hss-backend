@@ -457,10 +457,26 @@ constellationRouter.post("/store", async (req: Request, res: Response) => {
         constellationHealth.include_family_members = data.include_family_members;
 
         constellationSaved = await db(`${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH`).insert(constellationHealth).into(`${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH`).returning('ID');
+        const idConstellation = constellationSaved.find((obj: any) => {return obj.id;})
+
+        let logFields = {
+            ACTION_TYPE: 2,
+            TITLE: "Insert submission",
+            SCHEMA_NAME: SCHEMA_CONSTELLATION,
+            TABLE_NAME: "CONSTELLATION_HEALTH",
+            SUBMISSION_ID: idConstellation.id
+        };
+
+        let loggedAction = helper.insertLog(logFields);
+
+        if(!loggedAction){
+            res.send( {
+                status: 400,
+                message: 'The action could not be logged'
+            });
+        }
 
         if(!_.isEmpty(data.family_members_json) && data.family_members_json !== "[]"){
-            const idConstellation = constellationSaved.find((obj: any) => {return obj.id;})
-
             const replaceString = data.family_members_json;
             const jsonFixed = replaceString.replace(/\'/gm, '"');
             const jsonFm = JSON.parse(jsonFixed);
@@ -471,10 +487,10 @@ constellationRouter.post("/store", async (req: Request, res: Response) => {
             for (const familyMember of familyMembers) {
                 await db(`${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH_FAMILY_MEMBERS`).insert(familyMember).into(`${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH_FAMILY_MEMBERS`)
                 .then(() => {
-                    familyMembersSaved = true; 
+                    familyMembersSaved = true;
                 })
                 .catch((e) => {
-                   familyMembersSaved = false;
+                    familyMembersSaved = false;
                     console.log(e);
                     res.send( {
                         status: 400,
@@ -665,7 +681,30 @@ constellationRouter.post("/export/", async (req: Request, res: Response) => {
             });
         }
 
+        var logFields = Array();
+
+        _.forEach(idSubmission, function(value: any) {
+            logFields.push({
+                ACTION_TYPE: 5,
+                TITLE: "Export submission",
+                SCHEMA_NAME: SCHEMA_CONSTELLATION,
+                TABLE_NAME: "CONSTELLATION_HEALTH",
+                SUBMISSION_ID: value,
+                USER_ID: req.user?.db_user.user.id
+            });
+        });
+
+        let loggedAction = helper.insertLog(logFields);
+
+        if(!loggedAction){
+            res.send( {
+                status: 400,
+                message: 'The action could not be logged'
+            });
+        }
+
         res.json({ status: 200, dataConstellation: constellationHealth, dataFamilyMembers: constellationFamily});
+
     } catch(e) {
         console.log(e);  // debug if needed
         res.send( {
@@ -688,9 +727,32 @@ constellationRouter.patch("/changeStatus", async (req: Request, res: Response) =
         var constellation_id = req.body.params.requests;
         var status_id = req.body.params.requestStatus;
         var updateStatus = await db(`${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH`).update({status: status_id}).whereIn("ID", constellation_id);
+        var statusData = await db(`${SCHEMA_CONSTELLATION}.CONSTELLATION_STATUS`).where('ID', status_id).first();
+        var logFields = Array();
+
         if(updateStatus) {
             let type = "success";
             let message = "Status changed successfully.";
+
+            _.forEach(constellation_id, function(value: any) {
+                logFields.push({
+                    ACTION_TYPE: 4,
+                    TITLE: "Submission updated to status "+statusData.description,
+                    SCHEMA_NAME: SCHEMA_CONSTELLATION,
+                    TABLE_NAME: "CONSTELLATION_HEALTH",
+                    SUBMISSION_ID: value,
+                    USER_ID: req.user?.db_user.user.id
+                });
+            });
+
+            let loggedAction = helper.insertLog(logFields);
+
+            if(!loggedAction){
+                res.send( {
+                    status: 400,
+                    message: 'The action could not be logged'
+                });
+            }
 
             res.json({ status:200, message: message, type: type });
         }
@@ -1016,24 +1078,69 @@ constellationRouter.patch("/duplicates/primary", async (req: Request, res: Respo
         var updateRequest = Object();
         var rejectWarning = Object();
         let message = "Warning updated successfully.";
+        var logTitle = "";
+        var updatedFields = Object();
+        var fieldList = Object();
+        var primarySubmission = Number();
+        var logFields = Array()
 
         if(!request){
             message = "Warning deleted successfully.";
             rejectWarning = await db(`${SCHEMA_CONSTELLATION}.CONSTELLATION_DUPLICATED_REQUESTS`).where("id", warning).del();
+            logTitle = "Duplicated Warning Rejected";
         }else{
             var warningRequest = await db(`${SCHEMA_CONSTELLATION}.CONSTELLATION_DUPLICATED_REQUESTS`).where("id", warning).then((data:any) => {
                 return data[0];
             });
             if(type == 'O'){
                 updateRequest = await db(`${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH`).update({status: "4"}).where("ID", warningRequest.duplicated_id);
+                primarySubmission = warningRequest.duplicated_id;
             }else if(type == 'D'){
                 updateRequest = await db(`${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH`).update({status: "4"}).where("ID", warningRequest.original_id);
+                primarySubmission = warningRequest.original_id;
             }
+
+            logFields.push({
+                ACTION_TYPE: 4,
+                TITLE: "Submission updated to status Closed",
+                SCHEMA_NAME: SCHEMA_CONSTELLATION,
+                TABLE_NAME: "CONSTELLATION_HEALTH",
+                SUBMISSION_ID: primarySubmission,
+                USER_ID: req.user?.db_user.user.id
+            });
 
             if(updateRequest){
                 rejectWarning = await db(`${SCHEMA_CONSTELLATION}.CONSTELLATION_DUPLICATED_REQUESTS`).where("id", warning).del();
+                logTitle = "Duplicated Warning Resolved";
+                updatedFields.ORIGINAL_ID = warningRequest.original_id;
+                updatedFields.DUPLICATED_ID = warningRequest.duplicated_id;
             }
 
+        }
+
+        if(!_.isEmpty(updatedFields)) {
+            fieldList =  db.raw("utl_raw.cast_to_raw(?) ", JSON.stringify(updatedFields));
+        }else{
+            fieldList = null;
+        }
+
+        logFields.push({
+                ACTION_TYPE: 7,
+                TITLE: logTitle,
+                SCHEMA_NAME: SCHEMA_CONSTELLATION,
+                TABLE_NAME: "CONSTELLATION_DUPLICATED_REQUESTS",
+                SUBMISSION_ID: warning,
+                USER_ID: req.user?.db_user.user.id,
+                ACTION_DATA: fieldList
+        });
+
+        let loggedAction = helper.insertLog(logFields);
+
+        if(!loggedAction){
+            res.send( {
+                status: 400,
+                message: 'The action could not be logged'
+            });
         }
 
         if(rejectWarning) {

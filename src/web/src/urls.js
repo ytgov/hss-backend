@@ -70,4 +70,5 @@ export const DENTAL_DUPLICATES = `${DENTAL_URL}/duplicates`;
 export const DENTAL_DUPLICATES_DETAILS = `${DENTAL_DUPLICATES}/details/`;
 export const DENTAL_DUPLICATES_PRIMARY = `${DENTAL_DUPLICATES}/primary/`;
 export const DENTAL_VALIDATE_WARNING_URL = `${DENTAL_DUPLICATES}/validateWarning/`;
+export const DENTAL_UPDATE_URL = `${DENTAL_URL}/update`;
 
