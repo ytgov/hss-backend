@@ -22,7 +22,7 @@
       </v-btn>
     </v-list-item>
       <v-divider></v-divider>
-      <v-list dense nav style="" class="mt-1 pb-0 pt-1"
+      <v-list dense nav class="mt-1 pb-0 pt-1"
         v-for='(section) in sections' :key="section.header">
           <div class="section-container" v-if="checkPermissions(section.permissions)">
             <v-subheader  v-if="!mini">{{ section.header }}</v-subheader>
@@ -60,9 +60,9 @@
       style="left: 0; border-bottom: 3px #f3b228 solid"
     >
       <!-- <v-icon color="#f3b228" class="mr-5">{{ applicationIcon }}</v-icon> -->
-      <img src="/yukon.svg" style="margin: -8px 155px 0 0" height="44" />
-      <v-toolbar-title>
-        <span style="font-weight: 700">{{ applicationName }}</span>
+      <img src="/yukon.svg" class="toolbar-img" height="44" />
+      <v-toolbar-title class="text-xs-center">
+        <span class="font-weight-bold toolbar-app-name">{{ applicationName }}</span>
 
         <v-progress-circular
           :class="loadingClass"
@@ -140,7 +140,7 @@
           tile
         >
           <v-card-title  id="footer-bg">
-            <img src="/logo-white.svg" style="margin: -8px 155px 0 0" height="44"/>
+            <img src="/logo-white.svg" class="toolbar-img" height="44"/>
           </v-card-title>
           <v-divider></v-divider>
           <v-card-text class="white--text text-center footer-details">

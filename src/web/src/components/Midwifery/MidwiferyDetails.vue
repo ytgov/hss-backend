@@ -1,86 +1,86 @@
 <template>
-  <div class="midwifery-service details">
-<!--     <v-container> -->
-      <Notifications ref="notifier"></Notifications>
-      <v-row class="mb-6" no-gutters>
-        <v-col class="d-flex align-top">
-          <span class="title-service">Midwifery Requests</span>
-        </v-col>
-        <v-col
-          cols="10"
-          sm="6"
-          md="10"
-          lg="2"
-          class="d-flex align-center"
-        >
-          <v-select
-            v-model="selectAction"
-            style="margin-top: 30px"
-            :items="bulkActions"
-            class="details-select"
-            solo
-            label="Update status"
-            append-icon="mdi-chevron-down"
-            prepend-inner-icon="mdi-layers-triple"
-            color="grey lighten-2"
-            item-color="grey lighten-2"
-            @change="enterBulkAction"
-            id="bulk-accion-select"
-          >
-          </v-select>
-        </v-col>
-        <v-col md="auto" class="d-flex align-center">
-          <v-btn
-            color="#F3A901"
-            class="ma-2 white--text details-btn"
-            id="apply-btn"
-            @click="changeStatus"
-          >
-              Apply
-          </v-btn>
+	<div class="midwifery-service details">
+	<Notifications ref="notifier"></Notifications>
+		<v-row class="mb-6" no-gutters>
+			<v-col class="d-flex align-top">
+				<span class="title-service">Midwifery Requests</span>
 			</v-col>
-
-				<v-col 
-					md="auto" 
+			<v-col
+				cols="10"
+				sm="6"
+				md="10"
+				lg="2"
 				class="d-flex align-center"
-					cols="2"
-					sm="6"
+			>
+				<v-select
+					v-model="selectAction"
+					style="margin-top: 30px"
+					:items="bulkActions"
+					class="details-select"
+					solo
+					label="Update status"
+					append-icon="mdi-chevron-down"
+					prepend-inner-icon="mdi-layers-triple"
+					color="grey lighten-2"
+					item-color="grey lighten-2"
+					@change="enterBulkAction"
+					id="bulk-accion-select"
 				>
-					<v-btn
-						color="#F3A901"
-						class="pull-right"
+				</v-select>
+			</v-col>
+			<v-col md="auto" class="d-flex align-center">
+				<v-btn
+					color="#F3A901"
+					class="ma-2 white--text details-btn"
+					id="apply-btn"
+					@click="changeStatus"
+				>
+					Apply
+				</v-btn>
+			</v-col>
+			<v-col
+				md="auto"
+				class="d-flex align-center"
+				cols="2"
+				sm="6"
+			>
+				<v-btn
+					color="#F3A901"
+					class="pull-right"
+					dark
+					@click="exportToPDF"
+				>
+
+					Export selected
+
+					<v-icon
+						right
 						dark
-						@click="exportToPDF"
 					>
+					mdi-file-move
+					</v-icon>
 
-						Export selected
-
-						<v-icon
-							right
-							dark
-						>
-						mdi-file-move
-						</v-icon>
-
-					</v-btn>
+				</v-btn>
 			</v-col>
 			<v-col lg="1"> </v-col>
 		</v-row>
-<!--
-    </v-container>
-    <v-container>
--->
 		<v-row no-gutters>
 			<v-col id="midwiferyPanels">
-				<MidwiferyInformation v-bind:midwifery="itemsMidwifery" v-bind:options="optionsMidwifery"
+				<MidwiferyInformation
+					v-bind:midwifery="itemsMidwifery"
+					v-bind:options="optionsMidwifery"
 					v-bind:panelModel="panelModel"
 				/>
 
-				<MidwiferyContactInformation v-bind:midwifery="itemsMidwifery" v-bind:options="optionsMidwifery"
+				<MidwiferyContactInformation
+					v-bind:midwifery="itemsMidwifery"
+					v-bind:options="optionsMidwifery"
 					v-bind:panelModel="panelModel"
 				/>
 
-				<MidwiferyMedicalInformation v-bind:midwifery="itemsMidwifery" v-bind:options="optionsMidwifery"
+				<MidwiferyMedicalInformation
+					v-bind:midwifery="itemsMidwifery"
+					v-bind:options="optionsMidwifery"
 					v-bind:panelModel="panelModel"
 				/>
 
@@ -90,19 +90,20 @@
 					|| itemsMidwifery.physician_s_name
 					|| itemsMidwifery.major_medical_conditions
 					|| itemsMidwifery.provide_details3"
-					v-bind:midwifery="itemsMidwifery" v-bind:options="optionsMidwifery"
+					v-bind:midwifery="itemsMidwifery"
+					v-bind:options="optionsMidwifery"
 					v-bind:panelModel="panelModel"
 				/>
 
-					<MidwiferyDemographicInformation
-						v-if="itemsMidwifery.do_you_identify_with_one_or_more_of_these_groups_and_communitie
-							|| itemsMidwifery.how_did_you_find_out_about_the_midwifery_clinic_select_all_that"
-						v-bind:midwifery="itemsMidwifery" v-bind:panelModel="panelModel"
-					/>
-				</v-col>
+				<MidwiferyDemographicInformation
+					v-if="itemsMidwifery.do_you_identify_with_one_or_more_of_these_groups_and_communitie
+						|| itemsMidwifery.how_did_you_find_out_about_the_midwifery_clinic_select_all_that"
+					v-bind:midwifery="itemsMidwifery"
+					v-bind:panelModel="panelModel"
+				/>
+			</v-col>
 			<v-col lg="1"> </v-col>
 		</v-row>
-<!--     </v-container> -->
 	</div>
 </template>
 
@@ -154,7 +155,7 @@ export default {
 				if(!resp.data.flagMidwifery){
 					this.$router.push({
 						path: '/midwifery',
-						query: { message: resp.data.message, type: resp.data.type}
+						query: { type: 'nonexistent' }
 					});
 				}else{
 					this.getDataFromApi();
@@ -195,15 +196,15 @@ export default {
             })
 			.then((resp) => {
 
-        if(this.actionSelected == this.idStatusClosed){
-          this.$router.push({
-            path: '/midwifery',
-            query: { message: resp.data.message, type: resp.data.type}
-          });
-        }else{
-          this.$refs.notifier.showSuccess(resp.data.message);
-        }
-      })
+				if(this.actionSelected == this.idStatusClosed){
+					this.$router.push({
+						path: '/midwifery',
+						query: { type: 'status' }
+					});
+				}else{
+					this.$refs.notifier.showSuccess(resp.data.message);
+				}
+			})
 			.catch((err) => console.error(err))
 		},
 		exportToPDF() {

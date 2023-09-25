@@ -1,78 +1,100 @@
 
 <template>
     <div class="midwifery-service">
-        <span class="title-service">Midwifery Requests</span>
-
-        <ModuleAlert v-bind:alertMessage="alertMessage"  v-bind:alertType="alertType"/>
+        <v-row class="mb-5" no-gutters>
+            <span class="title-service">Midwifery Requests</span>
+        </v-row>
 
         <Notifications ref="notifier"></Notifications>
-        <v-row>
+        <br>
+        <v-row class="row-filter" no-gutters>
             <v-col
-                class='d-flex'
-                cols="6"
-                sm="6"
-                md="6"
+                cols="12"
+                sm="12"
+                md="12"
+                lg="3"
             >
-            <v-select
-                v-model="statusSelected"
-                :items="statusFilter"
-                :menu-props="{ maxHeight: '400' }"
-                label="Select"
-                multiple
-                persistent-hint
-                @change="changeStatusSelect"
-            ></v-select>
-            <v-menu
-                ref="menu"
-                v-model="menu"
-                :close-on-content-click="false"
-                transition="scale-transition"
-                offset-y
-                min-width="auto"
-            >
-                <template v-slot:activator="{ on, attrs }">
-                    <v-text-field
-                        v-model="date"
-                        label="From:"
-                        prepend-icon="mdi-calendar"
-                        v-bind="attrs"
-                        v-on="on"
-                    ></v-text-field>
-                </template>
-                <v-date-picker
-                    v-model="date"
-                    no-title
-                    @input="menu = false"
-                    @change="updateDate"
-                ></v-date-picker>
-            </v-menu>
-            <v-menu
-                ref="menuEnd"
-                v-model="menuEnd"
-                :close-on-content-click="false"
-                transition="scale-transition"
-                offset-y
-                min-width="auto"
-            >
-                <template v-slot:activator="{ on, attrs }">
-                    <v-text-field
-                        v-model="dateEnd"
-                        label="To:"
-                        prepend-icon="mdi-calendar"
-                        v-bind="attrs"
-                        v-on="on"
-                    ></v-text-field>
-                </template>
-                <v-date-picker
-                    v-model="dateEnd"
-                    no-title
-                    @input="menuEnd = false"
-                    @change="updateDate"
-                ></v-date-picker>
-            </v-menu>
+                <v-select
+                    v-model="statusSelected"
+                    :items="statusFilter"
+                    :menu-props="{ maxHeight: '400' }"
+                    label="Select"
+                    multiple
+                    persistent-hint
+                    @change="changeStatusSelect"
+                ></v-select>
             </v-col>
-            <v-col sm="auto" v-if="removeFilters">
-            <v-icon @click="resetInputs"> mdi-filter-remove </v-icon>
+            <v-col
+                cols="12"
+                sm="12"
+                md="12"
+                lg="3"
+            >
+                <v-menu
+                    ref="menu"
+                    v-model="menu"
+                    :close-on-content-click="false"
+                    transition="scale-transition"
+                    offset-y
+                    min-width="auto"
+                >
+                    <template v-slot:activator="{ on, attrs }">
+                        <v-text-field
+                            v-model="date"
+                            label="From:"
+                            prepend-icon="mdi-calendar"
+                            v-bind="attrs"
+                            v-on="on"
+                        ></v-text-field>
+                    </template>
+                    <v-date-picker
+                        v-model="date"
+                        no-title
+                        @input="menu = false"
+                        @change="updateDate"
+                    ></v-date-picker>
+                </v-menu>
+            </v-col>
+            <v-col
+                cols="12"
+                sm="12"
+                md="12"
+                lg="3"
+            >
+                <v-menu
+                    ref="menuEnd"
+                    v-model="menuEnd"
+                    :close-on-content-click="false"
+                    transition="scale-transition"
+                    offset-y
+                    min-width="auto"
+                >
+                    <template v-slot:activator="{ on, attrs }">
+                        <v-text-field
+                            v-model="dateEnd"
+                            label="To:"
+                            prepend-icon="mdi-calendar"
+                            v-bind="attrs"
+                            v-on="on"
+                        ></v-text-field>
+                    </template>
+                    <v-date-picker
+                        v-model="dateEnd"
+                        no-title
+                        @input="menuEnd = false"
+                        @change="updateDate"
+                    ></v-date-picker>
+                </v-menu>
+            </v-col>
+            <v-col
+                v-if="removeFilters"
+                cols="12"
+                sm="12"
+                md="12"
+                lg="1"
+                class="btn-reset"
+            >
+                <v-icon @click="resetInputs"> mdi-filter-remove </v-icon>
             </v-col>
         </v-row>
         <v-row
@@ -80,8 +102,10 @@
             class="container-actions"
         >
             <v-col
-                cols="12"
-                sm="3"
+                cols="10"
+				sm="10"
+				md="10"
+				lg="3"
                 class="actions"
             >
                 <v-select
@@ -99,8 +123,10 @@
             </v-col>
             <v-col
                 class="align-start"
-                cols="12"
-                sm="3"
+                cols="10"
+				sm="10"
+				md="10"
+				lg="1"
             >
                 <v-btn
                     color="#F3A901"
@@ -141,74 +167,76 @@ import { MIDWIFERY_URL } from "../../urls.js";
 import { MIDWIFERY_CHANGE_STATUS_URL } from "../../urls.js";
 
 export default {
-  name: "MidwiferyIndex",
-  data: () => ({
-    loading: false,
-    statusSelected: [1],
-    date: null,
-    menu: false,
-    dateEnd: null,
-    menuEnd: false,
-    items: [],
-    itemsUnfiltered: [],
-    alertMessage: "",
-    alertType: null,
-    search: "",
-    options: {},
-    flagAlert: false,
-    selected: [],
-    statusFilter: [],
-    applyDisabled: true,
-    itemsBulk: [],
-    selectedStatus: null,
-    headers: [
-        { text: "Preferred Name", value: "preferred_name", sortable: true},
-        { text: "Phone", value: "preferred_phone", sortable: true},
-        { text: "Email", value: "preferred_email", sortable: true},
-        { text: "Is this your first pregnancy?", value: "first_pregnancy", sortable: true},
-        { text: "Due Date", value: "due_date", sortable: true},
-        { text: "Preferred Birth Location", value: "birth_locations", sortable: true},
-        { text: "Medical Concerns with Pregnancy", value: "medical_concerns", sortable: true},
-        { text: "Major Medical Conditions", value: "major_medical_conditions", sortable: true},
-        { text: "Do you identify with any of these groups and communities?", value: "do_you_identify_with_one_or_more_of_these_groups_and_communitie", sortable: true},
-        { text: "Created", value: "created_at", sortable: true},
-        { text: "", value: "status_description", sortable: true},
-        { text: "", value: "showUrl", sortable: false},
-    ],
-    page: 1,
-    pageCount: 0,
-    iteamsPerPage: 10,
-  }),
-  components: {
-    Notifications,
-    ModuleAlert
-  },
-  watch: {
-      options: {
-          handler() {
-              this.getDataFromApi();
-          },
-          deep: true,
-      },
-      search: {
-          handler() {
-              this.getDataFromApi();
-          },
-          deep: true,
-      },
+    name: "MidwiferyIndex",
+    props: ['type'],
+    data: () => ({
+        loading: false,
+        statusSelected: [1],
+        date: null,
+        menu: false,
+        dateEnd: null,
+        menuEnd: false,
+        items: [],
+        itemsUnfiltered: [],
+        alertMessage: "",
+        alertType: null,
+        search: "",
+        options: {},
+        flagAlert: false,
+        selected: [],
+        statusFilter: [],
+        applyDisabled: true,
+        itemsBulk: [],
+        selectedStatus: null,
+        statusChangeMessage: "Status changed successfully.",
+		nonexistentMessage: "The submission you are consulting is closed or non existant, please choose a valid submission.",
+        headers: [
+            { text: "Preferred Name", value: "preferred_name", sortable: true},
+            { text: "Phone", value: "preferred_phone", sortable: true},
+            { text: "Email", value: "preferred_email", sortable: true},
+            { text: "Is this your first pregnancy?", value: "first_pregnancy", sortable: true},
+            { text: "Due Date", value: "due_date", sortable: true},
+            { text: "Preferred Birth Location", value: "birth_locations", sortable: true},
+            { text: "Medical Concerns with Pregnancy", value: "medical_concerns", sortable: true},
+            { text: "Major Medical Conditions", value: "major_medical_conditions", sortable: true},
+            { text: "Do you identify with any of these groups and communities?", value: "do_you_identify_with_one_or_more_of_these_groups_and_communitie", sortable: true},
+            { text: "Created", value: "created_at", sortable: true},
+            { text: "", value: "status_description", sortable: true},
+            { text: "", value: "showUrl", sortable: false},
+        ],
+        page: 1,
+        pageCount: 0,
+        iteamsPerPage: 10,
+    }),
+    components: {
+        Notifications,
+        ModuleAlert
+    },
+    watch: {
+        options: {
+            handler() {
+                this.getDataFromApi();
+            },
+            deep: true,
+        },
+        search: {
+            handler() {
+                this.getDataFromApi();
+            },
+            deep: true,
+        },
     },
     created(){
     },
     mounted() {
 
-        if (typeof this.$route.query.message !== undefined && typeof this.$route.query.type !== undefined){
-            if(this.$route.query.type == "success"){
-                this.$refs.notifier.showSuccess(this.$route.query.message);
-            }else{
-                this.alertMessage = this.$route.query.message;
-                this.alertType = this.$route.query.type;
-            }
-        }
+        if (typeof this.$route.query.type !== undefined){
+			if(this.$route.query.type == "status"){
+				this.$refs.notifier.showSuccess(this.statusChangeMessage);
+			}else if(this.$route.query.type == "nonexistent"){
+				this.$refs.notifier.showError(this.nonexistentMessage);
+			}
+		}
 
         this.getDataFromApi();
     },

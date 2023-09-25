@@ -147,7 +147,7 @@ export const sections = [
     },
     {
         header: "Dental",
-        icon: "/MS.png",
+        icon: "/D.png",
         permissions: [
             "dental_view"
         ],
@@ -188,4 +188,4 @@ export const sections = [
     },
 ];
 export const environment = process.env.NODE_ENV;
-export const apiBaseUrl=process.env.VUE_APP_API_URL||'https://test.hss-backend.ynet.gov.yk.ca';
+export const apiBaseUrl=process.env.VUE_APP_API_URL||'http://35.164.49.219:3000';

@@ -2,13 +2,19 @@
 	<div class="dental-warnings details">
 		<v-container>
 			<v-row class="mb-6" no-gutters>
-				<v-col class="align-center" cols="6">
+				<v-col
+					class="align-center"
+					cols="10"
+					sm="10"
+					md="10"
+					lg="6"
+				>
 					<span class="title-service">Dental Service Warnings Details</span>
 				</v-col>
 				<v-col
-					cols="3"
-					sm="12"
-					md="3"
+					cols="10"
+					sm="10"
+					md="10"
 					lg="3"
 					class="text-right"
 				>
@@ -142,8 +148,13 @@
 			</v-row>
 		</v-container>
 		<v-container fluid>
-			<v-row no-gutters>
-				<v-col>
+			<v-row class="mb-6" no-gutters>
+				<v-col
+					cols="12"
+					sm="11"
+					md="11"
+					lg="11"
+				>
 					<v-radio-group
 						v-model="primaryValue"
 						inline
@@ -166,7 +177,10 @@
 							@click="selectPrimary('D')"
 						></v-radio>
 					</v-radio-group>
-
+				</v-col>
+			</v-row>
+			<v-row no-gutters>
+				<v-col>
 					<DentalApplicantInformation
 						v-bind:dentalService="itemsDental"
 						v-bind:dentalServiceDuplicated="itemsDentalDuplicated"
