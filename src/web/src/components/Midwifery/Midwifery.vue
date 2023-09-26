@@ -155,7 +155,6 @@
 <script>
 const axios = require("axios");
 import Notifications from "../Notifications.vue";
-import ModuleAlert from '../General/ModuleAlert.vue';
 import { MIDWIFERY_URL } from "../../urls.js";
 import { MIDWIFERY_CHANGE_STATUS_URL } from "../../urls.js";
 
@@ -202,8 +201,7 @@ export default {
         iteamsPerPage: 10,
     }),
     components: {
-        Notifications,
-        ModuleAlert
+        Notifications
     },
     watch: {
         options: {

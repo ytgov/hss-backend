@@ -229,7 +229,7 @@ export default {
 					requests: hipmaId
 				}
             })
-			.then((resp) => {
+			.then(() => {
 				this.$router.push({
 					path: '/hipma',
 					query: { type: 'status' }

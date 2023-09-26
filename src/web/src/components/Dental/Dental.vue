@@ -173,7 +173,6 @@
 
 <script>
 	const axios = require("axios");
-	import ModuleAlert from "../General/ModuleAlert.vue";
 	import { DENTAL_URL } from "../../urls.js";
 	import Notifications from "../Notifications.vue";
 
@@ -240,8 +239,7 @@
 		alignments: "center",
 	}),
 	components: {
-		Notifications,
-		ModuleAlert,
+		Notifications
 	},
 	watch: {
 		options: {

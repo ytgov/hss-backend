@@ -201,7 +201,7 @@
 					titleLabel="(Duplicated Request)"
 				/>
 
-			</v-col cols="12">
+			</v-col>
 		</v-row>
 	</div>
 </template>

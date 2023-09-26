@@ -162,7 +162,6 @@
 
 <script>
 const axios = require("axios");
-import ModuleAlert from "../General/ModuleAlert.vue";
 import { CONSTELLATION_URL } from "../../urls.js";
 import Notifications from "../Notifications.vue";
 
@@ -221,8 +220,7 @@ export default {
         alignments: "center",
     }),
     components: {
-        Notifications,
-        ModuleAlert,
+        Notifications
     },
     watch: {
         options: {
