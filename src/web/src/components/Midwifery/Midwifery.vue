@@ -7,7 +7,42 @@
 
         <Notifications ref="notifier"></Notifications>
         <br>
-        <v-row class="row-filter" no-gutters>
+        <v-row class="submission-filters mb-5" no-gutters>
+            <v-col
+                cols="12"
+				sm="12"
+				md="12"
+				lg="3"
+            >
+                <v-select
+                    :items="itemsBulk"
+                    solo
+                    label="Bulk Actions"
+                    append-icon="mdi-chevron-down"
+                    prepend-inner-icon="mdi-layers-triple"
+                    color="grey lighten-2"
+                    item-color="grey lighten-2"
+                    v-model="selectedStatus"
+                    @change="changeSelect"
+                    id="bulk-accion-select"
+                ></v-select>
+            </v-col>
+            <v-col
+                cols="12"
+				sm="12"
+				md="12"
+				lg="1"
+                class="text-center"
+            >
+                <v-btn
+                    color="#F3A901"
+                    class="white--text apply-btn mt-2"
+                    :disabled="applyDisabled"
+                    @click="changeStatus"
+                >
+                    Apply
+                </v-btn>
+            </v-col>
             <v-col
                 cols="12"
                 sm="12"
@@ -28,7 +63,7 @@
                 cols="12"
                 sm="12"
                 md="12"
-                lg="3"
+                lg="2"
             >
                 <v-menu
                     ref="menu"
@@ -59,7 +94,7 @@
                 cols="12"
                 sm="12"
                 md="12"
-                lg="3"
+                lg="2"
             >
                 <v-menu
                     ref="menuEnd"
@@ -97,48 +132,6 @@
                 <v-icon @click="resetInputs"> mdi-filter-remove </v-icon>
             </v-col>
         </v-row>
-        <v-row
-            align="center"
-            class="container-actions"
-        >
-            <v-col
-                cols="10"
-				sm="10"
-				md="10"
-				lg="3"
-                class="actions"
-            >
-                <v-select
-                    :items="itemsBulk"
-                    solo
-                    label="Bulk Actions"
-                    append-icon="mdi-chevron-down"
-                    prepend-inner-icon="mdi-layers-triple"
-                    color="grey lighten-2"
-                    item-color="grey lighten-2"
-                    v-model="selectedStatus"
-                    @change="changeSelect"
-                    id="bulk-accion-select"
-                ></v-select>
-            </v-col>
-            <v-col
-                class="align-start"
-                cols="10"
-				sm="10"
-				md="10"
-				lg="1"
-            >
-                <v-btn
-                    color="#F3A901"
-                    class="ma-2 white--text apply-btn"
-                    :disabled="applyDisabled"
-                    @click="changeStatus"
-                >
-                    Apply
-                </v-btn>
-            </v-col>
-        </v-row>
-
         <v-data-table
             dense
             :items="items"
@@ -162,7 +155,6 @@
 <script>
 const axios = require("axios");
 import Notifications from "../Notifications.vue";
-import ModuleAlert from '../General/ModuleAlert.vue';
 import { MIDWIFERY_URL } from "../../urls.js";
 import { MIDWIFERY_CHANGE_STATUS_URL } from "../../urls.js";
 
@@ -209,8 +201,7 @@ export default {
         iteamsPerPage: 10,
     }),
     components: {
-        Notifications,
-        ModuleAlert
+        Notifications
     },
     watch: {
         options: {

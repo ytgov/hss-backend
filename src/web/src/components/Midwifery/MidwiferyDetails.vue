@@ -1,20 +1,27 @@
 <template>
 	<div class="midwifery-service details">
-	<Notifications ref="notifier"></Notifications>
-		<v-row class="mb-6" no-gutters>
-			<v-col class="d-flex align-top">
-				<span class="title-service">Midwifery Requests</span>
-			</v-col>
+
+		<Notifications ref="notifier"></Notifications>
+
+		<v-row class="mb-5" no-gutters>
+			<span class="title-service">Midwifery Requests</span>
+		</v-row>
+
+		<v-row class="submission-filters mb-4 text-right" no-gutters>
 			<v-col
-				cols="10"
-				sm="6"
-				md="10"
-				lg="2"
-				class="d-flex align-center"
+				cols="12"
+                sm="12"
+                md="12"
+                lg="6"
+			></v-col>
+			<v-col
+				cols="12"
+                sm="12"
+                md="12"
+                lg="3"
 			>
 				<v-select
 					v-model="selectAction"
-					style="margin-top: 30px"
 					:items="bulkActions"
 					class="details-select"
 					solo
@@ -28,10 +35,15 @@
 				>
 				</v-select>
 			</v-col>
-			<v-col md="auto" class="d-flex align-center">
+			<v-col
+				cols="12"
+                sm="12"
+                md="12"
+                lg="1"
+			>
 				<v-btn
 					color="#F3A901"
-					class="ma-2 white--text details-btn"
+					class="white--text details-btn mt-1"
 					id="apply-btn"
 					@click="changeStatus"
 				>
@@ -39,14 +51,14 @@
 				</v-btn>
 			</v-col>
 			<v-col
-				md="auto"
-				class="d-flex align-center"
-				cols="2"
-				sm="6"
+				cols="12"
+                sm="12"
+                md="12"
+                lg="2"
 			>
 				<v-btn
 					color="#F3A901"
-					class="pull-right"
+					class="mt-1"
 					dark
 					@click="exportToPDF"
 				>
@@ -62,10 +74,9 @@
 
 				</v-btn>
 			</v-col>
-			<v-col lg="1"> </v-col>
 		</v-row>
 		<v-row no-gutters>
-			<v-col id="midwiferyPanels">
+			<v-col cols="12" id="midwiferyPanels">
 				<MidwiferyInformation
 					v-bind:midwifery="itemsMidwifery"
 					v-bind:options="optionsMidwifery"
@@ -134,7 +145,7 @@ export default {
 		idStatusClosed: null,
 	}),
 	components: {
-    Notifications,
+		Notifications,
 		MidwiferyInformation,
 		MidwiferyContactInformation,
 		MidwiferyMedicalInformation,
@@ -174,7 +185,7 @@ export default {
 				this.fileName = resp.data.fileName;
 				this.idStatusClosed = resp.data.midwiferyStatusClosed;
 				this.bulkActions = resp.data.dataStatus;
-        this.selectAction = resp.data.midwifery.status;
+				this.selectAction = resp.data.midwifery.status;
 			})
 			.catch((err) => console.error(err))
 			.finally(() => {

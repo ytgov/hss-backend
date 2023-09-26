@@ -7,15 +7,15 @@
 
 		<v-row class="submission-filters mb-4 text-right" no-gutters>
 			<v-col
-				cols="10"
-                sm="10"
-                md="10"
+				cols="12"
+                sm="12"
+                md="12"
                 lg="6"
 			></v-col>
 			<v-col
-				cols="10"
-                sm="10"
-                md="10"
+				cols="12"
+                sm="12"
+                md="12"
                 lg="2"
 			>
 				<v-dialog
@@ -75,9 +75,9 @@
 			</v-col>
 
 			<v-col
-				cols="10"
-                sm="10"
-                md="10"
+				cols="12"
+                sm="12"
+                md="12"
                 lg="2"
 			>
 				<v-btn
@@ -229,7 +229,7 @@ export default {
 					requests: hipmaId
 				}
             })
-			.then((resp) => {
+			.then(() => {
 				this.$router.push({
 					path: '/hipma',
 					query: { type: 'status' }

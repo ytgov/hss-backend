@@ -150,24 +150,26 @@ dentalRouter.patch("/changeStatus", async (req: Request, res: Response) => {
             let type = "success";
             let message = "Status changed successfully.";
 
-            _.forEach(dentalService_id, function(value: any) {
-                logFields.push({
-                    ACTION_TYPE: 4,
-                    TITLE: "Submission updated to status "+statusData.description,
-                    SCHEMA_NAME: SCHEMA_DENTAL,
-                    TABLE_NAME: "DENTAL_SERVICE",
-                    SUBMISSION_ID: value,
-                    USER_ID: req.user?.db_user.user.id
+            if(dentalService_id instanceof Array){
+                _.forEach(dentalService_id, function(value: any) {
+                    logFields.push({
+                        ACTION_TYPE: 4,
+                        TITLE: "Submission updated to status "+statusData.description,
+                        SCHEMA_NAME: SCHEMA_DENTAL,
+                        TABLE_NAME: "DENTAL_SERVICE",
+                        SUBMISSION_ID: value,
+                        USER_ID: req.user?.db_user.user.id
+                    });
                 });
-            });
 
-            let loggedAction = helper.insertLog(logFields);
+                let loggedAction = helper.insertLog(logFields);
 
-            if(!loggedAction){
-                res.send( {
-                    status: 400,
-                    message: 'The action could not be logged'
-                });
+                if(!loggedAction){
+                    res.send( {
+                        status: 400,
+                        message: 'The action could not be logged'
+                    });
+                }
             }
 
             res.json({ status:200, message: message, type: type });
@@ -1411,25 +1413,33 @@ dentalRouter.patch("/update", async (req: Request, res: Response) => {
             dentalFiles.FILE_TYPE = dataFile.FILE_TYPE;
             dentalFiles.FILE_SIZE = dataFile.FILE_SIZE;
 
-            let array_file = dataFile.FILE_DATA.match(/.{1,4000}/g)
-            let query = '';
-
-            array_file.forEach((element: string) => {
-                query = query + " DBMS_LOB.APPEND(v_long_text, to_blob(utl_raw.cast_to_raw('" +element+"'))); ";
-            });
+            let array_file = dataFile.FILE_DATA.match(/.{1,4000}/g);
+            const elements: Buffer[] = array_file.map((element: string) => Buffer.from(element, 'utf8'));
 
             filesInsert.push(dentalFiles);
 
-            var filesSaved = await db.raw(`
+            const insertQuery = `
                 DECLARE
                     v_long_text BLOB;
                 BEGIN
-                    DBMS_LOB.CREATETEMPORARY(v_long_text,true);`
-                    + query +
-                `
-                    INSERT INTO ${SCHEMA_DENTAL}.DENTAL_SERVICE_FILES (DENTAL_SERVICE_ID, DESCRIPTION, FILE_NAME, FILE_TYPE, FILE_SIZE, FILE_DATA) VALUES (?,?,?,?, ?,v_long_text);
+                    DBMS_LOB.CREATETEMPORARY(v_long_text, true);
+                    ${elements.map((element) => `DBMS_LOB.APPEND(v_long_text, ?);`).join('\n')}
+                    INSERT INTO ${SCHEMA_DENTAL}.DENTAL_SERVICE_FILES (DENTAL_SERVICE_ID, DESCRIPTION, FILE_NAME, FILE_TYPE, FILE_SIZE, FILE_DATA)
+                    VALUES (?, ?, ?, ?, ?, v_long_text);
                 END;
-                `, [idSubmission, dataFile.DESCRIPTION, dataFile.FILE_NAME, dataFile.FILE_TYPE, dataFile.FILE_SIZE]);
+            `;
+
+            const queryParams = [
+                ...elements,
+                idSubmission,
+                dataFile.DESCRIPTION,
+                dataFile.FILE_NAME,
+                dataFile.FILE_TYPE,
+                dataFile.FILE_SIZE,
+            ];
+
+            var filesSaved = await db.raw(insertQuery, queryParams);
+
 
             if(!filesSaved){
                 res.json({ status:400, message: 'Request could not be processed' });
@@ -1452,20 +1462,15 @@ dentalRouter.patch("/update", async (req: Request, res: Response) => {
             dentalFiles.FILE_SIZE = dataFile.FILE_SIZE;
             dentalFiles.FILE_DATA = dataFile.FILE_DATA;
 
-            let array_file = dataFile.FILE_DATA.match(/.{1,4000}/g)
-            let query = '';
+            let array_file = dataFile.FILE_DATA.match(/.{1,4000}/g);
+            const elements: Buffer[] = array_file.map((element: string) => Buffer.from(element, 'utf8'));
 
-            array_file.forEach((element: string) => {
-                query = query + " DBMS_LOB.APPEND(v_long_text, to_blob(utl_raw.cast_to_raw('" +element+"'))); ";
-            });
-
-            var updateFile = await db.raw(`
+            var updateFile = db.raw(`
                 DECLARE
                     v_long_text BLOB;
                 BEGIN
-                    DBMS_LOB.CREATETEMPORARY(v_long_text,true);`
-                    + query +
-                `
+                    DBMS_LOB.CREATETEMPORARY(v_long_text, true);
+                    DBMS_LOB.APPEND(v_long_text, ?);
                     UPDATE ${SCHEMA_DENTAL}.DENTAL_SERVICE_FILES SET
                         DESCRIPTION = ?,
                         FILE_NAME = ?,
@@ -1475,7 +1480,9 @@ dentalRouter.patch("/update", async (req: Request, res: Response) => {
                     WHERE
                         DENTAL_SERVICE_ID = ?;
                 END;
-                `, [dentalFiles.DESCRIPTION,dentalFiles.FILE_NAME,dentalFiles.FILE_TYPE,dentalFiles.FILE_SIZE,dentalFiles.DENTAL_SERVICE_ID]);
+            `, [Buffer.concat(elements), dentalFiles.DESCRIPTION, dentalFiles.FILE_NAME, dentalFiles.FILE_TYPE, dentalFiles.FILE_SIZE, dentalFiles.DENTAL_SERVICE_ID]);
+
+            await updateFile;
 
             if(!updateFile){
                 res.json({ status:400, message: 'Request could not be processed' });

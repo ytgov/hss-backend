@@ -7,7 +7,7 @@
 			<span class="title-service">Dental Requests</span>
 		</v-row>
 
-		<v-row class="submission-filters mb-4 text-right" no-gutters>
+		<v-row class="submission-filters-details mb-4 text-right" no-gutters>
 			<v-col
 				cols="12"
                 sm="12"
@@ -22,7 +22,6 @@
 			>
 				<v-select
 					v-model="selectAction"
-					style="margin-top: 30px"
 					:items="bulkActions"
 					class="details-select"
 					solo
@@ -44,7 +43,7 @@
 			>
 				<v-btn
 					color="#F3A901"
-					class="white--text details-btn"
+					class="white--text details-btn mt-1"
 					id="apply-btn"
 					@click="changeStatus"
 				>
@@ -59,6 +58,7 @@
 			>
 				<v-btn
 					color="#F3A901"
+					class="mt-1"
 					dark
 					@click="exportToPDF"
 				>
