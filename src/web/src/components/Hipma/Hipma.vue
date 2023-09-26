@@ -7,7 +7,43 @@
 
         <Notifications ref="notifier"></Notifications>
         <br>
-        <v-row class="row-filter">
+        <v-row class="submission-filters mb-5">
+            <v-col
+                cols="12"
+				sm="12"
+				md="12"
+				lg="3"
+            >
+                <v-select
+                    :items="itemsBulk"
+                    solo
+                    label="Bulk Actions"
+                    append-icon="mdi-chevron-down"
+                    prepend-inner-icon="mdi-layers-triple"
+                    color="grey lighten-2"
+                    item-color="grey lighten-2"
+                    v-model="selectedStatus"
+                    @change="changeSelect"
+                    id="bulk-accion-select"
+                ></v-select>
+            </v-col>
+            <v-col
+                cols="12"
+				sm="12"
+				md="12"
+				lg="1"
+                class="text-center"
+            >
+                <v-btn
+                    color="#F3A901"
+                    class="white--text apply-btn mt-2"
+                    :disabled="applyDisabled"
+                    :loading="loadingApply"
+                    @click="changeStatus"
+                >
+                    Apply
+                </v-btn>
+            </v-col>
             <v-col
                 cols="12"
 				sm="12"
@@ -80,50 +116,14 @@
             >
                 <v-icon @click="resetInputs"> mdi-filter-remove </v-icon>
             </v-col>
-        </v-row>
-        <v-row
-            align="center"
-            class="container-actions"
-        >
             <v-col
                 cols="12"
 				sm="12"
 				md="12"
 				lg="3"
-                class="actions"
             >
-                <v-select
-                    :items="itemsBulk"
-                    solo
-                    label="Bulk Actions"
-                    append-icon="mdi-chevron-down"
-                    prepend-inner-icon="mdi-layers-triple"
-                    color="grey lighten-2"
-                    item-color="grey lighten-2"
-                    v-model="selectedStatus"
-                    @change="changeSelect"
-                    id="bulk-accion-select"
-                ></v-select>
-            </v-col>
-            <v-col
-                class="align-start"
-                cols="12"
-				sm="12"
-				md="12"
-				lg="3"
-            >
-                <v-btn
-                    color="#F3A901"
-                    class="ma-2 white--text apply-btn"
-                    :disabled="applyDisabled"
-                    :loading="loadingApply"
-                    @click="changeStatus"
-                >
-                    Apply
-                </v-btn>
             </v-col>
         </v-row>
-
         <v-data-table
             dense
             :items="items"

@@ -6,12 +6,49 @@
 
         <Notifications ref="notifier"></Notifications>
         <br>
-        <v-row class="row-filter" no-gutters>
+        <v-row class="submission-filters mb-5" no-gutters>
+            <v-col
+                cols="12"
+				sm="12"
+				md="12"
+				lg="3"
+            >
+                <v-select
+                    :items="bulkActions"
+                    v-model="bulkSelected"
+                    solo
+                    label="Bulk Actions"
+                    append-icon="mdi-chevron-down"
+                    prepend-inner-icon="mdi-layers-triple"
+                    color="grey lighten-2"
+                    item-color="grey lighten-2"
+                    @change="enterBulkAction"
+                    id="bulk-accion-select"
+                >
+                </v-select>
+            </v-col>
             <v-col
                 cols="12"
                 sm="12"
                 md="12"
-                lg="4"
+                lg="1"
+                class="text-center"
+            >
+                <v-btn
+                    color="#F3A901"
+                    class="white--text apply-btn mt-2"
+                    id="apply-btn"
+                    :disabled="applyDisabled"
+                    @click="submitBulk"
+                >
+                    Apply
+                </v-btn>
+            </v-col>
+            <v-col
+                cols="12"
+                sm="12"
+                md="12"
+                lg="2"
             >
                 <v-select
                     v-model="statusSelected"
@@ -27,7 +64,7 @@
                 cols="12"
                 sm="12"
                 md="12"
-                lg="3"
+                lg="2"
             >
                 <v-menu
                     ref="menu"
@@ -58,7 +95,7 @@
                 cols="12"
                 sm="12"
                 md="12"
-                lg="3"
+                lg="2"
             >
                 <v-menu
                     ref="menuEnd"
@@ -95,49 +132,13 @@
             >
                 <v-icon @click="resetInputs"> mdi-filter-remove </v-icon>
             </v-col>
-        </v-row>
-        <v-row
-            align="center"
-            class="container-actions"
-        >
             <v-col
-                cols="12"
-				sm="12"
-				md="12"
-				lg="3"
-                class="actions"
-            >
-                <v-select
-                    :items="bulkActions"
-                    v-model="bulkSelected"
-                    solo
-                    label="Bulk Actions"
-                    append-icon="mdi-chevron-down"
-                    prepend-inner-icon="mdi-layers-triple"
-                    color="grey lighten-2"
-                    item-color="grey lighten-2"
-                    @change="enterBulkAction"
-                    id="bulk-accion-select"
-                >
-                </v-select>
-            </v-col>
-            <v-col
-                class="align-start"
-                cols="12"
+				cols="12"
                 sm="12"
                 md="12"
                 lg="1"
-            >
-                <v-btn
-                    color="#F3A901"
-                    class="ma-2 white--text apply-btn"
-                    id="apply-btn"
-                    :disabled="applyDisabled"
-                    @click="submitBulk"
-                >
-                    Apply
-                </v-btn>
-            </v-col>
+			>
+			</v-col>
         </v-row>
         <v-data-table
             dense

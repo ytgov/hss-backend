@@ -522,24 +522,26 @@ hipmaRouter.patch("/changeStatus", async (req: Request, res: Response) => {
             let type = "success";
             let message = "Request status changed successfully.";
 
-            _.forEach(hipma, function(value: any) {
-                logFields.push({
-                    ACTION_TYPE: 4,
-                    TITLE: "Submission updated to status "+statusData.description,
-                    SCHEMA_NAME: SCHEMA_HIPMA,
-                    TABLE_NAME: "HEALTH_INFORMATION",
-                    SUBMISSION_ID: value,
-                    USER_ID: req.user?.db_user.user.id
+            if(hipma instanceof Array){
+                _.forEach(hipma, function(value: any) {
+                    logFields.push({
+                        ACTION_TYPE: 4,
+                        TITLE: "Submission updated to status "+statusData.description,
+                        SCHEMA_NAME: SCHEMA_HIPMA,
+                        TABLE_NAME: "HEALTH_INFORMATION",
+                        SUBMISSION_ID: value,
+                        USER_ID: req.user?.db_user.user.id
+                    });
                 });
-            });
 
-            let loggedAction = helper.insertLog(logFields);
+                let loggedAction = helper.insertLog(logFields);
 
-            if(!loggedAction){
-                res.send( {
-                    status: 400,
-                    message: 'The action could not be logged'
-                });
+                if(!loggedAction){
+                    res.send( {
+                        status: 400,
+                        message: 'The action could not be logged'
+                    });
+                }
             }
 
             res.json({ status:200, message: message, type: type });
@@ -717,24 +719,26 @@ hipmaRouter.post("/export", async (req: Request, res: Response) => {
 
         var logFields = Array();
 
-        _.forEach(requests, function(value: any) {
-            logFields.push({
-                ACTION_TYPE: 5,
-                TITLE: "Export submission",
-                SCHEMA_NAME: SCHEMA_HIPMA,
-                TABLE_NAME: "HEALTH_INFORMATION",
-                SUBMISSION_ID: value,
-                USER_ID: req.user?.db_user.user.id
+        if(requests instanceof Array){
+            _.forEach(requests, function(value: any) {
+                logFields.push({
+                    ACTION_TYPE: 5,
+                    TITLE: "Export submission",
+                    SCHEMA_NAME: SCHEMA_HIPMA,
+                    TABLE_NAME: "HEALTH_INFORMATION",
+                    SUBMISSION_ID: value,
+                    USER_ID: req.user?.db_user.user.id
+                });
             });
-        });
 
-        let loggedAction = helper.insertLog(logFields);
+            let loggedAction = helper.insertLog(logFields);
 
-        if(!loggedAction){
-            res.send( {
-                status: 400,
-                message: 'The action could not be logged'
-            });
+            if(!loggedAction){
+                res.send( {
+                    status: 400,
+                    message: 'The action could not be logged'
+                });
+            }
         }
 
         res.json({ data:hipma, fileName:fileName });

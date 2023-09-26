@@ -834,24 +834,26 @@ midwiferyRouter.post("/export", async (req: Request, res: Response) => {
 
         var logFields = Array();
 
-        _.forEach(requests, function(value: any) {
-            logFields.push({
-                ACTION_TYPE: 5,
-                TITLE: "Export submission",
-                SCHEMA_NAME: SCHEMA_MIDWIFERY,
-                TABLE_NAME: "MIDWIFERY_SERVICES",
-                SUBMISSION_ID: value,
-                USER_ID: req.user?.db_user.user.id
+        if(requests instanceof Array){
+            _.forEach(requests, function(value: any) {
+                logFields.push({
+                    ACTION_TYPE: 5,
+                    TITLE: "Export submission",
+                    SCHEMA_NAME: SCHEMA_MIDWIFERY,
+                    TABLE_NAME: "MIDWIFERY_SERVICES",
+                    SUBMISSION_ID: value,
+                    USER_ID: req.user?.db_user.user.id
+                });
             });
-        });
 
-        let loggedAction = helper.insertLog(logFields);
+            let loggedAction = helper.insertLog(logFields);
 
-        if(!loggedAction){
-            res.send( {
-                status: 400,
-                message: 'The action could not be logged'
-            });
+            if(!loggedAction){
+                res.send( {
+                    status: 400,
+                    message: 'The action could not be logged'
+                });
+            }
         }
 
         res.json({ data:midwifery, fileName:fileName });
@@ -885,24 +887,26 @@ midwiferyRouter.patch("/changeStatus", async (req: Request, res: Response) => {
             let type = "success";
             let message = "Status changed successfully.";
 
-            _.forEach(midwifery_id, function(value: any) {
-                logFields.push({
-                    ACTION_TYPE: 4,
-                    TITLE: "Submission updated to status "+statusData.description,
-                    SCHEMA_NAME: SCHEMA_MIDWIFERY,
-                    TABLE_NAME: "MIDWIFERY_SERVICES",
-                    SUBMISSION_ID: value,
-                    USER_ID: req.user?.db_user.user.id
+            if(midwifery_id instanceof Array){
+                _.forEach(midwifery_id, function(value: any) {
+                    logFields.push({
+                        ACTION_TYPE: 4,
+                        TITLE: "Submission updated to status "+statusData.description,
+                        SCHEMA_NAME: SCHEMA_MIDWIFERY,
+                        TABLE_NAME: "MIDWIFERY_SERVICES",
+                        SUBMISSION_ID: value,
+                        USER_ID: req.user?.db_user.user.id
+                    });
                 });
-            });
 
-            let loggedAction = helper.insertLog(logFields);
+                let loggedAction = helper.insertLog(logFields);
 
-            if(!loggedAction){
-                res.send( {
-                    status: 400,
-                    message: 'The action could not be logged'
-                });
+                if(!loggedAction){
+                    res.send( {
+                        status: 400,
+                        message: 'The action could not be logged'
+                    });
+                }
             }
 
             res.json({ status:200, message: message, type: type });

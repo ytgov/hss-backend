@@ -12,7 +12,6 @@
                 sm="12"
                 md="12"
                 lg="2"
-				class="actions"
 			>
 				<v-select
 					:items="bulkActions"
@@ -29,15 +28,15 @@
 				</v-select>
 			</v-col>
 			<v-col
-				class="align-start"
 				cols="12"
                 sm="12"
                 md="12"
                 lg="1"
+				class="text-center"
 			>
 				<v-btn
 					color="#F3A901"
-					class="ma-2 white--text apply-btn"
+					class="white--text apply-btn mt-2"
 					id="apply-btn"
 					:disabled="applyDisabled"
 					@click="submitBulk"
@@ -148,7 +147,8 @@
                 md="12"
                 lg="1"
                 class="btn-reset"
-				v-if="removeFilters">
+				v-if="removeFilters"
+			>
 				<v-icon @click="resetInputs"> mdi-filter-remove </v-icon>
 			</v-col>
 		</v-row>

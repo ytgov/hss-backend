@@ -90,8 +90,8 @@ constellationRouter.get("/submissions/status/:action_id/:action_value", [
 constellationRouter.post("/", async (req: Request, res: Response) => {
 
     try {
-        var dateFrom = req.body.params.dateFrom //? new Date(req.body.params.dateFrom) : '';
-        var dateTo = req.body.params.dateTo //? new Date(req.body.params.dateTo) : '';
+        var dateFrom = req.body.params.dateFrom;
+        var dateTo = req.body.params.dateTo;
         let status_request = req.body.params.status;
 
         let query = db(`${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH`)
@@ -734,24 +734,26 @@ constellationRouter.patch("/changeStatus", async (req: Request, res: Response) =
             let type = "success";
             let message = "Status changed successfully.";
 
-            _.forEach(constellation_id, function(value: any) {
-                logFields.push({
-                    ACTION_TYPE: 4,
-                    TITLE: "Submission updated to status "+statusData.description,
-                    SCHEMA_NAME: SCHEMA_CONSTELLATION,
-                    TABLE_NAME: "CONSTELLATION_HEALTH",
-                    SUBMISSION_ID: value,
-                    USER_ID: req.user?.db_user.user.id
+            if(constellation_id instanceof Array){
+                _.forEach(constellation_id, function(value: any) {
+                    logFields.push({
+                        ACTION_TYPE: 4,
+                        TITLE: "Submission updated to status "+statusData.description,
+                        SCHEMA_NAME: SCHEMA_CONSTELLATION,
+                        TABLE_NAME: "CONSTELLATION_HEALTH",
+                        SUBMISSION_ID: value,
+                        USER_ID: req.user?.db_user.user.id
+                    });
                 });
-            });
 
-            let loggedAction = helper.insertLog(logFields);
+                let loggedAction = helper.insertLog(logFields);
 
-            if(!loggedAction){
-                res.send( {
-                    status: 400,
-                    message: 'The action could not be logged'
-                });
+                if(!loggedAction){
+                    res.send( {
+                        status: 400,
+                        message: 'The action could not be logged'
+                    });
+                }
             }
 
             res.json({ status:200, message: message, type: type });
