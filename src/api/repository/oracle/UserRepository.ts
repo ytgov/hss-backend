@@ -15,22 +15,24 @@ export class UserRepository extends BaseRepository<UserDTO> {
         let roles = Object();
         const allRoles: Array<UserRolesOptionsDTO> = [];
 
-        roles = await this.mainDb(this.mainDb.ref(`${SCHEMA_GENERAL}.USER_DATA`).as("UD"))
-            .leftJoin(this.mainDb.ref("BIZONT_EDMS_GENERAL.USER_ROLES").as("UR"), (build) => {
-                build.on("UR.USER_ID", "=", "UD.ID")
-                    .andOn("UD.USER_EMAIL", "=", this.mainDb.raw(`'${user_email}'`))
-            })
-            .rightJoin(this.mainDb.ref(`${SCHEMA_GENERAL}.ROLES_DATA`).as("RD"), "RD.ID", "UR.ROLE_ID")
-            .select("RD.ID", "rd.ROLE_NAME", "ud.USER_NAME", "ud.USER_EMAIL");
-        
+        roles = await this.mainDb(`${SCHEMA_GENERAL}.USER_DATA`)
+            .join(`${SCHEMA_GENERAL}.USER_ROLES`, 'USER_DATA.ID', '=', 'USER_ROLES.USER_ID')
+            .join(`${SCHEMA_GENERAL}.ROLES_DATA`, 'USER_ROLES.ROLE_ID', '=', 'ROLES_DATA.ID')
+            .select('ROLES_DATA.ID',
+                    'ROLES_DATA.ROLE_NAME',
+                    'USER_DATA.USER_NAME',
+                    'USER_DATA.USER_EMAIL'
+            )
+            .where('USER_DATA.USER_EMAIL', user_email);
+
         roles.forEach((x: any) => {
-            allRoles.push({
+            allRoles.push({ 
                 id: x.id,
                 role_name: x.role_name,
                 selected: x.user_name !== null
             } as UserRolesOptionsDTO);
         });
-        
+
         return allRoles;
     }
 

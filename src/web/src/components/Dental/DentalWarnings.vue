@@ -1,7 +1,9 @@
 
 <template>
     <div class="dental-service-warnings">
-        <p class="title-service mb-6">Dental Service Possible Duplicates</p>
+        <v-row class="mb-5" no-gutters>
+            <span class="title-service">Dental Service Possible Duplicates</span>
+        </v-row>
 
         <ModuleAlert v-bind:alertMessage="alertMessage"  v-bind:alertType="alertType"/>
 

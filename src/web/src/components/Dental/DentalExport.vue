@@ -1,13 +1,16 @@
 <template>
 	<div class="dental-service">
-    <span class="title-service">Dental Service Requests</span>
-    <v-row>
-			<v-col
-				cols="6"
-				sm="6"
-				md="8"
-				class='d-flex'
-			>
+	<v-row class="mb-5" no-gutters>
+		<span class="title-service">Dental Service Requests</span>
+	</v-row>
+
+    <v-row class="row-filter">
+		<v-col
+			cols="10"
+			sm="10"
+			md="10"
+			lg="2"
+		>
 			<v-select
 				:items="itemsStatus"
 				:menu-props="{ maxHeight: '400' }"
@@ -18,96 +21,130 @@
 				@change="changeSelect"
 				id="export-status-select"
 			></v-select>
-				<v-text-field
-					v-model="selectedYear"
-					label="Year"
-					prepend-icon="mdi-calendar"
-					variant="underlined"
-					@input="handleYear"
-					type="number"
-				></v-text-field>
-				<v-menu
-					ref="menu"
-					v-model="menu"
-					:close-on-content-click="false"
-					transition="scale-transition"
-					offset-y
-					min-width="auto"
-				>
-					<template v-slot:activator="{ on, attrs }">
-						<v-text-field
-							v-model="date"
-							label="From:"
-							prepend-icon="mdi-calendar"
-							v-bind="attrs"
-							v-on="on"
-						></v-text-field>
-					</template>
-					<v-date-picker
-						v-model="date"
-						no-title
-						@input="menu = false"
-						@change="updateDate"
-					></v-date-picker>
-				</v-menu>
-				<v-menu
-					ref="menuEnd"
-					v-model="menuEnd"
-					:close-on-content-click="false"
-					transition="scale-transition"
-					offset-y
-					min-width="auto"
-				>
-					<template v-slot:activator="{ on, attrs }">
-						<v-text-field
-							v-model="dateEnd"
-							label="To:"
-							prepend-icon="mdi-calendar"
-							v-bind="attrs"
-							v-on="on"
-						></v-text-field>
-					</template>
-					<v-date-picker
-						v-model="dateEnd"
-						no-title
-						@input="menuEnd = false"
-						@change="updateDate"
-					></v-date-picker>
-				</v-menu>
-				<v-col sm="auto" id="reset-btn">
-          <v-icon @click="resetInputs"> mdi-filter-remove </v-icon>
-        </v-col>
-				<v-btn
-					:loading="loadingExport"
-					:disabled="loadingExport"
-					color="#F3A901"
-					class="ma-2 white--text apply-btn"
-					@click="exportFile()"
-					id="export-btn"
-				>
-					Export
-					<v-icon
-						right
-						dark
-					>
-						mdi-cloud-download
-					</v-icon>
-				</v-btn>
-			</v-col>
-		</v-row>
-		<v-data-table
-			dense
-			v-model="selected"
-			show-select
-			:items="items"
-			:headers="headers"
-			:options.sync="options"
-			:loading="loading"
-			checkbox-color="black"
-			:value="selected"
-			@toggle-select-all="selectAll"
+		</v-col>
+		<v-col
+			cols="10"
+			sm="10"
+			md="10"
+			lg="2"
 		>
-		</v-data-table>
+			<v-text-field
+				v-model="selectedYear"
+				label="Year"
+				prepend-icon="mdi-calendar"
+				variant="underlined"
+				@input="handleYear"
+				type="number"
+			></v-text-field>
+		</v-col>
+		<v-col
+			cols="10"
+			sm="10"
+			md="10"
+			lg="2"
+		>
+			<v-menu
+				ref="menu"
+				v-model="menu"
+				:close-on-content-click="false"
+				transition="scale-transition"
+				offset-y
+				min-width="auto"
+			>
+				<template v-slot:activator="{ on, attrs }">
+					<v-text-field
+						v-model="date"
+						label="From:"
+						prepend-icon="mdi-calendar"
+						v-bind="attrs"
+						v-on="on"
+					></v-text-field>
+				</template>
+				<v-date-picker
+					v-model="date"
+					no-title
+					@input="menu = false"
+					@change="updateDate"
+				></v-date-picker>
+			</v-menu>
+		</v-col>
+		<v-col
+			cols="10"
+			sm="10"
+			md="10"
+			lg="2"
+		>
+			<v-menu
+				ref="menuEnd"
+				v-model="menuEnd"
+				:close-on-content-click="false"
+				transition="scale-transition"
+				offset-y
+				min-width="auto"
+			>
+				<template v-slot:activator="{ on, attrs }">
+					<v-text-field
+						v-model="dateEnd"
+						label="To:"
+						prepend-icon="mdi-calendar"
+						v-bind="attrs"
+						v-on="on"
+					></v-text-field>
+				</template>
+				<v-date-picker
+					v-model="dateEnd"
+					no-title
+					@input="menuEnd = false"
+					@change="updateDate"
+				></v-date-picker>
+			</v-menu>
+		</v-col>
+		<v-col
+			cols="10"
+			sm="10"
+			md="10"
+			lg="1"
+			class="btn-reset"
+		>
+			<v-icon @click="resetInputs"> mdi-filter-remove </v-icon>
+		</v-col>
+		<v-col
+			cols="10"
+			sm="10"
+			md="10"
+			lg="2"
+		>
+			<v-btn
+				:loading="loadingExport"
+				:disabled="loadingExport"
+				color="#F3A901"
+				class="ma-2 white--text apply-btn"
+				@click="exportFile()"
+				id="export-btn"
+			>
+				Export
+				<v-icon
+					right
+					dark
+				>
+					mdi-cloud-download
+				</v-icon>
+			</v-btn>
+		</v-col>
+	</v-row>
+	<v-data-table
+		dense
+		v-model="selected"
+		show-select
+		:items="items"
+		:headers="headers"
+		:options.sync="options"
+		:loading="loading"
+		checkbox-color="black"
+		:value="selected"
+		@toggle-select-all="selectAll"
+	>
+	</v-data-table>
 	</div>
 </template>
 
@@ -333,6 +370,11 @@ export default {
 					"SERVICES NEEDED",
 					"CREATED AT",
 					"PROOF OF INCOME ATTACHMENT",
+					"PROGRAM YEAR",
+					"INCOME AMOUNT",
+					"DATE OF ENROLLMENT",
+					"POLICY NUMBER",
+					"INTERNAL FIELD CREATED AT"
 					],
 				],
 				{ origin: "A1" }

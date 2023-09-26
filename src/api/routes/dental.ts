@@ -94,9 +94,9 @@ dentalRouter.get("/submissions/status/:action_id/:action_value", [
 dentalRouter.post("/", async (req: Request, res: Response) => {
 
     try {
-        var dateFrom = req.body.params.dateFrom //? new Date(req.body.params.dateFrom) : '';
-        var dateTo = req.body.params.dateTo //? new Date(req.body.params.dateTo) : '';
-        var dateYear = req.body.params.dateYear
+        var dateFrom = req.body.params.dateFrom;
+        var dateTo = req.body.params.dateTo;
+        var dateYear = req.body.params.dateYear;
         let status_request = req.body.params.status;
 
         let query = db(`${SCHEMA_DENTAL}.DENTAL_SERVICE_SUBMISSIONS`)
@@ -143,10 +143,32 @@ dentalRouter.patch("/changeStatus", async (req: Request, res: Response) => {
         var dentalService_id = req.body.params.requests;
         var status_id = req.body.params.requestStatus;
         var updateStatus = await db(`${SCHEMA_DENTAL}.DENTAL_SERVICE`).update({STATUS: status_id}).whereIn("ID", dentalService_id);
+        var statusData = await db(`${SCHEMA_DENTAL}.DENTAL_STATUS`).where('ID', status_id).first();
+        var logFields = Array();
 
         if(updateStatus) {
             let type = "success";
             let message = "Status changed successfully.";
+
+            _.forEach(dentalService_id, function(value: any) {
+                logFields.push({
+                    ACTION_TYPE: 4,
+                    TITLE: "Submission updated to status "+statusData.description,
+                    SCHEMA_NAME: SCHEMA_DENTAL,
+                    TABLE_NAME: "DENTAL_SERVICE",
+                    SUBMISSION_ID: value,
+                    USER_ID: req.user?.db_user.user.id
+                });
+            });
+
+            let loggedAction = helper.insertLog(logFields);
+
+            if(!loggedAction){
+                res.send( {
+                    status: 400,
+                    message: 'The action could not be logged'
+                });
+            }
 
             res.json({ status:200, message: message, type: type });
         }
@@ -170,9 +192,9 @@ dentalRouter.get("/validateRecord/:dentalService_id",[param("dentalService_id").
     try {
         var dentalService_id = Number(req.params.dentalService_id);
         var dentalService = Object();
-        var flagExists= true;
-        var message= "";
-        var type= "error";
+        var flagExists = true;
+        var message = "";
+        var type = "error";
 
         dentalService = await db(`${SCHEMA_DENTAL}.DENTAL_SERVICE`)
             .join(`${SCHEMA_DENTAL}.DENTAL_STATUS`, 'DENTAL_SERVICE.STATUS', '=', 'DENTAL_STATUS.ID')
@@ -185,7 +207,7 @@ dentalRouter.get("/validateRecord/:dentalService_id",[param("dentalService_id").
 
         if(!dentalService || dentalService.status_description == "closed"){
             flagExists= false;
-            message= "The request you are consulting is closed or non existant, please choose a valid request.";
+            message= "The submission you are consulting is closed or non existant, please choose a valid submission.";
         }
 
         res.json({ status: 200, flagDental: flagExists, message: message, type: type});
@@ -278,7 +300,7 @@ dentalRouter.get("/show/:dentalService_id", checkPermissions("dental_view"), [pa
 
         dentalService.flagDependents = false;
 
-        if(!_.isEmpty(dentalServiceDependents)){
+        if(!_.isEmpty(dentalServiceDependents) && !dentalService.have_children.includes("No, I don't have children")){
             dentalService.flagDependents = true;
 
             _.forEach(dentalServiceDependents, function(valueDependents: any, key: any) {
@@ -319,6 +341,42 @@ dentalRouter.get("/show/:dentalService_id", checkPermissions("dental_view"), [pa
             dentalService.services_needed = getBlobField(dentalService.services_needed);
         }
 
+        var dentalCityTown = await getCatalogSelect('DENTAL_SERVICE_CITY_TOWN');
+
+        var dentalGroupsCommunities = await db(`${SCHEMA_DENTAL}.DENTAL_SERVICE_GROUPS_COMMUNITIES`).select();
+
+        var dentalGenders = await db(`${SCHEMA_DENTAL}.DENTAL_SERVICE_GENDERS`)
+                            .select("ID AS key",
+                                    "NAME AS text",
+                                    "NAME AS value"
+                            );
+
+        var dentalEducationLevels = await db(`${SCHEMA_DENTAL}.DENTAL_SERVICE_EDUCATION_LEVELS`)
+                            .select("ID AS key",
+                                    "DESCRIPTION AS text",
+                                    "DESCRIPTION AS value"
+                            );
+
+        var dentalOften = await getCatalogSelect('DENTAL_SERVICE_OFTEN');
+
+        var dentalStates = await getCatalogSelect('DENTAL_SERVICE_STATES');
+
+        var dentalTimePeriods = await db(`${SCHEMA_DENTAL}.DENTAL_SERVICE_TIME_PERIODS`)
+                            .select("ID AS key",
+                                    "DESCRIPTION AS text",
+                                    "DESCRIPTION AS value"
+                            );
+
+        var dentalReasons = await db(`${SCHEMA_DENTAL}.DENTAL_SERVICE_REASONS_DENTIST`).select();
+
+        var dentalPaymentMethods = await db(`${SCHEMA_DENTAL}.DENTAL_SERVICE_PAYMENT_METHODS`).select();
+
+        var dentalBarriers = await db(`${SCHEMA_DENTAL}.DENTAL_SERVICE_BARRIERS`).select();
+
+        var dentalProblems = await db(`${SCHEMA_DENTAL}.DENTAL_SERVICE_PROBLEMS`).select();
+
+        var dentalNeedServices = await db(`${SCHEMA_DENTAL}.DENTAL_SERVICE_NEED_SERVICES`).select();
+
         var statusDental =  await db(`${SCHEMA_DENTAL}.DENTAL_STATUS`).where("DESCRIPTION", "Closed").select().first();
 
         let today = new Date();
@@ -327,6 +385,30 @@ dentalRouter.get("/show/:dentalService_id", checkPermissions("dental_view"), [pa
         let yyyy = today.getFullYear();
         let todayDate = mm+'_'+dd+'_'+yyyy;
         let fileName = 'dental_service_request_details_'+todayDate+".pdf";
+
+        const internalFieldsYears = [];
+        const currentYear = new Date().getFullYear();
+        const targetYear = 2050;
+
+        internalFieldsYears.push({
+            text: currentYear,
+            value: currentYear,
+            dateFrom: currentYear,
+            dateTo: currentYear
+        });
+
+        for (let year = currentYear; year <= targetYear; year += 2) {
+            const dateFrom = year;
+            const dateTo = year + 1;
+            const value = `${dateFrom}-${dateTo}`;
+
+            internalFieldsYears.push({
+                text: value,
+                value: value,
+                dateFrom: dateFrom,
+                dateTo: dateTo
+            });
+        }
 
         var dentalStatus = await getAllStatus();
 
@@ -338,7 +420,20 @@ dentalRouter.get("/show/:dentalService_id", checkPermissions("dental_view"), [pa
             fileName:fileName,
             dentalFiles:dentalFiles,
             dataDentalInternalFields: dentalInternalFields || {},
-            dataDentalComments: dentalComments
+            dataDentalComments: dentalComments,
+            internalFieldsYears: internalFieldsYears,
+            dataDentalCityTown: dentalCityTown,
+            dataDentalGroups: dentalGroupsCommunities,
+            dataDentalGenders: dentalGenders,
+            dataEducationLevels: dentalEducationLevels,
+            dataDentalOften: dentalOften,
+            dataDentalStates: dentalStates,
+            dataTimePeriods: dentalTimePeriods,
+            dataDentalReasons: dentalReasons,
+            dataPaymentMethods: dentalPaymentMethods,
+            dataDentalBarriers: dentalBarriers,
+            dataDentalProblems: dentalProblems,
+            dataDentalNeedServices: dentalNeedServices
         });
     } catch(e) {
         console.log(e);  // debug if needed
@@ -364,6 +459,7 @@ dentalRouter.post("/export/", async (req: Request, res: Response) => {
         var dateTo = req.body.params.dateTo;
         var dateYear = req.body.params.dateYear
         const idSubmission: number[] = [];
+        var dentalInternalFields = Object();
 
         let query  = db(`${SCHEMA_DENTAL}.DENTAL_SERVICE_SUBMISSIONS_DETAILS`)
                     .where('DENTAL_SERVICE_SUBMISSIONS_DETAILS.STATUS', '<>', 4);
@@ -389,6 +485,22 @@ dentalRouter.post("/export/", async (req: Request, res: Response) => {
 
         query.orderBy('ID', 'ASC');
         const dentalService = await query;
+
+        const submissionsId: number[] = dentalService.map(item => item.id);
+
+        dentalInternalFields = await db(`${SCHEMA_DENTAL}.DENTAL_SERVICE_INTERNAL_FIELDS`)
+        .select('DENTAL_SERVICE_ID',
+                'PROGRAM_YEAR',
+                db.raw(`CASE
+                        WHEN INCOME_AMOUNT = TRUNC(INCOME_AMOUNT)
+                        THEN TO_CHAR(INCOME_AMOUNT, 'FM9999999')
+                        ELSE TO_CHAR(INCOME_AMOUNT, 'FM9999999.99')
+                        END AS INCOME_AMOUNT`),
+                db.raw("TO_CHAR(DATE_ENROLLMENT, 'YYYY-MM-DD') AS DATE_ENROLLMENT"),
+                'POLICY_NUMBER',
+                db.raw("TO_CHAR(CREATED_AT, 'YYYY-MM-DD HH24:MI:SS') AS CREATED_AT")
+        )
+        .whereIn('DENTAL_SERVICE_ID', submissionsId);
 
         dentalService.forEach(function (value: any) {
             idSubmission.push(value.id);
@@ -427,8 +539,25 @@ dentalRouter.post("/export/", async (req: Request, res: Response) => {
                 value.file_fullName = "";
             }
 
+            let internalField = dentalInternalFields.find((obj: any) => obj.dental_service_id === value.id);
+
+            if(internalField) {
+                value.program_year = internalField.program_year;
+                value.income_amount = internalField.income_amount;
+                value.date_enrollment = internalField.date_enrollment;
+                value.policy_number = internalField.policy_number;
+                value.created_at_if = internalField.created_at;
+            }else{
+                value.program_year = "";
+                value.income_amount = "";
+                value.date_enrollment = "";
+                value.policy_number = "";
+                value.created_at_if = "";
+            }
+
             delete value.id;
             delete value.status;
+            delete value.are_you_eligible_for_the_pharmacare_and_extended_health_care_ben;
             delete value.file_id;
             delete value.file_name;
             delete value.file_type;
@@ -465,7 +594,31 @@ dentalRouter.post("/export/", async (req: Request, res: Response) => {
             }
         });
 
-        res.json({ status: 200, dataDental: dentalService, dataDependents: dentalServiceDependents});
+
+        var logFields = Array();
+
+        _.forEach(idSubmission, function(value: any) {
+            logFields.push({
+                ACTION_TYPE: 5,
+                TITLE: "Export submission",
+                SCHEMA_NAME: SCHEMA_DENTAL,
+                TABLE_NAME: "DENTAL_SERVICE",
+                SUBMISSION_ID: value,
+                USER_ID: req.user?.db_user.user.id
+            });
+        });
+
+        let loggedAction = helper.insertLog(logFields);
+
+        if(!loggedAction){
+            res.send( {
+                status: 400,
+                message: 'The action could not be logged'
+            });
+        }
+
+        res.json({ status: 200, dataDental: dentalService, dataDependents: dentalServiceDependents,
+                    dataInternalFields: dentalInternalFields});
     } catch(e) {
         console.log(e);  // debug if needed
         res.send( {
@@ -629,16 +782,30 @@ dentalRouter.get("/duplicates/details/:duplicate_id",[param("duplicate_id").isIn
                     .whereNot('STATUS', '4');
 
         dependentsOriginal = await db(`${SCHEMA_DENTAL}.DENTAL_SERVICE_DEPENDENTS`)
-                    .select('DENTAL_SERVICE_DEPENDENTS.*')
+                    .select('DENTAL_SERVICE_DEPENDENTS.ID',
+                            'DENTAL_SERVICE_DEPENDENTS.DENTAL_SERVICE_ID',
+                            'DENTAL_SERVICE_DEPENDENTS.C_FIRSTNAME',
+                            'DENTAL_SERVICE_DEPENDENTS.C_LASTNAME',
+                            db.raw("TO_CHAR(DENTAL_SERVICE_DEPENDENTS.C_DOB, 'YYYY-MM-DD') AS C_DOB"),
+                            'DENTAL_SERVICE_DEPENDENTS.C_HEALTHCARE',
+                            'DENTAL_SERVICE_DEPENDENTS.C_APPLY'
+                    )
                     .where('DENTAL_SERVICE_DEPENDENTS.DENTAL_SERVICE_ID', duplicateEntry.original);
 
         dependentsDuplicated = await db(`${SCHEMA_DENTAL}.DENTAL_SERVICE_DEPENDENTS`)
-                    .select('DENTAL_SERVICE_DEPENDENTS.*')
+                    .select('DENTAL_SERVICE_DEPENDENTS.ID',
+                        'DENTAL_SERVICE_DEPENDENTS.DENTAL_SERVICE_ID',
+                        'DENTAL_SERVICE_DEPENDENTS.C_FIRSTNAME',
+                        'DENTAL_SERVICE_DEPENDENTS.C_LASTNAME',
+                        db.raw("TO_CHAR(DENTAL_SERVICE_DEPENDENTS.C_DOB, 'YYYY-MM-DD') AS C_DOB"),
+                        'DENTAL_SERVICE_DEPENDENTS.C_HEALTHCARE',
+                        'DENTAL_SERVICE_DEPENDENTS.C_APPLY'
+                    )
                     .where('DENTAL_SERVICE_DEPENDENTS.DENTAL_SERVICE_ID', duplicateEntry.duplicated);
 
         dentalFiles = await db(`${SCHEMA_DENTAL}.DENTAL_SERVICE_FILES`)
             .where("DENTAL_SERVICE_ID", duplicateEntry.original).select().then((data:any) => {
-                return data[0];
+                return data.length > 0 ? data[0] : null;
             });
 
         if(!_.isEmpty(dentalFiles)){
@@ -648,7 +815,7 @@ dentalRouter.get("/duplicates/details/:duplicate_id",[param("duplicate_id").isIn
 
         dentalFilesDuplicated = await db(`${SCHEMA_DENTAL}.DENTAL_SERVICE_FILES`)
             .where("DENTAL_SERVICE_ID", duplicateEntry.duplicated).select().then((data:any) => {
-                return data[0];
+                return data.length > 0 ? data[0] : null;
             });
 
         if(!_.isEmpty(dentalFilesDuplicated)){
@@ -795,21 +962,66 @@ dentalRouter.patch("/duplicates/primary", async (req: Request, res: Response) =>
         var type = req.body.params.type;
         var updateRequest = Object();
         var rejectWarning = Object();
+        var logTitle = "";
+        var updatedFields = Object();
+        var fieldList = Object();
+        var primarySubmission = Number();
+        var logFields = Array();
 
         if(!request){
             rejectWarning = await db(`${SCHEMA_DENTAL}.DENTAL_DUPLICATED_REQUESTS`).where("ID", warning).del();
+            logTitle = "Duplicated Warning Rejected";
         }else{
             var warningRequest = await db(`${SCHEMA_DENTAL}.DENTAL_DUPLICATED_REQUESTS`).where("ID", warning).first();
 
             if(type == 'O'){
                 updateRequest = await db(`${SCHEMA_DENTAL}.DENTAL_SERVICE`).update({STATUS: "4"}).where("ID", warningRequest.duplicated_id);
+                primarySubmission = warningRequest.duplicated_id;
             }else if(type == 'D'){
                 updateRequest = await db(`${SCHEMA_DENTAL}.DENTAL_SERVICE`).update({STATUS: "4"}).where("ID", warningRequest.original_id);
+                primarySubmission = warningRequest.original_id;
             }
+
+            logFields.push({
+                ACTION_TYPE: 4,
+                TITLE: "Submission updated to status Closed",
+                SCHEMA_NAME: SCHEMA_DENTAL,
+                TABLE_NAME: "DENTAL_SERVICE",
+                SUBMISSION_ID: primarySubmission,
+                USER_ID: req.user?.db_user.user.id
+            });
 
             if(updateRequest){
                 rejectWarning = await db(`${SCHEMA_DENTAL}.DENTAL_DUPLICATED_REQUESTS`).where("ID", warning).del();
+                logTitle = "Duplicated Warning Resolved";
+                updatedFields.ORIGINAL_ID = warningRequest.original_id;
+                updatedFields.DUPLICATED_ID = warningRequest.duplicated_id;
             }
+        }
+
+        if(!_.isEmpty(updatedFields)) {
+            fieldList =  db.raw("utl_raw.cast_to_raw(?) ", JSON.stringify(updatedFields));
+        }else{
+            fieldList = null;
+        }
+
+        logFields.push({
+                ACTION_TYPE: 7,
+                TITLE: logTitle,
+                SCHEMA_NAME: SCHEMA_DENTAL,
+                TABLE_NAME: "DENTAL_DUPLICATED_REQUESTS",
+                SUBMISSION_ID: warning,
+                USER_ID: req.user?.db_user.user.id,
+                ACTION_DATA: fieldList
+        });
+
+        let loggedAction = helper.insertLog(logFields);
+
+        if(!loggedAction){
+            res.send( {
+                status: 400,
+                message: 'The action could not be logged'
+            });
         }
 
         if(rejectWarning) {
@@ -844,7 +1056,7 @@ dentalRouter.get("/downloadFile/:dentalFile_id",[param("dentalFile_id").isInt().
         var buffer = Buffer.from(dentalFiles.file_data.toString(), 'base64');
         let safeName = (Math.random() + 1).toString(36).substring(7)+'_'+dentalFiles.file_name;
         let pathPublicFront = path.join(__dirname, "../../");
-        pathFile = pathPublicFront+"dist/web/"+safeName+"."+dentalFiles.file_type;
+        pathFile = pathPublicFront+"/web/public/"+safeName+"."+dentalFiles.file_type;
 
         fs.writeFileSync(pathFile, buffer);
 
@@ -873,7 +1085,7 @@ dentalRouter.post("/deleteFile", async (req: Request, res: Response) => {
         var fs = require("fs");
         var file = sanitize(req.body.params.file);
         let pathPublicFront = path.join(__dirname, "../../");
-        var filePath = pathPublicFront+"dist/web/"+file;
+        var filePath = pathPublicFront+"/web/public/"+file;
 
         if(fs.existsSync(filePath)) {
             fs.unlinkSync(filePath);
@@ -1043,9 +1255,26 @@ dentalRouter.post("/store", async (req: Request, res: Response) => {
 
         }
 
+        let logFields = {
+            ACTION_TYPE: 2,
+            TITLE: "Insert submission",
+            SCHEMA_NAME: SCHEMA_DENTAL,
+            TABLE_NAME: "DENTAL_SERVICE",
+            SUBMISSION_ID: dentalId.id
+        };
+
+        let loggedAction = helper.insertLog(logFields);
+
+        if(!loggedAction){
+            res.send( {
+                status: 400,
+                message: 'The action could not be logged'
+            });
+        }
+
         res.json({ status:200, message: 'Request saved' });
 
-    } catch(e) { 
+    } catch(e) {
         console.log(e);  // debug if needed
         res.send( {
             status: 400,
@@ -1143,6 +1372,281 @@ dentalRouter.post("/storeComments", async (req: Request, res: Response) => {
 });
 
 /**
+ * Update Submission
+ *
+ * @param {idSubmission} id of submission
+ * @param {data} submission fields
+ * @return json
+ */
+
+dentalRouter.patch("/update", async (req: Request, res: Response) => {
+    try {
+
+        var idSubmission = req.body.params.idSubmission;
+        var data = req.body.params.data;
+        var dataFile = req.body.params.dataFile;
+        var dentalFiles = Object();
+        var currentDependents = Object();
+        var newDependents = req.body.params.dataDependents.newDependents;
+        var updatedDependents = req.body.params.dataDependents.updatedDependents;
+        var deletedDependents = req.body.params.dataDependents.deletedDependents;
+        var have_children = req.body.params.dataDependents.haveChildren;
+        var updatedFields = req.body.params.dataUpdatedFields;
+        var fieldList = Object();
+
+        if(!_.isEmpty(data.DATE_OF_BIRTH)){
+            let dob = new Date(data.DATE_OF_BIRTH);
+            let result: string =   dob.toISOString().split('T')[0];
+            data.DATE_OF_BIRTH  = db.raw("TO_DATE( ? ,'YYYY-MM-DD') ", result);
+        }else{
+            data.DATE_OF_BIRTH = null;
+        }
+
+        if(_.isNull(dataFile.FILE_ID) && !_.isNull(dataFile.FILE_NAME) && !dataFile.PROOF_INCOME){
+            var filesInsert = Array();
+
+            dentalFiles.DENTAL_SERVICE_ID = idSubmission;
+            dentalFiles.DESCRIPTION = dataFile.DESCRIPTION;
+            dentalFiles.FILE_NAME = dataFile.FILE_NAME;
+            dentalFiles.FILE_TYPE = dataFile.FILE_TYPE;
+            dentalFiles.FILE_SIZE = dataFile.FILE_SIZE;
+
+            let array_file = dataFile.FILE_DATA.match(/.{1,4000}/g)
+            let query = '';
+
+            array_file.forEach((element: string) => {
+                query = query + " DBMS_LOB.APPEND(v_long_text, to_blob(utl_raw.cast_to_raw('" +element+"'))); ";
+            });
+
+            filesInsert.push(dentalFiles);
+
+            var filesSaved = await db.raw(`
+                DECLARE
+                    v_long_text BLOB;
+                BEGIN
+                    DBMS_LOB.CREATETEMPORARY(v_long_text,true);`
+                    + query +
+                `
+                    INSERT INTO ${SCHEMA_DENTAL}.DENTAL_SERVICE_FILES (DENTAL_SERVICE_ID, DESCRIPTION, FILE_NAME, FILE_TYPE, FILE_SIZE, FILE_DATA) VALUES (?,?,?,?, ?,v_long_text);
+                END;
+                `, [idSubmission, dataFile.DESCRIPTION, dataFile.FILE_NAME, dataFile.FILE_TYPE, dataFile.FILE_SIZE]);
+
+            if(!filesSaved){
+                res.json({ status:400, message: 'Request could not be processed' });
+            }
+
+        }else if(!_.isNull(dataFile.FILE_ID) && dataFile.PROOF_INCOME){
+
+            var deleteFile = await db(`${SCHEMA_DENTAL}.DENTAL_SERVICE_FILES`).where("ID", dataFile.FILE_ID).del();
+
+            if(!deleteFile){
+                res.json({ status:400, message: 'Request could not be processed' });
+            }
+
+        }else if(!_.isNull(dataFile.FILE_ID) && !_.isNull(dataFile.FILE_DATA) && !dataFile.PROOF_INCOME){
+
+            dentalFiles.DENTAL_SERVICE_ID = idSubmission;
+            dentalFiles.DESCRIPTION = dataFile.DESCRIPTION;
+            dentalFiles.FILE_NAME = dataFile.FILE_NAME;
+            dentalFiles.FILE_TYPE = dataFile.FILE_TYPE;
+            dentalFiles.FILE_SIZE = dataFile.FILE_SIZE;
+            dentalFiles.FILE_DATA = dataFile.FILE_DATA;
+
+            let array_file = dataFile.FILE_DATA.match(/.{1,4000}/g)
+            let query = '';
+
+            array_file.forEach((element: string) => {
+                query = query + " DBMS_LOB.APPEND(v_long_text, to_blob(utl_raw.cast_to_raw('" +element+"'))); ";
+            });
+
+            var updateFile = await db.raw(`
+                DECLARE
+                    v_long_text BLOB;
+                BEGIN
+                    DBMS_LOB.CREATETEMPORARY(v_long_text,true);`
+                    + query +
+                `
+                    UPDATE ${SCHEMA_DENTAL}.DENTAL_SERVICE_FILES SET
+                        DESCRIPTION = ?,
+                        FILE_NAME = ?,
+                        FILE_TYPE = ?,
+                        FILE_SIZE = ?,
+                        FILE_DATA = v_long_text
+                    WHERE
+                        DENTAL_SERVICE_ID = ?;
+                END;
+                `, [dentalFiles.DESCRIPTION,dentalFiles.FILE_NAME,dentalFiles.FILE_TYPE,dentalFiles.FILE_SIZE,dentalFiles.DENTAL_SERVICE_ID]);
+
+            if(!updateFile){
+                res.json({ status:400, message: 'Request could not be processed' });
+            }
+
+        }
+
+        currentDependents = await db(`${SCHEMA_DENTAL}.DENTAL_SERVICE_DEPENDENTS`)
+                                        .select('ID',
+                                                'DENTAL_SERVICE_ID',
+                                                'C_FIRSTNAME',
+                                                'C_LASTNAME',
+                                                'C_HEALTHCARE',
+                                                'C_APPLY',
+                                                'C_DOB'
+                                        )
+                                        .where('DENTAL_SERVICE_DEPENDENTS.DENTAL_SERVICE_ID', idSubmission);
+
+        if(currentDependents.length > 0 && have_children.key == 2){
+            var deleteDependets = await db(`${SCHEMA_DENTAL}.DENTAL_SERVICE_DEPENDENTS`).where("DENTAL_SERVICE_ID", idSubmission).del();
+
+            if(!deleteDependets){
+                res.json({ status:400, message: 'Request could not be processed' });
+            }
+        }
+
+        if(newDependents.length > 0){
+
+            _.forEach(newDependents, function(value: any) {
+                if(!_.isEmpty(value.C_DOB)){
+                    let dob = new Date(value.C_DOB);
+                    let result: string =   dob.toISOString().split('T')[0];
+                    value.C_DOB  = db.raw("TO_DATE( ? ,'YYYY-MM-DD') ", result);
+                }else{
+                    value.C_DOB = null;
+                }
+            });
+
+            let dependentCreation = await db(`${SCHEMA_DENTAL}.DENTAL_SERVICE_DEPENDENTS`)
+                                    .insert(newDependents)
+                                    .into(`${SCHEMA_DENTAL}.DENTAL_SERVICE_DEPENDENTS`);
+
+            if(!dependentCreation){
+                res.json({ status:400, message: 'Request could not be processed' });
+            }
+
+        }
+
+        if(updatedDependents.length > 0){
+
+            for (const row of updatedDependents) {
+
+                if(!_.isEmpty(row.C_DOB)){
+                    let dob = new Date(row.C_DOB);
+                    let result: string = dob.toISOString().split('T')[0];
+                    row.C_DOB  = db.raw("TO_DATE( ? ,'YYYY-MM-DD') ", result);
+                }else{
+                    row.C_DOB = null;
+                }
+
+                var dependentUpdate = await db(`${SCHEMA_DENTAL}.DENTAL_SERVICE_DEPENDENTS`)
+                                        .update(row)
+                                        .where("ID", row.ID);
+
+                if(!dependentUpdate){
+                    res.json({ status:400, message: 'Request could not be processed' });
+                }
+
+            }
+        }
+
+        if(deletedDependents.length > 0){
+
+            const idSubmission: number[] = [];
+
+            _.forEach(deletedDependents, function(value: any) {
+                idSubmission.push(value.ID);
+            });
+
+            var dependentDelete = await db(`${SCHEMA_DENTAL}.DENTAL_SERVICE_DEPENDENTS`).whereIn("ID", idSubmission).del();
+
+            if(!dependentDelete){
+                res.json({ status:400, message: 'Request could not be processed' });
+            }
+        }
+
+        if(data.ASK_DEMOGRAPHIC.key == 1){
+            if(_.isEmpty(data.IDENTIFY_GROUPS) && !_.isArray(data.IDENTIFY_GROUPS)) {
+                data.IDENTIFY_GROUPS = null;
+            }else{
+                data.IDENTIFY_GROUPS =  db.raw("utl_raw.cast_to_raw(?) ", JSON.stringify(data.IDENTIFY_GROUPS));
+            }
+
+            if(_.isEmpty(data.REASON_FOR_DENTIST) && !_.isArray(data.REASON_FOR_DENTIST)) {
+                data.REASON_FOR_DENTIST = null;
+            }else{
+                data.REASON_FOR_DENTIST =  db.raw("utl_raw.cast_to_raw(?) ", JSON.stringify(data.REASON_FOR_DENTIST));
+            }
+
+            if(_.isEmpty(data.PAY_FOR_VISIT) && !_.isArray(data.PAY_FOR_VISIT)) {
+                data.PAY_FOR_VISIT = null;
+            }else{
+                data.PAY_FOR_VISIT =  db.raw("utl_raw.cast_to_raw(?) ", JSON.stringify(data.PAY_FOR_VISIT));
+            }
+
+            if(_.isEmpty(data.BARRIERS) && !_.isArray(data.BARRIERS)) {
+                data.BARRIERS = null;
+            }else{
+                data.BARRIERS =  db.raw("utl_raw.cast_to_raw(?) ", JSON.stringify(data.BARRIERS));
+            }
+
+            if(_.isEmpty(data.PROBLEMS) && !_.isArray(data.PROBLEMS)) {
+                data.PROBLEMS = null;
+            }else{
+                data.PROBLEMS =  db.raw("utl_raw.cast_to_raw(?) ", JSON.stringify(data.PROBLEMS));
+            }
+
+            if(_.isEmpty(data.SERVICES_NEEDED) && !_.isArray(data.SERVICES_NEEDED)) {
+                data.SERVICES_NEEDED = null;
+            }else{
+                data.SERVICES_NEEDED =  db.raw("utl_raw.cast_to_raw(?) ", JSON.stringify(data.SERVICES_NEEDED));
+            }
+        }
+
+        data.HAVE_CHILDREN = have_children.text;
+        data.ASK_DEMOGRAPHIC = data.ASK_DEMOGRAPHIC.text;
+
+        var updateSubmission = await db(`${SCHEMA_DENTAL}.DENTAL_SERVICE`).update(data).where("ID", idSubmission);
+
+        if(updateSubmission) {
+            let type = "success";
+            let message = "Submission updated successfully.";
+
+            res.json({ status:200, message: message, type: type });
+        }
+
+        if(!_.isEmpty(updatedFields)) {
+            fieldList =  db.raw("utl_raw.cast_to_raw(?) ", JSON.stringify(updatedFields));
+        }else{
+            fieldList = null;
+        }
+
+        let logFields = {
+            ACTION_TYPE: 3,
+            TITLE: "Update submission",
+            SCHEMA_NAME: SCHEMA_DENTAL,
+            TABLE_NAME: "DENTAL_SERVICE",
+            SUBMISSION_ID: idSubmission,
+            USER_ID: req.user?.db_user.user.id,
+            ACTION_DATA: fieldList
+        };
+
+        let loggedAction = helper.insertLog(logFields);
+
+        if(!loggedAction){
+            res.send( {
+                status: 400,
+                message: 'The action could not be logged'
+            });
+        }
+
+    } catch(e) {
+        console.log(e);  // debug if needed
+        res.send( {
+            status: 400,
+            message: 'Request could not be processed'
+        });
+    }
+});
+
+/**
  * Obtains string of Blob field
  *
  * @param {idDentalService}
@@ -1178,7 +1682,9 @@ function getDependents(idDentalService: any, arrayDependets: any){
 async function getAllStatus(){
     var dentalServiceStatus = Array();
 
-    dentalServiceStatus = await db(`${SCHEMA_DENTAL}.DENTAL_STATUS`).select().then((rows: any) => {
+    dentalServiceStatus = await db(`${SCHEMA_DENTAL}.DENTAL_STATUS`).select()
+    .whereNot('ID', 4).then((rows: any) => {
+
         let arrayResult = Array();
 
         for (let row of rows) {
@@ -1189,6 +1695,23 @@ async function getAllStatus(){
     });
     return dentalServiceStatus;
 }
+
+async function getCatalogSelect(table: any){
+    var arrayData = Array();
+
+    arrayData = await db(`${SCHEMA_DENTAL}.${table}`).select().then((rows: any) => {
+        let arrayResult = Array();
+
+        for (let row of rows) {
+            arrayResult.push({text: row['description'], value: row['id']});
+        }
+
+        return arrayResult;
+    });
+
+    return arrayData;
+}
+
 /**
  * Obtain file characteristics
  *

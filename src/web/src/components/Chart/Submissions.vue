@@ -1,5 +1,5 @@
 <template>
-    <div class="container chart">        
+    <div class="container chart">
         <div class="chart-header">
             <h3 class="title">{{ title }}</h3>
             <div class="filter">
@@ -10,7 +10,7 @@
                     item-text="label"
                     item-value="id"
                     @change="updatedSelectValue"
-                >                
+                >
                 </v-select>
             </div>
         </div>
@@ -20,7 +20,7 @@
               <h3>No data found.</h3>
             </div>
         </div>
-    </div>        
+    </div>
 </template>
 
 <script>
@@ -58,9 +58,9 @@ export default {
   },
   emits: [
     'filterSelected'
-  ],    
+  ],
   data: () => {
-    return {  
+    return {
         options: dtOptions,
         filterItems: filterList,
         filterValue: filterList[0],

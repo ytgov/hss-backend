@@ -70,9 +70,10 @@ const routes = [
 
   },
   {
-    path: "/constellation",
+    path: "/constellation/:type?",
     name: "Constellation Health",
     component: Constellation,
+    props: true,
     meta: {
       requiresAuth: true,
       permissions: [
@@ -158,9 +159,10 @@ const routes = [
     }
   },
   {
-    path: "/midwifery",
+    path: "/midwifery/:type?",
     name: "Midwifery",
     component: Midwifery,
+    props: true,
     meta: {
       requiresAuth: true,
       permissions: [
@@ -262,9 +264,10 @@ const routes = [
     }
   },
   {
-    path: "/dental",
+    path: "/dental/:type?",
     name: "Dental Service",
     component: Dental,
+    props: true,
     meta: {
       requiresAuth: true,
       permissions: [
