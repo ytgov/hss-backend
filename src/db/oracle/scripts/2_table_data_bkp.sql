@@ -1200,6 +1200,7 @@ Insert into GENERAL.EVENT_TYPE (ID,DESCIPTION,CREATED_AT) values (3,'Updated Old
 Insert into GENERAL.EVENT_TYPE (ID,DESCIPTION,CREATED_AT) values (4,'Deleted',to_timestamp('07-MAR-23 01.08.51.000000000 AM','DD-MON-RR HH.MI.SSXFF AM'));
 Insert into GENERAL.EVENT_TYPE (ID,DESCIPTION,CREATED_AT) values (5,'Internal Field Inserted',to_timestamp('07-MAR-23 01.08.51.000000000 AM','DD-MON-RR HH.MI.SSXFF AM'));
 Insert into GENERAL.EVENT_TYPE (ID,DESCIPTION,CREATED_AT) values (6,'Comment Inserted',to_timestamp('07-MAR-23 01.08.51.000000000 AM','DD-MON-RR HH.MI.SSXFF AM'));
+Insert into GENERAL.EVENT_TYPE (ID,DESCIPTION,CREATED_AT) values (7,'Submission Updated', CURRENT_TIMESTAMP);
 
 Insert into GENERAL.PERMISSION_DATA (ID,PERMISSION_NAME,PERMISSION_DESC,PERMISSION_CATEGORY) values (13,'dashboard_view','Dashboard View','General');
 Insert into GENERAL.PERMISSION_DATA (ID,PERMISSION_NAME,PERMISSION_DESC,PERMISSION_CATEGORY) values (1,'constellation_create','Constellation Create','Constellation');
