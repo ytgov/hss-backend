@@ -500,7 +500,8 @@ export default {
 			if(newValue.pay_for_visit) {
 
 				const stringElements = this.paymentMethods.reduce((acc, item) => {
-					const regex = new RegExp(item.description, 'g');
+					const escapedDescription = item.description.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
+					const regex = new RegExp(escapedDescription, 'g');
 					return acc.replace(regex, parseInt(item.id));
 
 				}, newValue.pay_for_visit);
@@ -514,6 +515,7 @@ export default {
 						return parseInt(item);
 					} else {
 						const dataItem = this.paymentMethods.find(data => data.description === 'other');
+
 						this.customPaymentMethod = item;
 						this.showCustomPaymentMethod = true;
 
