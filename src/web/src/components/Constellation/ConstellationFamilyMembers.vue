@@ -210,8 +210,7 @@
 
                                     <tr v-if="items.diagnosis_family_member">
                                         <td>
-                                        We want to ensure that all types of families and
-                                        people have access to the CSCHC.
+                                        Diagnosis history
                                         </td>
                                         <td>{{ items.diagnosis_family_member }}</td>
                                     </tr>

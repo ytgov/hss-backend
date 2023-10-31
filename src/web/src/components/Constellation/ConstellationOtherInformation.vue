@@ -51,8 +51,7 @@
 
 							<tr>
 								<td>
-									We want to ensure that all types of families and
-									people have access to the CSCHC.
+									Diagnosis history
 								</td>
 								<td>{{ constellation.diagnosis }}</td>
 								<td>{{ constellationDuplicated.diagnosis }}</td>

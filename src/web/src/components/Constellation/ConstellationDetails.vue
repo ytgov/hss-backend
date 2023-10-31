@@ -263,8 +263,7 @@
 
                             <tr v-if="itemsConstellation.diagnosis">
                                 <td>
-                                    We want to ensure that all types of families and
-                                    people have access to the CSCHC.
+                                    Diagnosis history
                                 </td>
                                 <td>{{ itemsConstellation.diagnosis }}</td>
                             </tr>
