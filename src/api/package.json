@@ -26,6 +26,7 @@
     "jwks-rsa": "^3.0.0",
     "knex": "^2.3.0",
     "lodash": "^4.17.21",
+    "mysql": "^2.18.1",
     "oracledb": "^5.5.0",
     "sanitize-filename": "1.6.3",
     "sqlite3": "^5.1.2",
