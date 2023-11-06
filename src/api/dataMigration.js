@@ -235,6 +235,9 @@ async function main() {
 					console.log("Error while inserting Log");
 				}
 
+				var dependentsInsert = Array();
+				let dependentsSaved = Object();
+
 				dentalDependents.forEach(async function (valueDependent) {
 					if (arraySubmissionsAux[key].ID_OLD == valueDependent.dental_service_id) {
 
@@ -244,32 +247,37 @@ async function main() {
 						dataDependent.C_FIRSTNAME = valueDependent.c_firstname;
 						dataDependent.C_LASTNAME = valueDependent.c_lastname;
 
-						if(valueDependent.c_dob !== null || valueDependent.c_dob !== ''){
+						if(valueDependent.c_dob == null || !valueDependent.c_dob || valueDependent.c_dob == '0000-00-00'){
+							dataDependent.C_DOB = null;
+						}else{
 							valueDependent.c_dob = valueDependent.c_dob.toISOString();
 							let result = valueDependent.c_dob.split('T')[0];
 							result = result.replace(/\.000Z$/, '');
 							dataDependent.C_DOB  = dbHss.raw("TO_DATE( ? ,'YYYY-MM-DD') ", result);
-						}else{
-							dataDependent.C_DOB = null;
 						}
 
 						dataDependent.C_HEALTHCARE = valueDependent.c_healthcare;
 
-						if(valueDependent.c_apply == 1 || valueDependent.c_apply == '1'){
+						if(valueDependent.c_apply == 1 || valueDependent.c_apply == '1' ||  valueDependent.c_apply == "Yes"){
 							dataDependent.C_APPLY = "Yes";
-						}else if(valueDependent.c_apply == 0 || valueDependent.c_apply == '0'){
+						}else if(valueDependent.c_apply == 0 || valueDependent.c_apply == '0' ||  valueDependent.c_apply == "No"){
 							dataDependent.C_APPLY = "No";
 						}else{
 							dataDependent.C_APPLY = null;
 						}
 
-						var dependentsSaved = await dbHss(`${SCHEMA_DENTAL}.DENTAL_SERVICE_DEPENDENTS`).insert(dataDependent).into(`${SCHEMA_DENTAL}.DENTAL_SERVICE_DEPENDENTS`);
+						dependentsInsert.push(dataDependent);
 
-						if(!dependentsSaved){
-							console.log("Error while inserting Dental Service Dependents");
-						}
 					}
 				});
+
+				if (dependentsInsert.length > 0) {
+					dependentsSaved = await dbHss(`${SCHEMA_DENTAL}.DENTAL_SERVICE_DEPENDENTS`).insert(dependentsInsert).into(`${SCHEMA_DENTAL}.DENTAL_SERVICE_DEPENDENTS`);
+
+					if(!dependentsSaved){
+						console.log("Error while inserting Dental Service Dependents");
+					}
+				}
 
 				if (Object.keys(dentalFiles).length !== 0) {
 					dentalFiles.forEach(async function (valueFile) {
