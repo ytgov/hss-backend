@@ -39,7 +39,6 @@ const emdsConfig = {
 		database: DB_NAME_EDMS,
 		requestTimeout: 100
 	}
-
 };
 
 const DB_CONFIG_DENTAL = {
@@ -236,9 +235,8 @@ async function main() {
 				}
 
 				var dependentsInsert = Array();
-				let dependentsSaved = Object();
 
-				dentalDependents.forEach(async function (valueDependent) {
+				dentalDependents.forEach(function (valueDependent) {
 					if (arraySubmissionsAux[key].ID_OLD == valueDependent.dental_service_id) {
 
 						let dataDependent = Object();
@@ -272,25 +270,23 @@ async function main() {
 				});
 
 				if (dependentsInsert.length > 0) {
-					dependentsSaved = await dbHss(`${SCHEMA_DENTAL}.DENTAL_SERVICE_DEPENDENTS`).insert(dependentsInsert).into(`${SCHEMA_DENTAL}.DENTAL_SERVICE_DEPENDENTS`);
+					for (const fileData of dependentsInsert) {
 
-					if(!dependentsSaved){
-						console.log("Error while inserting Dental Service Dependents");
+						let dependentsSaved = await dbHss(`${SCHEMA_DENTAL}.DENTAL_SERVICE_DEPENDENTS`).insert(fileData).into(`${SCHEMA_DENTAL}.DENTAL_SERVICE_DEPENDENTS`);
+
+						if(!dependentsSaved){
+							console.log("Error while inserting Dental Service Dependents");
+						}
 					}
 				}
 
 				if (Object.keys(dentalFiles).length !== 0) {
+
+					const fileDataArray = Array();
+
 					dentalFiles.forEach(async function (valueFile) {
-
 						if (arraySubmissionsAux[key].ID_OLD == valueFile.dental_service_id) {
-
 							var dataFiles = Object();
-
-							dataFiles.DENTAL_SERVICE_ID = dentalId.ID;
-							dataFiles.DESCRIPTION = valueFile.description;
-							dataFiles.FILE_NAME = valueFile.file_name;
-							dataFiles.FILE_TYPE = valueFile.file_type;
-							dataFiles.FILE_SIZE = valueFile.file_size;
 
 							const bufferData = Buffer.from(valueFile.file_data, 'binary');
 							const dataValue = bufferData.toString('utf8');
@@ -302,22 +298,30 @@ async function main() {
 								query = query + " DBMS_LOB.APPEND(v_long_text, to_blob(utl_raw.cast_to_raw('" +element+"'))); ";
 							});
 
-							var filesSaved = await dbHss.raw(`
-								DECLARE
-									v_long_text BLOB;
-								BEGIN
-									DBMS_LOB.CREATETEMPORARY(v_long_text,true);`
-									+ query +
-								`
-									INSERT INTO ${SCHEMA_DENTAL}.DENTAL_SERVICE_FILES (DENTAL_SERVICE_ID, DESCRIPTION, FILE_NAME, FILE_TYPE, FILE_SIZE, FILE_DATA) VALUES (?,?,?,?,?,v_long_text);
-								END;
-								`, [dentalId.ID,valueFile.description,valueFile.file_name,valueFile.file_type,valueFile.file_size]);
+							dataFiles.DENTAL_SERVICE_ID = dentalId.ID;
+							dataFiles.DESCRIPTION = valueFile.description;
+							dataFiles.FILE_NAME = valueFile.file_name;
+							dataFiles.FILE_TYPE = valueFile.file_type;
+							dataFiles.FILE_SIZE = valueFile.file_size;
+							dataFiles.query = query;
 
-							if(!filesSaved){
-								console.log("Error while inserting Dental Service Files");
-							}
+							fileDataArray.push(dataFiles);
 						}
 					});
+
+					for (const fileData of fileDataArray) {
+						await dbHss.raw(`
+							DECLARE
+								v_long_text BLOB;
+							BEGIN
+								DBMS_LOB.CREATETEMPORARY(v_long_text, true);
+								` +
+								fileData.query +
+								`
+								INSERT INTO ${SCHEMA_DENTAL}.DENTAL_SERVICE_FILES (DENTAL_SERVICE_ID, DESCRIPTION, FILE_NAME, FILE_TYPE, FILE_SIZE, FILE_DATA) VALUES (?,?,?,?,?,v_long_text);
+							END;
+						`, [fileData.DENTAL_SERVICE_ID, fileData.DESCRIPTION, fileData.FILE_NAME, fileData.FILE_TYPE, fileData.FILE_SIZE]);
+					}
 
 				}
 
