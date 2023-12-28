@@ -382,10 +382,15 @@ hipmaRouter.post("/store", async (req: Request, res: Response) => {
 
         hipma.FIRST_NAME = data.first_name;
         hipma.LAST_NAME = data.last_name;
-        data.date_of_birth = new Date(data.date_of_birth);
 
-        let result: string =   data.date_of_birth.toISOString().split('T')[0];
-        hipma.DATE_OF_BIRTH  = db.raw("TO_DATE('"+result+"','YYYY-MM-DD') ");
+        if(!_.isEmpty(data.date_of_birth)){
+            data.date_of_birth = new Date(data.date_of_birth);
+
+            let result: string =   data.date_of_birth.toISOString().split('T')[0];
+            hipma.DATE_OF_BIRTH  = db.raw("TO_DATE('"+result+"','YYYY-MM-DD') ");
+        }else{
+            hipma.DATE_OF_BIRTH = null;
+        }
 
         hipma.ADDRESS = data.address;
         hipma.CITY_OR_TOWN = data.city_or_town;
@@ -499,7 +504,7 @@ hipmaRouter.post("/store", async (req: Request, res: Response) => {
         console.log(e);  // debug if needed
         res.send( {
             status: 400,
-            message: 'Request could not be processed'
+            message: 'Request could not be processed ' + e
         });
     }
 });

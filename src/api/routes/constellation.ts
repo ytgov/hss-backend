@@ -511,7 +511,7 @@ constellationRouter.post("/store", async (req: Request, res: Response) => {
         console.log(e);  // debug if needed
         res.send( {
             status: 400,
-            message: 'Request could not be processed'
+            message: 'Request could not be processed ' + e
         });
     }
 
