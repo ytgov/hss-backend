@@ -1131,7 +1131,7 @@ dentalRouter.post("/store", async (req: Request, res: Response) => {
 
         const logSaved = await helper.insertLogIdReturn(logOriginalSubmission);
         if(!logSaved){
-            res.json({ status:400, message: 'The action could not be logged' });
+            console.log('The action could not be logged: '+logOriginalSubmission.TABLE_NAME+' '+logOriginalSubmission.TITLE);
         }
 
         dentalService.FIRST_NAME = data.first_name;
@@ -1220,10 +1220,7 @@ dentalRouter.post("/store", async (req: Request, res: Response) => {
             var updateSubmission = await db(`${SCHEMA_GENERAL}.ACTION_LOGS`).update('SUBMISSION_ID', dentalId.id).where("ID", logSaved);
 
             if(!updateSubmission){
-                res.send( {
-                    status: 400,
-                    message: 'The action could not be logged'
-                });
+                console.log('The action could not be logged: Update '+logOriginalSubmission.TABLE_NAME+' '+logOriginalSubmission.TITLE);
             }
         }
 
@@ -1295,10 +1292,7 @@ dentalRouter.post("/store", async (req: Request, res: Response) => {
         let loggedAction = helper.insertLog(logFields);
 
         if(!loggedAction){
-            res.send( {
-                status: 400,
-                message: 'The action could not be logged'
-            });
+            console.log('The action could not be logged: '+logFields.TABLE_NAME+' '+logFields.TITLE);
         }
 
         res.json({ status:200, message: 'Request saved' });

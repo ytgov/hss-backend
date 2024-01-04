@@ -481,7 +481,7 @@ midwiferyRouter.post("/store", async (req: Request, res: Response) => {
 
         const logSaved = await helper.insertLogIdReturn(logOriginalSubmission);
         if(!logSaved){
-            res.json({ status:400, message: 'The action could not be logged' });
+            console.log('The action could not be logged: '+logOriginalSubmission.TABLE_NAME+' '+logOriginalSubmission.TITLE);
         }
 
         midwifery.CONFIRMATION_NUMBER = getConfirmationNumber();
@@ -588,10 +588,7 @@ midwiferyRouter.post("/store", async (req: Request, res: Response) => {
             var updateSubmission = await db(`${SCHEMA_GENERAL}.ACTION_LOGS`).update('SUBMISSION_ID', idMidwifery.id).where("ID", logSaved);
 
             if(!updateSubmission){
-                res.send( {
-                    status: 400,
-                    message: 'The action could not be logged'
-                });
+                console.log('The action could not be logged: Update '+logOriginalSubmission.TABLE_NAME+' '+logOriginalSubmission.TITLE);
             }
 
             res.json({ status:200, message: 'Request saved' });

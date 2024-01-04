@@ -408,7 +408,7 @@ constellationRouter.post("/store", async (req: Request, res: Response) => {
 
         const logSaved = await helper.insertLogIdReturn(logOriginalSubmission);
         if(!logSaved){
-            res.json({ status:400, message: 'The action could not be logged' });
+            console.log('The action could not be logged: '+logOriginalSubmission.TABLE_NAME+' '+logOriginalSubmission.TITLE);
         }
 
         constellationHealth.first_name = data.first_name;
@@ -433,7 +433,7 @@ constellationRouter.post("/store", async (req: Request, res: Response) => {
         }else{
             constellationHealth.date_of_birth = null;
         }
-      
+
 
         constellationHealth.yhcip = data.yhcip;
         constellationHealth.postal_code = data.postal_code;
@@ -480,10 +480,7 @@ constellationRouter.post("/store", async (req: Request, res: Response) => {
             var updateSubmission = await db(`${SCHEMA_GENERAL}.ACTION_LOGS`).update('SUBMISSION_ID', idConstellation.id).where("ID", logSaved);
 
             if(!updateSubmission){
-                res.send( {
-                    status: 400,
-                    message: 'The action could not be logged'
-                });
+                console.log('The action could not be logged: Update '+logOriginalSubmission.TABLE_NAME+' '+logOriginalSubmission.TITLE);
             }
         }
 
@@ -498,10 +495,7 @@ constellationRouter.post("/store", async (req: Request, res: Response) => {
         let loggedAction = helper.insertLog(logFields);
 
         if(!loggedAction){
-            res.send( {
-                status: 400,
-                message: 'The action could not be logged'
-            });
+            console.log('The action could not be logged: '+logFields.TABLE_NAME+' '+logFields.TITLE);
         }
 
         if(!_.isEmpty(data.family_members_json) && data.family_members_json !== "[]"){

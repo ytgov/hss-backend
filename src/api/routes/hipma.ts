@@ -336,7 +336,7 @@ hipmaRouter.post("/store", async (req: Request, res: Response) => {
         const logSaved = await helper.insertLogIdReturn(logOriginalSubmission);
 
         if(!logSaved){
-            res.json({ status:400, message: 'The action could not be logged' });
+            console.log('The action could not be logged: '+logOriginalSubmission.TABLE_NAME+' '+logOriginalSubmission.TITLE);
         }
 
         hipma.CONFIRMATION_NUMBER = getConfirmationNumber();
@@ -432,7 +432,7 @@ hipmaRouter.post("/store", async (req: Request, res: Response) => {
             hipma.NAME_OF_HEALTH_AND_SOCIAL_SERVICES_PROGRAM_AREA_OPTIONAL_ = null;
         }else{
             hipma.NAME_OF_HEALTH_AND_SOCIAL_SERVICES_PROGRAM_AREA_OPTIONAL_ =  db.raw("utl_raw.cast_to_raw(?) ", JSON.stringify(data.name_of_health_and_social_services_program_area_optional_));
-       
+
         }
         if(_.isEmpty(data.indicate_the_hss_system_s_you_would_like_a_record_of_user_activi) && !_.isArray(data.indicate_the_hss_system_s_you_would_like_a_record_of_user_activi)) {
             hipma.INDICATE_THE_HSS_SYSTEM_S_YOU_WOULD_LIKE_A_RECORD_OF_USER_ACTIV = null;
@@ -466,10 +466,7 @@ hipmaRouter.post("/store", async (req: Request, res: Response) => {
             var updateSubmission = await db(`${SCHEMA_GENERAL}.ACTION_LOGS`).update('SUBMISSION_ID', hipma_id.id).where("ID", logSaved);
 
             if(!updateSubmission){
-                res.send( {
-                    status: 400,
-                    message: 'The action could not be logged'
-                });
+                console.log('The action could not be logged: Update '+logOriginalSubmission.TABLE_NAME+' '+logOriginalSubmission.TITLE);
             }
         }
 
@@ -484,10 +481,7 @@ hipmaRouter.post("/store", async (req: Request, res: Response) => {
         let loggedAction = helper.insertLog(logFields);
 
         if(!loggedAction){
-            res.send( {
-                status: 400,
-                message: 'The action could not be logged'
-            });
+            console.log('The action could not be logged: '+logFields.TABLE_NAME+' '+logFields.TITLE);
         }
 
         if(!_.isEmpty(files)){
