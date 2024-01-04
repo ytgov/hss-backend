@@ -1118,6 +1118,22 @@ dentalRouter.post("/store", async (req: Request, res: Response) => {
 
         data = req.body;
 
+        let stringOriginalSubmission = JSON.stringify(data);
+        let bufferOriginalSubmission = Buffer.from(stringOriginalSubmission);
+
+        let logOriginalSubmission = {
+            ACTION_TYPE: 2,
+            TITLE: "Original submission request",
+            SCHEMA_NAME: SCHEMA_DENTAL,
+            TABLE_NAME: "DENTAL_SERVICE",
+            ACTION_DATA: bufferOriginalSubmission
+        };
+
+        const logSaved = await helper.insertLogIdReturn(logOriginalSubmission);
+        if(!logSaved){
+            res.json({ status:400, message: 'The action could not be logged' });
+        }
+
         dentalService.FIRST_NAME = data.first_name;
         dentalService.MIDDLE_NAME = data.middle_name;
         dentalService.LAST_NAME = data.last_name;
@@ -1199,6 +1215,17 @@ dentalRouter.post("/store", async (req: Request, res: Response) => {
         }
 
         let dentalId = dentalServiceSaved.find((obj: any) => {return obj.id;});
+
+        if(dentalServiceSaved){
+            var updateSubmission = await db(`${SCHEMA_GENERAL}.ACTION_LOGS`).update('SUBMISSION_ID', dentalId.id).where("ID", logSaved);
+
+            if(!updateSubmission){
+                res.send( {
+                    status: 400,
+                    message: 'The action could not be logged'
+                });
+            }
+        }
 
         if(!_.isEmpty(data.dependent_list)){
             let arrayDependents = getDependents(dentalId.id, data.dependent_list);

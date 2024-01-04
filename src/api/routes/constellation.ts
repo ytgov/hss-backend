@@ -2,7 +2,7 @@ import express, { Request, Response } from "express";
 import { body, param } from "express-validator";
 import { SubmissionStatusRepository } from "../repository/oracle/SubmissionStatusRepository";
 import knex from "knex";
-import { DB_CONFIG_CONSTELLATION, SCHEMA_CONSTELLATION } from "../config";
+import { DB_CONFIG_CONSTELLATION, SCHEMA_CONSTELLATION, SCHEMA_GENERAL } from "../config";
 import { groupBy, helper } from "../utils";
 import { checkPermissions } from "../middleware/permissions";
 var RateLimit = require('express-rate-limit');
@@ -394,6 +394,23 @@ constellationRouter.post("/store", async (req: Request, res: Response) => {
         let constellationSaved = Object();
 
         data = req.body;
+
+        let stringOriginalData = JSON.stringify(data);
+        let bufferOriginalData = Buffer.from(stringOriginalData);
+
+        let logOriginalSubmission = {
+            ACTION_TYPE: 2,
+            TITLE: "Original submission request",
+            SCHEMA_NAME: SCHEMA_CONSTELLATION,
+            TABLE_NAME: "CONSTELLATION_HEALTH",
+            ACTION_DATA: bufferOriginalData
+        };
+
+        const logSaved = await helper.insertLogIdReturn(logOriginalSubmission);
+        if(!logSaved){
+            res.json({ status:400, message: 'The action could not be logged' });
+        }
+
         constellationHealth.first_name = data.first_name;
         constellationHealth.last_name = data.last_name;
         constellationHealth.is_this_your_legal_name_ = data.is_this_your_legal_name_;
@@ -458,6 +475,17 @@ constellationRouter.post("/store", async (req: Request, res: Response) => {
 
         constellationSaved = await db(`${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH`).insert(constellationHealth).into(`${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH`).returning('ID');
         const idConstellation = constellationSaved.find((obj: any) => {return obj.id;})
+
+        if(constellationSaved){
+            var updateSubmission = await db(`${SCHEMA_GENERAL}.ACTION_LOGS`).update('SUBMISSION_ID', idConstellation.id).where("ID", logSaved);
+
+            if(!updateSubmission){
+                res.send( {
+                    status: 400,
+                    message: 'The action could not be logged'
+                });
+            }
+        }
 
         let logFields = {
             ACTION_TYPE: 2,

@@ -3,7 +3,7 @@ import { EnsureAuthenticated } from "./auth"
 import { body, param } from "express-validator";
 import { SubmissionStatusRepository } from "../repository/oracle/SubmissionStatusRepository";
 import knex from "knex";
-import { DB_CONFIG_MIDWIFERY, SCHEMA_MIDWIFERY } from "../config";
+import { DB_CONFIG_MIDWIFERY, SCHEMA_MIDWIFERY, SCHEMA_GENERAL } from "../config";
 import { groupBy , helper } from "../utils";
 
 var RateLimit = require('express-rate-limit');
@@ -467,6 +467,23 @@ midwiferyRouter.post("/store", async (req: Request, res: Response) => {
         let midwiferySaved = Object();
 
         data = req.body;
+
+        let stringOriginalData = JSON.stringify(data);
+        let bufferOriginalData = Buffer.from(stringOriginalData);
+
+        let logOriginalSubmission = {
+            ACTION_TYPE: 2,
+            TITLE: "Original submission request",
+            SCHEMA_NAME: SCHEMA_MIDWIFERY,
+            TABLE_NAME: "MIDWIFERY_SERVICES",
+            ACTION_DATA: bufferOriginalData
+        };
+
+        const logSaved = await helper.insertLogIdReturn(logOriginalSubmission);
+        if(!logSaved){
+            res.json({ status:400, message: 'The action could not be logged' });
+        }
+
         midwifery.CONFIRMATION_NUMBER = getConfirmationNumber();
         midwifery.FIRST_NAME = data.first_name;
         midwifery.LAST_NAME = data.last_name;
@@ -563,9 +580,20 @@ midwiferyRouter.post("/store", async (req: Request, res: Response) => {
         midwifery.PHYSICIAN_S_NAME = data.physician_s_name;
         midwifery.PROVIDE_DETAILS3 = data.provide_details3;
 
-        midwiferySaved = await db(`${SCHEMA_MIDWIFERY}.MIDWIFERY_SERVICES`).insert(midwifery).into(`${SCHEMA_MIDWIFERY}.MIDWIFERY_SERVICES`);
+        midwiferySaved = await db(`${SCHEMA_MIDWIFERY}.MIDWIFERY_SERVICES`).insert(midwifery).into(`${SCHEMA_MIDWIFERY}.MIDWIFERY_SERVICES`).returning('ID');
+        const idMidwifery = midwiferySaved.find((obj: any) => {return obj.id;})
 
         if(midwiferySaved){
+
+            var updateSubmission = await db(`${SCHEMA_GENERAL}.ACTION_LOGS`).update('SUBMISSION_ID', idMidwifery.id).where("ID", logSaved);
+
+            if(!updateSubmission){
+                res.send( {
+                    status: 400,
+                    message: 'The action could not be logged'
+                });
+            }
+
             res.json({ status:200, message: 'Request saved' });
         }
 
