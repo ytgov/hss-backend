@@ -34,6 +34,7 @@ const emdsConfig = {
 	client: 'mysql',
 	connection: {
 		host: DB_HOST_EDMS,
+		port: DB_PORT_EDMS,
 		user: DB_USER_EDMS,
 		password: DB_PASS_EDMS,
 		database: DB_NAME_EDMS,
