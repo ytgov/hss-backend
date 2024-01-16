@@ -11,7 +11,6 @@ export const getJsonDataList = (fieldData: any): Array<any> => {
 
 export const insertLog = (dataLog: any): Array<any> => {
     let logSaved = Object();
-    console.log(dataLog);
 
     logSaved = db(`${SCHEMA_GENERAL}.ACTION_LOGS`).insert(dataLog).into(`${SCHEMA_GENERAL}.ACTION_LOGS`)
     .then(() => {
@@ -23,4 +22,18 @@ export const insertLog = (dataLog: any): Array<any> => {
     });
 
     return logSaved;
+};
+
+export const insertLogIdReturn = async (dataLog: any): Promise<number | boolean | string> => {
+    try {
+        const logInsertedId = await db(`${SCHEMA_GENERAL}.ACTION_LOGS`)
+            .insert(dataLog)
+            .into(`${SCHEMA_GENERAL}.ACTION_LOGS`)
+            .returning('ID');
+
+        return logInsertedId[0].id;
+    } catch (error) {
+        console.error(error);
+        return false;
+    }
 };

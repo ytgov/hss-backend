@@ -389,17 +389,17 @@ dentalRouter.get("/show/:dentalService_id", checkPermissions("dental_view"), [pa
         let fileName = 'dental_service_request_details_'+todayDate+".pdf";
 
         const internalFieldsYears = [];
-        const currentYear = new Date().getFullYear();
-        const targetYear = 2050;
+        const currentYear = (new Date().getFullYear())-1;
+        const targetYear = currentYear + 10;
 
         internalFieldsYears.push({
             text: currentYear,
-            value: currentYear,
+            value: currentYear.toString(),
             dateFrom: currentYear,
             dateTo: currentYear
         });
 
-        for (let year = currentYear; year <= targetYear; year += 2) {
+        for (let year = currentYear; year <= targetYear; year += 1) {
             const dateFrom = year;
             const dateTo = year + 1;
             const value = `${dateFrom}-${dateTo}`;
@@ -1118,6 +1118,22 @@ dentalRouter.post("/store", async (req: Request, res: Response) => {
 
         data = req.body;
 
+        let stringOriginalSubmission = JSON.stringify(data);
+        let bufferOriginalSubmission = Buffer.from(stringOriginalSubmission);
+
+        let logOriginalSubmission = {
+            ACTION_TYPE: 2,
+            TITLE: "Original submission request",
+            SCHEMA_NAME: SCHEMA_DENTAL,
+            TABLE_NAME: "DENTAL_SERVICE",
+            ACTION_DATA: bufferOriginalSubmission
+        };
+
+        const logSaved = await helper.insertLogIdReturn(logOriginalSubmission);
+        if(!logSaved){
+            console.log('The action could not be logged: '+logOriginalSubmission.TABLE_NAME+' '+logOriginalSubmission.TITLE);
+        }
+
         dentalService.FIRST_NAME = data.first_name;
         dentalService.MIDDLE_NAME = data.middle_name;
         dentalService.LAST_NAME = data.last_name;
@@ -1200,6 +1216,14 @@ dentalRouter.post("/store", async (req: Request, res: Response) => {
 
         let dentalId = dentalServiceSaved.find((obj: any) => {return obj.id;});
 
+        if(dentalServiceSaved){
+            var updateSubmission = await db(`${SCHEMA_GENERAL}.ACTION_LOGS`).update('SUBMISSION_ID', dentalId.id).where("ID", logSaved);
+
+            if(!updateSubmission){
+                console.log('The action could not be logged: Update '+logOriginalSubmission.TABLE_NAME+' '+logOriginalSubmission.TITLE);
+            }
+        }
+
         if(!_.isEmpty(data.dependent_list)){
             let arrayDependents = getDependents(dentalId.id, data.dependent_list);
 
@@ -1268,10 +1292,7 @@ dentalRouter.post("/store", async (req: Request, res: Response) => {
         let loggedAction = helper.insertLog(logFields);
 
         if(!loggedAction){
-            res.send( {
-                status: 400,
-                message: 'The action could not be logged'
-            });
+            console.log('The action could not be logged: '+logFields.TABLE_NAME+' '+logFields.TITLE);
         }
 
         res.json({ status:200, message: 'Request saved' });

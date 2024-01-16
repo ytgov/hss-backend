@@ -3,7 +3,7 @@ import { EnsureAuthenticated } from "./auth"
 import { body, param } from "express-validator";
 import { SubmissionStatusRepository } from "../repository/oracle/SubmissionStatusRepository";
 import knex from "knex";
-import { DB_CONFIG_HIPMA, SCHEMA_HIPMA } from "../config";
+import { DB_CONFIG_HIPMA, SCHEMA_HIPMA, SCHEMA_GENERAL } from "../config";
 import { groupBy , helper } from "../utils";
 var RateLimit = require('express-rate-limit');
 var _ = require('lodash');
@@ -321,6 +321,24 @@ hipmaRouter.post("/store", async (req: Request, res: Response) => {
         var files = Object();
 
         data = req.body;
+
+        let stringOriginalData = JSON.stringify(data);
+        let bufferOriginalData = Buffer.from(stringOriginalData);
+
+        let logOriginalSubmission = {
+            ACTION_TYPE: 2,
+            TITLE: "Original submission request",
+            SCHEMA_NAME: SCHEMA_HIPMA,
+            TABLE_NAME: "HEALTH_INFORMATION",
+            ACTION_DATA: bufferOriginalData
+        };
+
+        const logSaved = await helper.insertLogIdReturn(logOriginalSubmission);
+
+        if(!logSaved){
+            console.log('The action could not be logged: '+logOriginalSubmission.TABLE_NAME+' '+logOriginalSubmission.TITLE);
+        }
+
         hipma.CONFIRMATION_NUMBER = getConfirmationNumber();
 
         if(_.isEmpty(data.what_type_of_request_do_you_want_to_make_)) {
@@ -414,7 +432,7 @@ hipmaRouter.post("/store", async (req: Request, res: Response) => {
             hipma.NAME_OF_HEALTH_AND_SOCIAL_SERVICES_PROGRAM_AREA_OPTIONAL_ = null;
         }else{
             hipma.NAME_OF_HEALTH_AND_SOCIAL_SERVICES_PROGRAM_AREA_OPTIONAL_ =  db.raw("utl_raw.cast_to_raw(?) ", JSON.stringify(data.name_of_health_and_social_services_program_area_optional_));
-       
+
         }
         if(_.isEmpty(data.indicate_the_hss_system_s_you_would_like_a_record_of_user_activi) && !_.isArray(data.indicate_the_hss_system_s_you_would_like_a_record_of_user_activi)) {
             hipma.INDICATE_THE_HSS_SYSTEM_S_YOU_WOULD_LIKE_A_RECORD_OF_USER_ACTIV = null;
@@ -444,6 +462,14 @@ hipmaRouter.post("/store", async (req: Request, res: Response) => {
         HipmaSaved = await db(`${SCHEMA_HIPMA}.HEALTH_INFORMATION`).insert(hipma).into(`${SCHEMA_HIPMA}.HEALTH_INFORMATION`).returning('ID');
         let hipma_id = HipmaSaved.find((obj: any) => {return obj.id;});
 
+        if(HipmaSaved){
+            var updateSubmission = await db(`${SCHEMA_GENERAL}.ACTION_LOGS`).update('SUBMISSION_ID', hipma_id.id).where("ID", logSaved);
+
+            if(!updateSubmission){
+                console.log('The action could not be logged: Update '+logOriginalSubmission.TABLE_NAME+' '+logOriginalSubmission.TITLE);
+            }
+        }
+
         let logFields = {
             ACTION_TYPE: 2,
             TITLE: "Insert submission",
@@ -455,10 +481,7 @@ hipmaRouter.post("/store", async (req: Request, res: Response) => {
         let loggedAction = helper.insertLog(logFields);
 
         if(!loggedAction){
-            res.send( {
-                status: 400,
-                message: 'The action could not be logged'
-            });
+            console.log('The action could not be logged: '+logFields.TABLE_NAME+' '+logFields.TITLE);
         }
 
         if(!_.isEmpty(files)){
