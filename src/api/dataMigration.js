@@ -38,7 +38,7 @@ const emdsConfig = {
 		user: DB_USER_EDMS,
 		password: DB_PASS_EDMS,
 		database: DB_NAME_EDMS,
-		requestTimeout: 100
+		requestTimeout: 10000
 	}
 };
 
@@ -294,36 +294,37 @@ async function main() {
 
 							let array_file = dataValue.match(/.{1,4000}/g);
 							let query = '';
+							if (array_file && array_file.length > 0) {
+								array_file.forEach((element) => {
+									query = query + " DBMS_LOB.APPEND(v_long_text, to_blob(utl_raw.cast_to_raw('" +element+"'))); ";
+								});
 
-							array_file.forEach((element) => {
-								query = query + " DBMS_LOB.APPEND(v_long_text, to_blob(utl_raw.cast_to_raw('" +element+"'))); ";
-							});
+								dataFiles.DENTAL_SERVICE_ID = dentalId.ID;
+								dataFiles.DESCRIPTION = valueFile.description;
+								dataFiles.FILE_NAME = valueFile.file_name;
+								dataFiles.FILE_TYPE = valueFile.file_type;
+								dataFiles.FILE_SIZE = valueFile.file_size;
+								dataFiles.query = query;
 
-							dataFiles.DENTAL_SERVICE_ID = dentalId.ID;
-							dataFiles.DESCRIPTION = valueFile.description;
-							dataFiles.FILE_NAME = valueFile.file_name;
-							dataFiles.FILE_TYPE = valueFile.file_type;
-							dataFiles.FILE_SIZE = valueFile.file_size;
-							dataFiles.query = query;
-
-							fileDataArray.push(dataFiles);
+								fileDataArray.push(dataFiles);
+							}
 						}
 					});
-
-					for (const fileData of fileDataArray) {
-						await dbHss.raw(`
-							DECLARE
-								v_long_text BLOB;
-							BEGIN
-								DBMS_LOB.CREATETEMPORARY(v_long_text, true);
-								` +
-								fileData.query +
-								`
-								INSERT INTO ${SCHEMA_DENTAL}.DENTAL_SERVICE_FILES (DENTAL_SERVICE_ID, DESCRIPTION, FILE_NAME, FILE_TYPE, FILE_SIZE, FILE_DATA) VALUES (?,?,?,?,?,v_long_text);
-							END;
-						`, [fileData.DENTAL_SERVICE_ID, fileData.DESCRIPTION, fileData.FILE_NAME, fileData.FILE_TYPE, fileData.FILE_SIZE]);
+					if (fileDataArray && fileDataArray.length > 0) {
+						for (const fileData of fileDataArray) {
+							await dbHss.raw(`
+								DECLARE
+									v_long_text BLOB;
+								BEGIN
+									DBMS_LOB.CREATETEMPORARY(v_long_text, true);
+									` +
+									fileData.query +
+									`
+									INSERT INTO ${SCHEMA_DENTAL}.DENTAL_SERVICE_FILES (DENTAL_SERVICE_ID, DESCRIPTION, FILE_NAME, FILE_TYPE, FILE_SIZE, FILE_DATA) VALUES (?,?,?,?,?,v_long_text);
+								END;
+							`, [fileData.DENTAL_SERVICE_ID, fileData.DESCRIPTION, fileData.FILE_NAME, fileData.FILE_TYPE, fileData.FILE_SIZE]);
+						}
 					}
-
 				}
 
 				console.log('Submission migration successful!');
