@@ -246,14 +246,42 @@ async function main() {
 						dataDependent.C_FIRSTNAME = valueDependent.c_firstname;
 						dataDependent.C_LASTNAME = valueDependent.c_lastname;
 
+
+
+
 						if(valueDependent.c_dob == null || !valueDependent.c_dob || valueDependent.c_dob == '0000-00-00'){
 							dataDependent.C_DOB = null;
-						}else{
+						}else if (valueDependent.c_dob instanceof Date){
 							valueDependent.c_dob = valueDependent.c_dob.toISOString();
 							let result = valueDependent.c_dob.split('T')[0];
 							result = result.replace(/\.000Z$/, '');
 							dataDependent.C_DOB  = dbHss.raw("TO_DATE( ? ,'YYYY-MM-DD') ", result);
-						}
+						}else if (typeof valueDependent.c_dob === 'string') {
+							const dateParts = valueDependent.c_dob.split('-');
+							// Validate that there are three parts in the date (year, month, day)
+							if (dateParts.length === 3) {
+								const year = parseInt(dateParts[0], 10);
+								const month = parseInt(dateParts[1], 10) - 1;  // Subtract 1 because months in JavaScript are 0-indexed
+								const day = parseInt(dateParts[2], 10);
+
+								// Create a Date object with the date parts
+								const dateObject = new Date(year, month, day);
+
+								// Validate that the date is valid
+								if (!isNaN(dateObject.getTime())) {
+									// The date is valid, you can use it as needed
+									valueDependent.c_dob = dateObject.toISOString();
+									let result = valueDependent.c_dob.split('T')[0];
+									result = result.replace(/\.000Z$/, '');
+									dataDependent.C_DOB  = dbHss.raw("TO_DATE( ? ,'YYYY-MM-DD') ", result);
+									
+								} else {
+									dataDependent.C_DOB = null;
+								}
+							} else {
+								dataDependent.C_DOB = null;
+							}
+						} 
 
 						dataDependent.C_HEALTHCARE = valueDependent.c_healthcare;
 
@@ -340,6 +368,7 @@ async function main() {
 		process.exit(0);
 
 	} catch (error) {
+		console.error('Error:', error);
 		console.error('Error:', error);
 	}
 }
