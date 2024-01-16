@@ -389,17 +389,17 @@ dentalRouter.get("/show/:dentalService_id", checkPermissions("dental_view"), [pa
         let fileName = 'dental_service_request_details_'+todayDate+".pdf";
 
         const internalFieldsYears = [];
-        const currentYear = new Date().getFullYear();
-        const targetYear = 2050;
+        const currentYear = (new Date().getFullYear())-1;
+        const targetYear = currentYear + 10;
 
         internalFieldsYears.push({
             text: currentYear,
-            value: currentYear,
+            value: currentYear.toString(),
             dateFrom: currentYear,
             dateTo: currentYear
         });
 
-        for (let year = currentYear; year <= targetYear; year += 2) {
+        for (let year = currentYear; year <= targetYear; year += 1) {
             const dateFrom = year;
             const dateTo = year + 1;
             const value = `${dateFrom}-${dateTo}`;
