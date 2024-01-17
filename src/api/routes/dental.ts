@@ -389,8 +389,9 @@ dentalRouter.get("/show/:dentalService_id", checkPermissions("dental_view"), [pa
         let fileName = 'dental_service_request_details_'+todayDate+".pdf";
 
         const internalFieldsYears = [];
-        const currentYear = (new Date().getFullYear())-1;
-        const targetYear = currentYear + 10;
+        const startYear = new Date().getFullYear();
+        const currentYear = 2023;
+        const targetYear = startYear + 10;
 
         internalFieldsYears.push({
             text: currentYear,
