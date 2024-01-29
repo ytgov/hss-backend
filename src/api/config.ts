@@ -35,6 +35,10 @@ export const SCHEMA_HIPMA = process.env.SCHEMA_HIPMA || '';
 export const SCHEMA_GENERAL = process.env.SCHEMA_GENERAL || '';
 export const SCHEMA_DENTAL = process.env.SCHEMA_DENTAL || '';
 
+export const REDIS_HOST = process.env.REDIS_HOST || '';
+export const REDIS_PASS = process.env.REDIS_PASS || '';
+export const REDIS_PORT = process.env.REDIS_PORT || '';
+
 const postProcessToLowerCase = (result: any, queryContext: any) => {
   if (Array.isArray(result)) {
     const results: { [k: string]: unknown; }[] = [];
@@ -145,4 +149,8 @@ export const DB_CONFIG_DENTAL = {
         (CONNECT_DATA=(SERVICE_NAME=${DB_SERVICE}) ) )`
   },
   postProcessResponse: postProcessToLowerCase
+};
+
+export const REDIS_CONFIG = {
+  url: `redis://:${REDIS_PASS}@${REDIS_HOST}:${REDIS_PORT}`
 };

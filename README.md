@@ -39,3 +39,8 @@ To perform the data migration from the EDMS legacy database to the current datab
 - DB_PASS_EDMS=(Specifies the EDMS database password of the user to connect as database)
 - DB_NAME_EDMS=(Specifies the EDMS database name)
 - DB_PORT_EDMS=(Specifies the EDMS database port )
+
+## Enviroment variables for REDIS
+- REDIS_HOST=(the host address for Redis)
+- REDIS_PASS=(the password for Redis)
+- REDIS_PORT=(the port for Redis)
