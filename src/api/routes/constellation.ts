@@ -2,7 +2,7 @@ import express, { Request, Response } from "express";
 import { body, param } from "express-validator";
 import { SubmissionStatusRepository } from "../repository/oracle/SubmissionStatusRepository";
 import knex from "knex";
-import { DB_CONFIG_CONSTELLATION, SCHEMA_CONSTELLATION } from "../config";
+import { DB_CONFIG_CONSTELLATION, SCHEMA_CONSTELLATION, SCHEMA_GENERAL } from "../config";
 import { groupBy, helper } from "../utils";
 import { checkPermissions } from "../middleware/permissions";
 var RateLimit = require('express-rate-limit');
@@ -90,8 +90,8 @@ constellationRouter.get("/submissions/status/:action_id/:action_value", [
 constellationRouter.post("/", async (req: Request, res: Response) => {
 
     try {
-        var dateFrom = req.body.params.dateFrom //? new Date(req.body.params.dateFrom) : '';
-        var dateTo = req.body.params.dateTo //? new Date(req.body.params.dateTo) : '';
+        var dateFrom = req.body.params.dateFrom;
+        var dateTo = req.body.params.dateTo;
         let status_request = req.body.params.status;
 
         let query = db(`${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH`)
@@ -394,6 +394,23 @@ constellationRouter.post("/store", async (req: Request, res: Response) => {
         let constellationSaved = Object();
 
         data = req.body;
+
+        let stringOriginalData = JSON.stringify(data);
+        let bufferOriginalData = Buffer.from(stringOriginalData);
+
+        let logOriginalSubmission = {
+            ACTION_TYPE: 2,
+            TITLE: "Original submission request",
+            SCHEMA_NAME: SCHEMA_CONSTELLATION,
+            TABLE_NAME: "CONSTELLATION_HEALTH",
+            ACTION_DATA: bufferOriginalData
+        };
+
+        const logSaved = await helper.insertLogIdReturn(logOriginalSubmission);
+        if(!logSaved){
+            console.log('The action could not be logged: '+logOriginalSubmission.TABLE_NAME+' '+logOriginalSubmission.TITLE);
+        }
+
         constellationHealth.first_name = data.first_name;
         constellationHealth.last_name = data.last_name;
         constellationHealth.is_this_your_legal_name_ = data.is_this_your_legal_name_;
@@ -416,7 +433,7 @@ constellationRouter.post("/store", async (req: Request, res: Response) => {
         }else{
             constellationHealth.date_of_birth = null;
         }
-      
+
 
         constellationHealth.yhcip = data.yhcip;
         constellationHealth.postal_code = data.postal_code;
@@ -457,10 +474,31 @@ constellationRouter.post("/store", async (req: Request, res: Response) => {
         constellationHealth.include_family_members = data.include_family_members;
 
         constellationSaved = await db(`${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH`).insert(constellationHealth).into(`${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH`).returning('ID');
+        const idConstellation = constellationSaved.find((obj: any) => {return obj.id;})
+
+        if(constellationSaved){
+            var updateSubmission = await db(`${SCHEMA_GENERAL}.ACTION_LOGS`).update('SUBMISSION_ID', idConstellation.id).where("ID", logSaved);
+
+            if(!updateSubmission){
+                console.log('The action could not be logged: Update '+logOriginalSubmission.TABLE_NAME+' '+logOriginalSubmission.TITLE);
+            }
+        }
+
+        let logFields = {
+            ACTION_TYPE: 2,
+            TITLE: "Insert submission",
+            SCHEMA_NAME: SCHEMA_CONSTELLATION,
+            TABLE_NAME: "CONSTELLATION_HEALTH",
+            SUBMISSION_ID: idConstellation.id
+        };
+
+        let loggedAction = helper.insertLog(logFields);
+
+        if(!loggedAction){
+            console.log('The action could not be logged: '+logFields.TABLE_NAME+' '+logFields.TITLE);
+        }
 
         if(!_.isEmpty(data.family_members_json) && data.family_members_json !== "[]"){
-            const idConstellation = constellationSaved.find((obj: any) => {return obj.id;})
-
             const replaceString = data.family_members_json;
             const jsonFixed = replaceString.replace(/\'/gm, '"');
             const jsonFm = JSON.parse(jsonFixed);
@@ -471,10 +509,10 @@ constellationRouter.post("/store", async (req: Request, res: Response) => {
             for (const familyMember of familyMembers) {
                 await db(`${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH_FAMILY_MEMBERS`).insert(familyMember).into(`${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH_FAMILY_MEMBERS`)
                 .then(() => {
-                    familyMembersSaved = true; 
+                    familyMembersSaved = true;
                 })
                 .catch((e) => {
-                   familyMembersSaved = false;
+                    familyMembersSaved = false;
                     console.log(e);
                     res.send( {
                         status: 400,
@@ -494,8 +532,8 @@ constellationRouter.post("/store", async (req: Request, res: Response) => {
     } catch(e) {
         console.log(e);  // debug if needed
         res.send( {
-            status: 400,
-            message: 'Request could not be processed'
+            status: 404,
+            message: 'Request could not be processed ' + e
         });
     }
 
@@ -665,7 +703,30 @@ constellationRouter.post("/export/", async (req: Request, res: Response) => {
             });
         }
 
+        var logFields = Array();
+
+        _.forEach(idSubmission, function(value: any) {
+            logFields.push({
+                ACTION_TYPE: 5,
+                TITLE: "Export submission",
+                SCHEMA_NAME: SCHEMA_CONSTELLATION,
+                TABLE_NAME: "CONSTELLATION_HEALTH",
+                SUBMISSION_ID: value,
+                USER_ID: req.user?.db_user.user.id
+            });
+        });
+
+        let loggedAction = helper.insertLog(logFields);
+
+        if(!loggedAction){
+            res.send( {
+                status: 400,
+                message: 'The action could not be logged'
+            });
+        }
+
         res.json({ status: 200, dataConstellation: constellationHealth, dataFamilyMembers: constellationFamily});
+
     } catch(e) {
         console.log(e);  // debug if needed
         res.send( {
@@ -688,9 +749,34 @@ constellationRouter.patch("/changeStatus", async (req: Request, res: Response) =
         var constellation_id = req.body.params.requests;
         var status_id = req.body.params.requestStatus;
         var updateStatus = await db(`${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH`).update({status: status_id}).whereIn("ID", constellation_id);
+        var statusData = await db(`${SCHEMA_CONSTELLATION}.CONSTELLATION_STATUS`).where('ID', status_id).first();
+        var logFields = Array();
+
         if(updateStatus) {
             let type = "success";
             let message = "Status changed successfully.";
+
+            if(constellation_id instanceof Array){
+                _.forEach(constellation_id, function(value: any) {
+                    logFields.push({
+                        ACTION_TYPE: 4,
+                        TITLE: "Submission updated to status "+statusData.description,
+                        SCHEMA_NAME: SCHEMA_CONSTELLATION,
+                        TABLE_NAME: "CONSTELLATION_HEALTH",
+                        SUBMISSION_ID: value,
+                        USER_ID: req.user?.db_user.user.id
+                    });
+                });
+
+                let loggedAction = helper.insertLog(logFields);
+
+                if(!loggedAction){
+                    res.send( {
+                        status: 400,
+                        message: 'The action could not be logged'
+                    });
+                }
+            }
 
             res.json({ status:200, message: message, type: type });
         }
@@ -716,12 +802,14 @@ constellationRouter.post("/duplicates", async (req: Request, res: Response) => {
             .join(`${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH`, 'CONSTELLATION_DUPLICATED_REQUESTS.ORIGINAL_ID', '=', 'CONSTELLATION_HEALTH.ID')
             .join(`${SCHEMA_CONSTELLATION}.CONSTELLATION_STATUS`, 'CONSTELLATION_HEALTH.STATUS', '=', 'CONSTELLATION_STATUS.ID')
             .select('CONSTELLATION_HEALTH.YOUR_LEGAL_NAME',
+                    'CONSTELLATION_HEALTH.STATUS',
                     'CONSTELLATION_STATUS.DESCRIPTION AS STATUS_DESCRIPTION',
                     'CONSTELLATION_HEALTH.ID AS CONSTELLATION_HEALTH_ID',
+                    'CONSTELLATION_DUPLICATED_REQUESTS.ORIGINAL_ID',
+                    'CONSTELLATION_DUPLICATED_REQUESTS.DUPLICATED_ID',
                     db.raw("TO_CHAR(CONSTELLATION_HEALTH.CREATED_AT, 'YYYY-MM-DD HH24:MI:SS') AS CREATED_AT,"+
                     "(CONSTELLATION_DUPLICATED_REQUESTS.ID|| '-'|| CONSTELLATION_HEALTH.ID) AS UNIQUE_ID, "+
                     "TO_CHAR(CONSTELLATION_HEALTH.DATE_OF_BIRTH, 'YYYY-MM-DD') AS DATE_OF_BIRTH"))
-            .where('CONSTELLATION_HEALTH.STATUS', '<>', 4 )
             .orderBy("CONSTELLATION_HEALTH.CREATED_AT").then((rows: any) => {
                 let arrayResult = Object();
 
@@ -733,41 +821,45 @@ constellationRouter.post("/duplicates", async (req: Request, res: Response) => {
             });
 
         constellationDuplicate = await db(`${SCHEMA_CONSTELLATION}.CONSTELLATION_DUPLICATED_REQUESTS`)
-        .join(`${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH`, 'CONSTELLATION_DUPLICATED_REQUESTS.ORIGINAL_ID', '=', 'CONSTELLATION_HEALTH.ID')
-        .join(`${SCHEMA_CONSTELLATION}.CONSTELLATION_STATUS`, 'CONSTELLATION_HEALTH.STATUS', '=', 'CONSTELLATION_STATUS.ID')
-        .select('CONSTELLATION_HEALTH.YOUR_LEGAL_NAME',
-                'CONSTELLATION_DUPLICATED_REQUESTS.ID',
-                'CONSTELLATION_STATUS.DESCRIPTION AS STATUS_DESCRIPTION',
-                'CONSTELLATION_HEALTH.ID AS CONSTELLATION_HEALTH_ID',
-                db.raw("TO_CHAR(CONSTELLATION_HEALTH.CREATED_AT, 'YYYY-MM-DD HH24:MI:SS') AS CREATED_AT,"+
-                    "(CONSTELLATION_DUPLICATED_REQUESTS.ID|| '-'|| CONSTELLATION_HEALTH.ID) AS UNIQUE_ID, "+
-                    "TO_CHAR(CONSTELLATION_HEALTH.DATE_OF_BIRTH, 'YYYY-MM-DD') AS DATE_OF_BIRTH"))
-        .where('CONSTELLATION_HEALTH.STATUS', '<>', 4 )
-        .orderBy("CONSTELLATION_HEALTH.CREATED_AT");
+            .join(`${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH`, 'CONSTELLATION_DUPLICATED_REQUESTS.DUPLICATED_ID', '=', 'CONSTELLATION_HEALTH.ID')
+            .join(`${SCHEMA_CONSTELLATION}.CONSTELLATION_STATUS`, 'CONSTELLATION_HEALTH.STATUS', '=', 'CONSTELLATION_STATUS.ID')
+            .select('CONSTELLATION_HEALTH.YOUR_LEGAL_NAME',
+                    'CONSTELLATION_HEALTH.STATUS',
+                    'CONSTELLATION_DUPLICATED_REQUESTS.ID',
+                    'CONSTELLATION_STATUS.DESCRIPTION AS STATUS_DESCRIPTION',
+                    'CONSTELLATION_HEALTH.ID AS CONSTELLATION_HEALTH_ID',
+                    'CONSTELLATION_DUPLICATED_REQUESTS.ORIGINAL_ID',
+                    'CONSTELLATION_DUPLICATED_REQUESTS.DUPLICATED_ID',
+                    db.raw("TO_CHAR(CONSTELLATION_HEALTH.CREATED_AT, 'YYYY-MM-DD HH24:MI:SS') AS CREATED_AT,"+
+                        "(CONSTELLATION_DUPLICATED_REQUESTS.ID|| '-'|| CONSTELLATION_HEALTH.ID) AS UNIQUE_ID, "+
+                        "TO_CHAR(CONSTELLATION_HEALTH.DATE_OF_BIRTH, 'YYYY-MM-DD') AS DATE_OF_BIRTH"))
+            .orderBy("CONSTELLATION_HEALTH.CREATED_AT");
 
         let index = 0;
 
         constellationDuplicate.forEach(function (value: any) {
+            if(value.status !== 4 && constellationOriginal[value.original_id].status !== 4){
 
-            let url = "constellationWarnings/details/"+value.id;
+                let url = "constellationWarnings/details/"+value.id;
 
-            delete value.id;
+                delete value.id;
 
-            constellation.push({
-                constellation_health_id: null,
-                id: null,
-                constellation_health_original_id: null,
-                constellation_health_duplicated_id: null,
-                your_legal_name: 'Duplicated #'+(index+1),
-                date_of_birth: null,
-                status_description: null,
-                created_at: 'ACTIONS:',
-                showUrl: url
-            });
+                constellation.push({
+                    constellation_health_id: null,
+                    id: null,
+                    constellation_health_original_id: null,
+                    constellation_health_duplicated_id: null,
+                    your_legal_name: 'Duplicated #'+(index+1),
+                    date_of_birth: null,
+                    status_description: null,
+                    created_at: 'ACTIONS:',
+                    showUrl: url
+                });
 
-            constellation.push(constellationOriginal[value.constellation_health_original_id]);
-            constellation.push(value);
-            index = index + 1;
+                constellation.push(constellationOriginal[value.original_id]);
+                constellation.push(value);
+                index = index + 1;
+            }
         });
 
         res.send({data: constellation});
@@ -1010,24 +1102,69 @@ constellationRouter.patch("/duplicates/primary", async (req: Request, res: Respo
         var updateRequest = Object();
         var rejectWarning = Object();
         let message = "Warning updated successfully.";
+        var logTitle = "";
+        var updatedFields = Object();
+        var fieldList = Object();
+        var primarySubmission = Number();
+        var logFields = Array()
 
         if(!request){
             message = "Warning deleted successfully.";
             rejectWarning = await db(`${SCHEMA_CONSTELLATION}.CONSTELLATION_DUPLICATED_REQUESTS`).where("id", warning).del();
+            logTitle = "Duplicated Warning Rejected";
         }else{
             var warningRequest = await db(`${SCHEMA_CONSTELLATION}.CONSTELLATION_DUPLICATED_REQUESTS`).where("id", warning).then((data:any) => {
                 return data[0];
             });
             if(type == 'O'){
                 updateRequest = await db(`${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH`).update({status: "4"}).where("ID", warningRequest.duplicated_id);
+                primarySubmission = warningRequest.duplicated_id;
             }else if(type == 'D'){
                 updateRequest = await db(`${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH`).update({status: "4"}).where("ID", warningRequest.original_id);
+                primarySubmission = warningRequest.original_id;
             }
+
+            logFields.push({
+                ACTION_TYPE: 4,
+                TITLE: "Submission updated to status Closed",
+                SCHEMA_NAME: SCHEMA_CONSTELLATION,
+                TABLE_NAME: "CONSTELLATION_HEALTH",
+                SUBMISSION_ID: primarySubmission,
+                USER_ID: req.user?.db_user.user.id
+            });
 
             if(updateRequest){
                 rejectWarning = await db(`${SCHEMA_CONSTELLATION}.CONSTELLATION_DUPLICATED_REQUESTS`).where("id", warning).del();
+                logTitle = "Duplicated Warning Resolved";
+                updatedFields.ORIGINAL_ID = warningRequest.original_id;
+                updatedFields.DUPLICATED_ID = warningRequest.duplicated_id;
             }
 
+        }
+
+        if(!_.isEmpty(updatedFields)) {
+            fieldList =  db.raw("utl_raw.cast_to_raw(?) ", JSON.stringify(updatedFields));
+        }else{
+            fieldList = null;
+        }
+
+        logFields.push({
+                ACTION_TYPE: 7,
+                TITLE: logTitle,
+                SCHEMA_NAME: SCHEMA_CONSTELLATION,
+                TABLE_NAME: "CONSTELLATION_DUPLICATED_REQUESTS",
+                SUBMISSION_ID: warning,
+                USER_ID: req.user?.db_user.user.id,
+                ACTION_DATA: fieldList
+        });
+
+        let loggedAction = helper.insertLog(logFields);
+
+        if(!loggedAction){
+            res.send( {
+                status: 400,
+                message: 'The action could not be logged'
+            });
         }
 
         if(rejectWarning) {

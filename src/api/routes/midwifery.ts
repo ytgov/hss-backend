@@ -3,8 +3,8 @@ import { EnsureAuthenticated } from "./auth"
 import { body, param } from "express-validator";
 import { SubmissionStatusRepository } from "../repository/oracle/SubmissionStatusRepository";
 import knex from "knex";
-import { DB_CONFIG_MIDWIFERY, SCHEMA_MIDWIFERY } from "../config";
-import { groupBy } from "../utils/groupBy";
+import { DB_CONFIG_MIDWIFERY, SCHEMA_MIDWIFERY, SCHEMA_GENERAL } from "../config";
+import { groupBy , helper } from "../utils";
 
 var RateLimit = require('express-rate-limit');
 
@@ -467,6 +467,23 @@ midwiferyRouter.post("/store", async (req: Request, res: Response) => {
         let midwiferySaved = Object();
 
         data = req.body;
+
+        let stringOriginalData = JSON.stringify(data);
+        let bufferOriginalData = Buffer.from(stringOriginalData);
+
+        let logOriginalSubmission = {
+            ACTION_TYPE: 2,
+            TITLE: "Original submission request",
+            SCHEMA_NAME: SCHEMA_MIDWIFERY,
+            TABLE_NAME: "MIDWIFERY_SERVICES",
+            ACTION_DATA: bufferOriginalData
+        };
+
+        const logSaved = await helper.insertLogIdReturn(logOriginalSubmission);
+        if(!logSaved){
+            console.log('The action could not be logged: '+logOriginalSubmission.TABLE_NAME+' '+logOriginalSubmission.TITLE);
+        }
+
         midwifery.CONFIRMATION_NUMBER = getConfirmationNumber();
         midwifery.FIRST_NAME = data.first_name;
         midwifery.LAST_NAME = data.last_name;
@@ -563,17 +580,25 @@ midwiferyRouter.post("/store", async (req: Request, res: Response) => {
         midwifery.PHYSICIAN_S_NAME = data.physician_s_name;
         midwifery.PROVIDE_DETAILS3 = data.provide_details3;
 
-        midwiferySaved = await db(`${SCHEMA_MIDWIFERY}.MIDWIFERY_SERVICES`).insert(midwifery).into(`${SCHEMA_MIDWIFERY}.MIDWIFERY_SERVICES`);
+        midwiferySaved = await db(`${SCHEMA_MIDWIFERY}.MIDWIFERY_SERVICES`).insert(midwifery).into(`${SCHEMA_MIDWIFERY}.MIDWIFERY_SERVICES`).returning('ID');
+        const idMidwifery = midwiferySaved.find((obj: any) => {return obj.id;})
 
         if(midwiferySaved){
+
+            var updateSubmission = await db(`${SCHEMA_GENERAL}.ACTION_LOGS`).update('SUBMISSION_ID', idMidwifery.id).where("ID", logSaved);
+
+            if(!updateSubmission){
+                console.log('The action could not be logged: Update '+logOriginalSubmission.TABLE_NAME+' '+logOriginalSubmission.TITLE);
+            }
+
             res.json({ status:200, message: 'Request saved' });
         }
 
     } catch(e) {
         console.log(e);  // debug if needed
         res.send( {
-            status: 400,
-            message: 'Request could not be processed'
+            status: 404,
+            message: 'Request could not be processed ' + e
         });
     }
 });
@@ -832,6 +857,30 @@ midwiferyRouter.post("/export", async (req: Request, res: Response) => {
         let random = (Math.random() + 1).toString(36).substring(7);
         let fileName = 'midwifery_'+random+'_requests_'+todayDate+".xlsx";
 
+        var logFields = Array();
+
+        if(requests instanceof Array){
+            _.forEach(requests, function(value: any) {
+                logFields.push({
+                    ACTION_TYPE: 5,
+                    TITLE: "Export submission",
+                    SCHEMA_NAME: SCHEMA_MIDWIFERY,
+                    TABLE_NAME: "MIDWIFERY_SERVICES",
+                    SUBMISSION_ID: value,
+                    USER_ID: req.user?.db_user.user.id
+                });
+            });
+
+            let loggedAction = helper.insertLog(logFields);
+
+            if(!loggedAction){
+                res.send( {
+                    status: 400,
+                    message: 'The action could not be logged'
+                });
+            }
+        }
+
         res.json({ data:midwifery, fileName:fileName });
 
     } catch(e) {
@@ -856,10 +905,34 @@ midwiferyRouter.patch("/changeStatus", async (req: Request, res: Response) => {
         var status_id = req.body.params.requestStatus;
 
         var updateStatus = await db(`${SCHEMA_MIDWIFERY}.MIDWIFERY_SERVICES`).update({STATUS: status_id}).whereIn("MIDWIFERY_SERVICES.ID", midwifery_id);
+        var statusData = await db(`${SCHEMA_MIDWIFERY}.MIDWIFERY_STATUS`).where('ID', status_id).first();
+        var logFields = Array();
 
         if(updateStatus) {
             let type = "success";
             let message = "Status changed successfully.";
+
+            if(midwifery_id instanceof Array){
+                _.forEach(midwifery_id, function(value: any) {
+                    logFields.push({
+                        ACTION_TYPE: 4,
+                        TITLE: "Submission updated to status "+statusData.description,
+                        SCHEMA_NAME: SCHEMA_MIDWIFERY,
+                        TABLE_NAME: "MIDWIFERY_SERVICES",
+                        SUBMISSION_ID: value,
+                        USER_ID: req.user?.db_user.user.id
+                    });
+                });
+
+                let loggedAction = helper.insertLog(logFields);
+
+                if(!loggedAction){
+                    res.send( {
+                        status: 400,
+                        message: 'The action could not be logged'
+                    });
+                }
+            }
 
             res.json({ status:200, message: message, type: type });
         }
@@ -882,7 +955,7 @@ midwiferyRouter.post("/duplicates", async (req: Request, res: Response) => {
         var midwifery = Array();
 
         midwiferyOriginal = await db(`${SCHEMA_MIDWIFERY}.MIDWIFERY_DUPLICATED_REQUESTS`)
-            .join(`${SCHEMA_MIDWIFERY}.MIDWIFERY_SERVICES`, 'MIDWIFERY_DUPLICATED_REQUESTS.DUPLICATED_ID', '=', 'MIDWIFERY_SERVICES.ID')
+            .join(`${SCHEMA_MIDWIFERY}.MIDWIFERY_SERVICES`, 'MIDWIFERY_DUPLICATED_REQUESTS.ORIGINAL_ID', '=', 'MIDWIFERY_SERVICES.ID')
             .join(`${SCHEMA_MIDWIFERY}.MIDWIFERY_STATUS`, 'MIDWIFERY_SERVICES.STATUS', '=', 'MIDWIFERY_STATUS.ID')
             .leftJoin(`${SCHEMA_MIDWIFERY}.MIDWIFERY_BIRTH_LOCATIONS`, 'MIDWIFERY_SERVICES.WHERE_TO_GIVE_BIRTH', '=', 'MIDWIFERY_BIRTH_LOCATIONS.ID')
             .leftJoin(`${SCHEMA_MIDWIFERY}.MIDWIFERY_PREFERRED_CONTACT_TYPES`, 'MIDWIFERY_SERVICES.PREFER_TO_BE_CONTACTED', '=', 'MIDWIFERY_PREFERRED_CONTACT_TYPES.ID')
@@ -891,6 +964,7 @@ midwiferyRouter.post("/duplicates", async (req: Request, res: Response) => {
                     'MIDWIFERY_SERVICES.LAST_NAME',
                     'MIDWIFERY_SERVICES.PREFERRED_EMAIL',
                     'MIDWIFERY_SERVICES.PREFERRED_PHONE',
+                    'MIDWIFERY_SERVICES.STATUS',
                     'MIDWIFERY_DUPLICATED_REQUESTS.ORIGINAL_ID',
                     'MIDWIFERY_DUPLICATED_REQUESTS.DUPLICATED_ID',
                     'MIDWIFERY_STATUS.DESCRIPTION AS STATUS_DESCRIPTION',
@@ -899,7 +973,6 @@ midwiferyRouter.post("/duplicates", async (req: Request, res: Response) => {
                     db.raw("TO_CHAR(MIDWIFERY_SERVICES.CREATED_AT, 'YYYY-MM-DD HH24:MI:SS') AS CREATED_AT,"+
                         "TO_CHAR(midwifery_services.date_of_birth, 'YYYY-MM-DD') as date_of_birth")
             )
-            .where('MIDWIFERY_SERVICES.STATUS', '<>', 4 )
             .orderBy("MIDWIFERY_SERVICES.CREATED_AT").then((rows: any) => {
                 let arrayResult = Object();
 
@@ -911,7 +984,7 @@ midwiferyRouter.post("/duplicates", async (req: Request, res: Response) => {
             });
 
         midwiferyDuplicate = await db(`${SCHEMA_MIDWIFERY}.MIDWIFERY_DUPLICATED_REQUESTS`)
-            .join(`${SCHEMA_MIDWIFERY}.MIDWIFERY_SERVICES`, 'MIDWIFERY_DUPLICATED_REQUESTS.ORIGINAL_ID', '=', 'MIDWIFERY_SERVICES.ID')
+            .join(`${SCHEMA_MIDWIFERY}.MIDWIFERY_SERVICES`, 'MIDWIFERY_DUPLICATED_REQUESTS.DUPLICATED_ID', '=', 'MIDWIFERY_SERVICES.ID')
             .join(`${SCHEMA_MIDWIFERY}.MIDWIFERY_STATUS`, 'MIDWIFERY_SERVICES.STATUS', '=', 'MIDWIFERY_STATUS.ID')
             .leftJoin(`${SCHEMA_MIDWIFERY}.MIDWIFERY_BIRTH_LOCATIONS`, 'MIDWIFERY_SERVICES.WHERE_TO_GIVE_BIRTH', '=', 'MIDWIFERY_BIRTH_LOCATIONS.ID')
             .leftJoin(`${SCHEMA_MIDWIFERY}.MIDWIFERY_PREFERRED_CONTACT_TYPES`, 'MIDWIFERY_SERVICES.PREFER_TO_BE_CONTACTED', '=', 'MIDWIFERY_PREFERRED_CONTACT_TYPES.ID')
@@ -920,6 +993,7 @@ midwiferyRouter.post("/duplicates", async (req: Request, res: Response) => {
                     'MIDWIFERY_SERVICES.LAST_NAME',
                     'MIDWIFERY_SERVICES.PREFERRED_EMAIL',
                     'MIDWIFERY_SERVICES.PREFERRED_PHONE',
+                    'MIDWIFERY_SERVICES.STATUS',
                     'MIDWIFERY_DUPLICATED_REQUESTS.ID',
                     'MIDWIFERY_DUPLICATED_REQUESTS.ORIGINAL_ID',
                     'MIDWIFERY_DUPLICATED_REQUESTS.DUPLICATED_ID',
@@ -929,34 +1003,35 @@ midwiferyRouter.post("/duplicates", async (req: Request, res: Response) => {
                     db.raw("TO_CHAR(MIDWIFERY_SERVICES.CREATED_AT, 'YYYY-MM-DD HH24:MI:SS') AS CREATED_AT,"+
                         "TO_CHAR(MIDWIFERY_SERVICES.DATE_OF_BIRTH, 'YYYY-MM-DD') AS DATE_OF_BIRTH")
             )
-            .where('MIDWIFERY_SERVICES.STATUS', '<>', 4 )
             .orderBy("MIDWIFERY_SERVICES.CREATED_AT");
 
         let index = 0;
 
         midwiferyDuplicate.forEach(function (value: any) {
+            if(value.status !== 4 && midwiferyOriginal[value.original_id].status !== 4){
 
-            let url = "midwiferyWarnings/details/"+value.id;
+                let url = "midwiferyWarnings/details/"+value.id;
 
-            delete value.id;
+                delete value.id;
 
-            midwifery.push({
-                midwifery_services_id: null,
-                original_id: null,
-                duplicated_id: null,
-                first_name: 'Duplicated #'+(index+1),
-                last_name: null,
-                preferred_email: null,
-                preferred_phone: null,
-                date_of_birth: null,
-                status_description: null,
-                created_at: 'ACTIONS:',
-                showUrl: url
-            });
+                midwifery.push({
+                    midwifery_services_id: null,
+                    original_id: null,
+                    duplicated_id: null,
+                    first_name: 'Duplicated #'+(index+1),
+                    last_name: null,
+                    preferred_email: null,
+                    preferred_phone: null,
+                    date_of_birth: null,
+                    status_description: null,
+                    created_at: 'ACTIONS:',
+                    showUrl: url
+                });
 
-            midwifery.push(midwiferyOriginal[value.original_id]);
-            midwifery.push(value);
-            index = index + 1;
+                midwifery.push(midwiferyOriginal[value.original_id]);
+                midwifery.push(value);
+                index = index + 1;
+            }
         });
         res.send({data: midwifery});
 
@@ -1229,21 +1304,66 @@ midwiferyRouter.patch("/duplicates/primary", async (req: Request, res: Response)
         var type = req.body.params.type;
         var updateRequest = Object();
         var rejectWarning = Object();
+        var logTitle = "";
+        var updatedFields = Object();
+        var fieldList = Object();
+        var primarySubmission = Number();
+        var logFields = Array();
 
         if(!request){
             rejectWarning = await db(`${SCHEMA_MIDWIFERY}.MIDWIFERY_DUPLICATED_REQUESTS`).where("ID", warning).del();
+            logTitle = "Duplicated Warning Rejected";
         }else{
             var warningRequest = await db(`${SCHEMA_MIDWIFERY}.MIDWIFERY_DUPLICATED_REQUESTS`).where("ID", warning).first();
 
             if(type == 'O'){
                 updateRequest = await db(`${SCHEMA_MIDWIFERY}.MIDWIFERY_SERVICES`).update({STATUS: "4"}).where("ID", warningRequest.duplicated_id);
+                primarySubmission = warningRequest.duplicated_id;
             }else if(type == 'D'){
                 updateRequest = await db(`${SCHEMA_MIDWIFERY}.MIDWIFERY_SERVICES`).update({STATUS: "4"}).where("ID", warningRequest.original_id);
+                primarySubmission = warningRequest.original_id;
             }
+
+            logFields.push({
+                ACTION_TYPE: 4,
+                TITLE: "Submission updated to status Closed",
+                SCHEMA_NAME: SCHEMA_MIDWIFERY,
+                TABLE_NAME: "MIDWIFERY_SERVICES",
+                SUBMISSION_ID: primarySubmission,
+                USER_ID: req.user?.db_user.user.id
+            });
 
             if(updateRequest){
                 rejectWarning = await db(`${SCHEMA_MIDWIFERY}.MIDWIFERY_DUPLICATED_REQUESTS`).where("ID", warning).del();
+                logTitle = "Duplicated Warning Resolved";
+                updatedFields.ORIGINAL_ID = warningRequest.original_id;
+                updatedFields.DUPLICATED_ID = warningRequest.duplicated_id;
             }
+        }
+
+        if(!_.isEmpty(updatedFields)) {
+            fieldList =  db.raw("utl_raw.cast_to_raw(?) ", JSON.stringify(updatedFields));
+        }else{
+            fieldList = null;
+        }
+
+        logFields.push({
+                ACTION_TYPE: 7,
+                TITLE: logTitle,
+                SCHEMA_NAME: SCHEMA_MIDWIFERY,
+                TABLE_NAME: "MIDWIFERY_DUPLICATED_REQUESTS",
+                SUBMISSION_ID: warning,
+                USER_ID: req.user?.db_user.user.id,
+                ACTION_DATA: fieldList
+        });
+
+        let loggedAction = helper.insertLog(logFields);
+
+        if(!loggedAction){
+            res.send( {
+                status: 400,
+                message: 'The action could not be logged'
+            });
         }
 
         if(rejectWarning) {

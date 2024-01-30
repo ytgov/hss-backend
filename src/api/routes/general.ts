@@ -121,3 +121,73 @@ generalRouter.get("/audit/timeline", async (req: Request, res: Response) => {
         });
     }
 });
+
+/**
+ * Obtain age from Dental Service data to show in the index view
+ *
+ * @param { action_id } action id.
+ * @param { action_value } action value.
+ * @return json
+ */
+generalRouter.get("/submissions/age/:action_id/:action_value", [
+    param("action_id").notEmpty(),
+    param("action_value").notEmpty()
+], async (req: Request, res: Response) => {
+
+    try {
+
+        const actionId = req.params.action_id;
+        const actionVal = req.params.action_value;
+        const permissions = req.user?.db_user.permissions ?? [];
+        const result = await submissionStatusRepo.getAgeSubmissions(actionId, actionVal, permissions);
+        const labels = groupBy(result, i => i.age_range);
+        res.send(
+            {
+                data: result,
+                labels: labels
+            });
+
+    } catch(e) {
+        console.log(e);  // debug if needed
+        res.send( {
+            status: 400,
+            message: 'Request could not be processed'
+        });
+    }
+});
+
+
+/**
+ * Obtain gender from Dental Service data to show in the index view
+ *
+ * @param { action_id } action id.
+ * @param { action_value } action value.
+ * @return json
+ */
+generalRouter.get("/submissions/gender/:action_id/:action_value", [
+    param("action_id").notEmpty(),
+    param("action_value").notEmpty()
+], async (req: Request, res: Response) => {
+
+    try {
+
+        const actionId = req.params.action_id;
+        const actionVal = req.params.action_value;
+        const permissions = req.user?.db_user.permissions ?? [];
+        const result = await submissionStatusRepo.getGenderSubmissions(actionId, actionVal, permissions);
+        const groupedId = groupBy(result, i => i.id);
+        const labels = groupBy(result, i => i.gender_name);
+        res.send(
+            {
+                data: groupedId,
+                labels: labels
+            });
+
+    } catch(e) {
+        console.log(e);  // debug if needed
+        res.send( {
+            status: 400,
+            message: 'Request could not be processed'
+        });
+    }
+});

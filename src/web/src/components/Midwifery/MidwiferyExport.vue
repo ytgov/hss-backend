@@ -1,25 +1,34 @@
 
 <template>
 	<div class="midwifery-service">
-		<span class="title-service">Midwifery Export</span>
+		<v-row class="mb-5" no-gutters>
+			<span class="title-service">Midwifery Export</span>
+		</v-row>
 
-		<v-row>
+		<v-row class="row-filter">
 			<v-col
-				cols="6"
-				sm="6"
-				md="8"
-				class='d-flex'
+				cols="10"
+				sm="10"
+				md="10"
+				lg="2"
 			>
-			<v-select
-				:items="itemsStatus"
-				:menu-props="{ maxHeight: '400' }"
-				label="Select"
-				multiple
-				persistent-hint
-				v-model="selectedStatus"
-				@change="changeSelect"
-				id="export-status-select"
-			></v-select>
+				<v-select
+					:items="itemsStatus"
+					:menu-props="{ maxHeight: '400' }"
+					label="Select"
+					multiple
+					persistent-hint
+					v-model="selectedStatus"
+					@change="changeSelect"
+					id="export-status-select"
+				></v-select>
+			</v-col>
+			<v-col
+				cols="10"
+				sm="10"
+				md="10"
+				lg="2"
+			>
 				<v-menu
 					ref="menu"
 					v-model="menu"
@@ -44,6 +53,13 @@
 						@change="updateDate"
 					></v-date-picker>
 				</v-menu>
+			</v-col>
+			<v-col
+				cols="10"
+				sm="10"
+				md="10"
+				lg="2"
+			>
 				<v-menu
 					ref="menuEnd"
 					v-model="menuEnd"
@@ -68,9 +84,22 @@
 						@change="updateDate"
 					></v-date-picker>
 				</v-menu>
-				<v-col sm="auto" id="reset-btn">
-          <v-icon @click="resetInputs"> mdi-filter-remove </v-icon>
-        </v-col>
+			</v-col>
+			<v-col
+				cols="10"
+				sm="10"
+				md="10"
+				lg="1"
+				class="btn-reset"
+			>
+				<v-icon @click="resetInputs"> mdi-filter-remove </v-icon>
+			</v-col>
+			<v-col
+				cols="10"
+				sm="10"
+				md="10"
+				lg="2"
+			>
 				<v-btn
 					:loading="loadingExport"
 					:disabled="loadingExport"
@@ -166,10 +195,12 @@ export default {
 	methods: {
 		updateDate(){
 			if(this.date !== null && this.dateEnd !== null){
+				this.selected = [];
 				this.getDataFromApi();
 			}
 		},
 		changeSelect(){
+			this.selected = [];
 			this.getDataFromApi();
 		},
 		getDataFromApi() {
@@ -202,6 +233,7 @@ export default {
 			this.date = null;
 			this.dateEnd = null;
 			this.selectedStatus = null;
+			this.selected = [];
 			this.getDataFromApi();
 		},
 		exportFile () {

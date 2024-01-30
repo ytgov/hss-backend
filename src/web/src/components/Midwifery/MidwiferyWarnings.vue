@@ -1,7 +1,9 @@
 
 <template>
     <div class="midwifery-service">
-        <p class="title-service mb-6">Midwifery Possible Duplicates</p>
+        <v-row class="mb-5" no-gutters>
+            <span class="title-service">Midwifery Possible Duplicates</span>
+        </v-row>
 
         <ModuleAlert v-bind:alertMessage="alertMessage"  v-bind:alertType="alertType"/>
 

@@ -148,7 +148,7 @@
 							</tr>
 
 							<tr v-if="midwifery.provide_details">
-								<td>C-section births Details</td>
+								<td>Complications details</td>
 								<td>{{ midwifery.provide_details }}</td>
 							</tr>
 

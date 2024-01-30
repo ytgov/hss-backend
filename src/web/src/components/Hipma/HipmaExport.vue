@@ -1,14 +1,16 @@
 
 <template>
 	<div class="hipma-service">
-		<span class="title-service">Health Information Export</span>
+		<v-row class="mb-5" no-gutters>
+			<span class="title-service">Health Information Export</span>
+		</v-row>
 
-		<v-row>
+		<v-row class="row-filter">
 			<v-col
-				cols="6"
-				sm="12"
-				md="6"
-				class="d-flex"
+				cols="10"
+				sm="10"
+				md="10"
+				lg="2"
 			>
 				<v-menu
 					ref="menu"
@@ -34,6 +36,13 @@
 						@change="updateDate"
 					></v-date-picker>
 				</v-menu>
+			</v-col>
+			<v-col
+				cols="10"
+				sm="10"
+				md="10"
+				lg="2"
+			>
 				<v-menu
 					ref="menuEnd"
 					v-model="menuEnd"
@@ -59,18 +68,26 @@
 					></v-date-picker>
 				</v-menu>
 			</v-col>
-			<v-col sm="auto">
-          <v-icon @click="resetInputs"> mdi-filter-remove </v-icon>
-      </v-col>
 			<v-col
-				cols="6"
-				sm="12"
-				md="4">
+				cols="10"
+				sm="10"
+				md="10"
+				lg="1"
+				class="btn-reset"
+			>
+				<v-icon @click="resetInputs"> mdi-filter-remove </v-icon>
+			</v-col>
+			<v-col
+				cols="10"
+				sm="10"
+				md="10"
+				lg="2"
+			>
 				<v-btn
 					:loading="loadingExport"
 					:disabled="loadingExport"
 					color="#F3A901"
-					class="pull-right ma-2 white--text apply-btn"
+					class="ma-2 white--text apply-btn"
 					@click="exportFile()"
 					id="export-btn"
 				>
@@ -82,25 +99,7 @@
 						mdi-cloud-download
 					</v-icon>
 				</v-btn>
-				&nbsp;
-				<!--v-btn
-					:loading="loadingReset"
-					:disabled="loadingReset"
-					color="#F3A901"
-					class="pull-right ma-2 white--text apply-btn"
-					@click="resetInputs()"
-					id="export-btn"
-				>
-					Reset
-					<v-icon
-						right
-						dark
-					>
-						mdi-restore
-					</v-icon>
-				</v-btn-->
 			</v-col>
-
 		</v-row>
 		<br>
 		<v-data-table
@@ -175,6 +174,7 @@ export default {
 	methods: {
 		updateDate(){
 			if(this.date !== null && this.dateEnd !== null){
+				this.selected = [];
 				this.getDataFromApi();
 			}
 		},
@@ -208,6 +208,7 @@ export default {
 			this.loader = 'loadingReset';
 			this.date = null;
 			this.dateEnd = null;
+			this.selected = [];
 			this.getDataFromApi();
 		},
 		exportFile () {

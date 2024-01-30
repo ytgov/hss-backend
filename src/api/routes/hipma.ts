@@ -3,7 +3,7 @@ import { EnsureAuthenticated } from "./auth"
 import { body, param } from "express-validator";
 import { SubmissionStatusRepository } from "../repository/oracle/SubmissionStatusRepository";
 import knex from "knex";
-import { DB_CONFIG_HIPMA, SCHEMA_HIPMA } from "../config";
+import { DB_CONFIG_HIPMA, SCHEMA_HIPMA, SCHEMA_GENERAL } from "../config";
 import { groupBy , helper } from "../utils";
 var RateLimit = require('express-rate-limit');
 var _ = require('lodash');
@@ -321,6 +321,24 @@ hipmaRouter.post("/store", async (req: Request, res: Response) => {
         var files = Object();
 
         data = req.body;
+
+        let stringOriginalData = JSON.stringify(data);
+        let bufferOriginalData = Buffer.from(stringOriginalData);
+
+        let logOriginalSubmission = {
+            ACTION_TYPE: 2,
+            TITLE: "Original submission request",
+            SCHEMA_NAME: SCHEMA_HIPMA,
+            TABLE_NAME: "HEALTH_INFORMATION",
+            ACTION_DATA: bufferOriginalData
+        };
+
+        const logSaved = await helper.insertLogIdReturn(logOriginalSubmission);
+
+        if(!logSaved){
+            console.log('The action could not be logged: '+logOriginalSubmission.TABLE_NAME+' '+logOriginalSubmission.TITLE);
+        }
+
         hipma.CONFIRMATION_NUMBER = getConfirmationNumber();
 
         if(_.isEmpty(data.what_type_of_request_do_you_want_to_make_)) {
@@ -382,10 +400,15 @@ hipmaRouter.post("/store", async (req: Request, res: Response) => {
 
         hipma.FIRST_NAME = data.first_name;
         hipma.LAST_NAME = data.last_name;
-        data.date_of_birth = new Date(data.date_of_birth);
 
-        let result: string =   data.date_of_birth.toISOString().split('T')[0];
-        hipma.DATE_OF_BIRTH  = db.raw("TO_DATE('"+result+"','YYYY-MM-DD') ");
+        if(!_.isEmpty(data.date_of_birth)){
+            data.date_of_birth = new Date(data.date_of_birth);
+
+            let result: string =   data.date_of_birth.toISOString().split('T')[0];
+            hipma.DATE_OF_BIRTH  = db.raw("TO_DATE('"+result+"','YYYY-MM-DD') ");
+        }else{
+            hipma.DATE_OF_BIRTH = null;
+        }
 
         hipma.ADDRESS = data.address;
         hipma.CITY_OR_TOWN = data.city_or_town;
@@ -409,7 +432,7 @@ hipmaRouter.post("/store", async (req: Request, res: Response) => {
             hipma.NAME_OF_HEALTH_AND_SOCIAL_SERVICES_PROGRAM_AREA_OPTIONAL_ = null;
         }else{
             hipma.NAME_OF_HEALTH_AND_SOCIAL_SERVICES_PROGRAM_AREA_OPTIONAL_ =  db.raw("utl_raw.cast_to_raw(?) ", JSON.stringify(data.name_of_health_and_social_services_program_area_optional_));
-       
+
         }
         if(_.isEmpty(data.indicate_the_hss_system_s_you_would_like_a_record_of_user_activi) && !_.isArray(data.indicate_the_hss_system_s_you_would_like_a_record_of_user_activi)) {
             hipma.INDICATE_THE_HSS_SYSTEM_S_YOU_WOULD_LIKE_A_RECORD_OF_USER_ACTIV = null;
@@ -435,15 +458,37 @@ hipmaRouter.post("/store", async (req: Request, res: Response) => {
         hipma.PROVIDE_DETAILS_ABOUT_YOUR_REQUEST_ = data.provide_details_about_your_request_;
         hipma.DATE_RANGE_IS_UNKNOWN_OR_I_NEED_HELP_IDENTIFYING_THE_DATE_RANGE = data.date_range_is_unknown_or_i_need_help_identifying_the_date_range;
         hipma.I_AFFIRM_THE_INFORMATION_ABOVE_TO_BE_TRUE_AND_ACCURATE_ = data.i_affirm_the_information_above_to_be_true_and_accurate_;
-        
+
         HipmaSaved = await db(`${SCHEMA_HIPMA}.HEALTH_INFORMATION`).insert(hipma).into(`${SCHEMA_HIPMA}.HEALTH_INFORMATION`).returning('ID');
+        let hipma_id = HipmaSaved.find((obj: any) => {return obj.id;});
+
+        if(HipmaSaved){
+            var updateSubmission = await db(`${SCHEMA_GENERAL}.ACTION_LOGS`).update('SUBMISSION_ID', hipma_id.id).where("ID", logSaved);
+
+            if(!updateSubmission){
+                console.log('The action could not be logged: Update '+logOriginalSubmission.TABLE_NAME+' '+logOriginalSubmission.TITLE);
+            }
+        }
+
+        let logFields = {
+            ACTION_TYPE: 2,
+            TITLE: "Insert submission",
+            SCHEMA_NAME: SCHEMA_HIPMA,
+            TABLE_NAME: "HEALTH_INFORMATION",
+            SUBMISSION_ID: hipma_id.id
+        };
+
+        let loggedAction = helper.insertLog(logFields);
+
+        if(!loggedAction){
+            console.log('The action could not be logged: '+logFields.TABLE_NAME+' '+logFields.TITLE);
+        }
+
         if(!_.isEmpty(files)){
             var filesInsert = Array();
             var filesSaved =  true;
             _.forEach(files, async function(value: any) {
                 var hipmaFiles = Object();
-
-                let hipma_id = HipmaSaved.find((obj: any) => {return obj.id;});
                 hipmaFiles.HIPMA_ID = hipma_id.id
                 hipmaFiles.DESCRIPTION = value.description;
                 hipmaFiles.FILE_NAME = value.file_name;
@@ -481,8 +526,8 @@ hipmaRouter.post("/store", async (req: Request, res: Response) => {
     } catch(e) {
         console.log(e);  // debug if needed
         res.send( {
-            status: 400,
-            message: 'Request could not be processed'
+            status: 404,
+            message: 'Request could not be processed ' + e
         });
     }
 });
@@ -497,11 +542,35 @@ hipmaRouter.patch("/changeStatus", async (req: Request, res: Response) => {
 
     try {
         var hipma = req.body.params.requests;
-
         var updateStatus = await db(`${SCHEMA_HIPMA}.HEALTH_INFORMATION`).update({STATUS: "2"}).whereIn("ID", hipma);
+        var statusData = await db(`${SCHEMA_HIPMA}.HIPMA_STATUS`).where('ID', 2).first();
+        var logFields = Array();
+
         if(updateStatus) {
             let type = "success";
             let message = "Request status changed successfully.";
+
+            if(hipma instanceof Array){
+                _.forEach(hipma, function(value: any) {
+                    logFields.push({
+                        ACTION_TYPE: 4,
+                        TITLE: "Submission updated to status "+statusData.description,
+                        SCHEMA_NAME: SCHEMA_HIPMA,
+                        TABLE_NAME: "HEALTH_INFORMATION",
+                        SUBMISSION_ID: value,
+                        USER_ID: req.user?.db_user.user.id
+                    });
+                });
+
+                let loggedAction = helper.insertLog(logFields);
+
+                if(!loggedAction){
+                    res.send( {
+                        status: 400,
+                        message: 'The action could not be logged'
+                    });
+                }
+            }
 
             res.json({ status:200, message: message, type: type });
         }
@@ -675,6 +744,30 @@ hipmaRouter.post("/export", async (req: Request, res: Response) => {
         let todayDate = mm+'-'+dd+'-'+yyyy;
         let random = (Math.random() + 1).toString(36).substring(7);
         let fileName = 'hipma_'+random+'_requests_'+todayDate+".xlsx";
+
+        var logFields = Array();
+
+        if(requests instanceof Array){
+            _.forEach(requests, function(value: any) {
+                logFields.push({
+                    ACTION_TYPE: 5,
+                    TITLE: "Export submission",
+                    SCHEMA_NAME: SCHEMA_HIPMA,
+                    TABLE_NAME: "HEALTH_INFORMATION",
+                    SUBMISSION_ID: value,
+                    USER_ID: req.user?.db_user.user.id
+                });
+            });
+
+            let loggedAction = helper.insertLog(logFields);
+
+            if(!loggedAction){
+                res.send( {
+                    status: 400,
+                    message: 'The action could not be logged'
+                });
+            }
+        }
 
         res.json({ data:hipma, fileName:fileName });
 
@@ -982,21 +1075,66 @@ hipmaRouter.patch("/duplicates/primary", async (req: Request, res: Response) => 
         var type = req.body.params.type;
         var updateRequest = Object();
         var rejectWarning = Object();
+        var logTitle = "";
+        var updatedFields = Object();
+        var fieldList = Object();
+        var primarySubmission = Number();
+        var logFields = Array();
 
         if(!request){
             rejectWarning = await db(`${SCHEMA_HIPMA}.HIPMA_DUPLICATED_REQUESTS`).where("ID", warning).del();
+            logTitle = "Duplicated Warning Rejected";
         }else{
             var warningRequest = await db(`${SCHEMA_HIPMA}.HIPMA_DUPLICATED_REQUESTS`).where("ID", warning).first();
 
             if(type == 'O'){
                 updateRequest = await db(`${SCHEMA_HIPMA}.HEALTH_INFORMATION`).update({STATUS: "2"}).where("ID", Number(warningRequest.duplicated_id));
+                primarySubmission = warningRequest.duplicated_id;
             }else if(type == 'D'){
                 updateRequest = await db(`${SCHEMA_HIPMA}.HEALTH_INFORMATION`).update({STATUS: "2"}).where("ID", Number(warningRequest.original_id));
+                primarySubmission = warningRequest.original_id;
             }
+
+            logFields.push({
+                ACTION_TYPE: 4,
+                TITLE: "Submission updated to status Closed",
+                SCHEMA_NAME: SCHEMA_HIPMA,
+                TABLE_NAME: "HEALTH_INFORMATION",
+                SUBMISSION_ID: primarySubmission,
+                USER_ID: req.user?.db_user.user.id
+            });
 
             if(updateRequest){
                 rejectWarning = await db(`${SCHEMA_HIPMA}.HIPMA_DUPLICATED_REQUESTS`).where("ID", warning).del();
+                logTitle = "Duplicated Warning Resolved";
+                updatedFields.ORIGINAL_ID = warningRequest.original_id;
+                updatedFields.DUPLICATED_ID = warningRequest.duplicated_id;
             }
+        }
+
+        if(!_.isEmpty(updatedFields)) {
+            fieldList =  db.raw("utl_raw.cast_to_raw(?) ", JSON.stringify(updatedFields));
+        }else{
+            fieldList = null;
+        }
+
+        logFields.push({
+                ACTION_TYPE: 7,
+                TITLE: logTitle,
+                SCHEMA_NAME: SCHEMA_HIPMA,
+                TABLE_NAME: "HIPMA_DUPLICATED_REQUESTS",
+                SUBMISSION_ID: warning,
+                USER_ID: req.user?.db_user.user.id,
+                ACTION_DATA: fieldList
+        });
+
+        let loggedAction = helper.insertLog(logFields);
+
+        if(!loggedAction){
+            res.send( {
+                status: 400,
+                message: 'The action could not be logged'
+            });
         }
 
         if(rejectWarning) {
