@@ -38,6 +38,7 @@ export const SCHEMA_DENTAL = process.env.SCHEMA_DENTAL || '';
 export const REDIS_HOST = process.env.REDIS_HOST || '';
 export const REDIS_PASS = process.env.REDIS_PASS || '';
 export const REDIS_PORT = process.env.REDIS_PORT || '';
+export const REDIS_SECRET = process.env.REDIS_SECRET || '';
 
 const postProcessToLowerCase = (result: any, queryContext: any) => {
   if (Array.isArray(result)) {
@@ -152,5 +153,6 @@ export const DB_CONFIG_DENTAL = {
 };
 
 export const REDIS_CONFIG = {
-  url: `redis://:${REDIS_PASS}@${REDIS_HOST}:${REDIS_PORT}`
+  url: `redis://:${REDIS_PASS}@${REDIS_HOST}:${REDIS_PORT}`,
+  secret: REDIS_SECRET
 };

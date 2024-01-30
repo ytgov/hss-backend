@@ -27,11 +27,11 @@ export function configureAuthentication(app: Express) {
     app.use(
         session({
             store: new RedisStore({ client: redisClient }),
-            secret: 'supersecret',
+            secret: REDIS_CONFIG.secret,
             resave: false,
             saveUninitialized: false,
             cookie: {
-                secure: false,
+                secure: true,
                 httpOnly: true,
                 maxAge: 1000 * 60 * 60 * 3,
             },
