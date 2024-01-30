@@ -1230,19 +1230,21 @@ dentalRouter.post("/store", async (req: Request, res: Response) => {
 
             let dependentsSaved = false;
 
-            for (const dependent of arrayDependents) {
-                await db(`${SCHEMA_DENTAL}.DENTAL_SERVICE_DEPENDENTS`).insert(dependent).into(`${SCHEMA_DENTAL}.DENTAL_SERVICE_DEPENDENTS`)
-                .then(() => {
-                    dependentsSaved = true;
-                })
-                .catch((e) => {
-                    dependentsSaved = false;
-                    console.log(e);
-                    res.send( {
-                        status: 400,
-                        message: 'Request could not be processed'
+            if(!_.isEmpty(arrayDependents)){
+                for (const dependent of arrayDependents) {
+                    await db(`${SCHEMA_DENTAL}.DENTAL_SERVICE_DEPENDENTS`).insert(dependent).into(`${SCHEMA_DENTAL}.DENTAL_SERVICE_DEPENDENTS`)
+                    .then(() => {
+                        dependentsSaved = true;
+                    })
+                    .catch((e) => {
+                        dependentsSaved = false;
+                        console.log(e);
+                        res.send( {
+                            status: 400,
+                            message: 'Request could not be processed'
+                        });
                     });
-                });
+                }
             }
         }
 
@@ -1687,22 +1689,29 @@ function getDependents(idDentalService: any, arrayDependets: any){
     _.forEach(arrayDependets, function(value: any, key: any) {
         let dataDependent = Object();
 
-        dataDependent.DENTAL_SERVICE_ID = idDentalService;
-        dataDependent.C_FIRSTNAME = arrayDependets[key]['c_firstname'];
-        dataDependent.C_LASTNAME = arrayDependets[key]['c_lastname'];
+        if (!_.isEmpty(arrayDependets[key]['c_firstname']) ||
+            !_.isEmpty(arrayDependets[key]['c_lastname']) ||
+            !_.isEmpty(arrayDependets[key]['c_dob']) ||
+            !_.isEmpty(arrayDependets[key]['c_healthcare']) ||
+            !_.isEmpty(arrayDependets[key]['c_apply'])) {
 
-        if(!_.isEmpty(arrayDependets[key]['c_dob'])){
-            arrayDependets[key]['c_dob'] = new Date(arrayDependets[key]['c_dob']);
-            let result: string =   arrayDependets[key]['c_dob'].toISOString().split('T')[0];
-            dataDependent.C_DOB  = db.raw("TO_DATE( ? ,'YYYY-MM-DD') ", result);
-        }else{
-            dataDependent.C_DOB = null;
+            dataDependent.DENTAL_SERVICE_ID = idDentalService;
+            dataDependent.C_FIRSTNAME = arrayDependets[key]['c_firstname'];
+            dataDependent.C_LASTNAME = arrayDependets[key]['c_lastname'];
+
+            if(!_.isEmpty(arrayDependets[key]['c_dob'])){
+                arrayDependets[key]['c_dob'] = new Date(arrayDependets[key]['c_dob']);
+                let result: string =   arrayDependets[key]['c_dob'].toISOString().split('T')[0];
+                dataDependent.C_DOB  = db.raw("TO_DATE( ? ,'YYYY-MM-DD') ", result);
+            }else{
+                dataDependent.C_DOB = null;
+            }
+
+            dataDependent.C_HEALTHCARE = arrayDependets[key]['c_healthcare'];
+            dataDependent.C_APPLY = arrayDependets[key]['c_apply'];
+
+            dependents.push(dataDependent);
         }
-
-        dataDependent.C_HEALTHCARE = arrayDependets[key]['c_healthcare'];
-        dataDependent.C_APPLY = arrayDependets[key]['c_apply'];
-
-        dependents.push(dataDependent);
     });
 
     return dependents;

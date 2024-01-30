@@ -1,17 +1,22 @@
 import { UserPermissionRepository } from './../repository/oracle/UserPermissionRepository';
 import { Express, NextFunction, Request, Response } from "express"
-import * as ExpressSession from "express-session";
+import session from 'express-session';
 import { AuthUser } from "../models/auth";
 import { AUTH_REDIRECT, FRONTEND_URL } from "../config";
 import axios from 'axios';
 import knex from "knex";
-import { DB_CONFIG_DENTAL, SCHEMA_GENERAL } from "../config";
+import { DB_CONFIG_DENTAL, SCHEMA_GENERAL, REDIS_CONFIG } from "../config";
 import { helper } from "../utils";
+import * as Redis from 'redis';
+import IORedis from 'ioredis';
+import RedisStore from "connect-redis";
 var RateLimit = require('express-rate-limit');
 
 const {auth} = require('express-openid-connect')
 const userRepo = new UserPermissionRepository();
 const db = knex(DB_CONFIG_DENTAL);
+
+const redisClient = new IORedis(REDIS_CONFIG.url);
 
 export function configureAuthentication(app: Express) {
     app.use(RateLimit({
@@ -19,11 +24,19 @@ export function configureAuthentication(app: Express) {
         max: 5000
     }));
 
-    app.use(ExpressSession.default({
-        secret: 'supersecret',
-        resave: true,
-        saveUninitialized: true
-    }));
+    app.use(
+        session({
+            store: new RedisStore({ client: redisClient }),
+            secret: REDIS_CONFIG.secret,
+            resave: false,
+            saveUninitialized: false,
+            cookie: {
+                secure: true,
+                httpOnly: true,
+                maxAge: 1000 * 60 * 60 * 3,
+            },
+        })
+    )
 
     app.use(auth({
         authRequired: false,
