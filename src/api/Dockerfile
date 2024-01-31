@@ -20,9 +20,6 @@ RUN yum -y install iputils
 
 RUN export LD_LIBRARY_PATH=/usr/lib/oracle/19.3/client64/lib
 
-# Redis configuration
-RUN yum install -y redis
-RUN sed -i 's/^# requirepass .*/requirepass pass/' /etc/redis.conf
 
 WORKDIR /usr/src/app
 COPY package.json /usr/src/app/package.json
@@ -32,4 +29,4 @@ RUN npm install -g nodemon
 COPY ./ ./
 EXPOSE 3000 6379
 
-CMD ["sh", "-c", "redis-server /etc/redis.conf --daemonize yes; npm run start"]
+CMD ["npm run start"]

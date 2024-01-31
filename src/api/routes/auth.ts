@@ -7,16 +7,35 @@ import axios from 'axios';
 import knex from "knex";
 import { DB_CONFIG_DENTAL, SCHEMA_GENERAL, REDIS_CONFIG } from "../config";
 import { helper } from "../utils";
-import * as Redis from 'redis';
-import IORedis from 'ioredis';
-import RedisStore from "connect-redis";
+const redis = require('redis');
+const RedisStore = require("connect-redis").default
 var RateLimit = require('express-rate-limit');
-
 const {auth} = require('express-openid-connect')
 const userRepo = new UserPermissionRepository();
 const db = knex(DB_CONFIG_DENTAL);
 
-const redisClient = new IORedis(REDIS_CONFIG.url);
+
+//Configure redis client
+const redisClient = redis.createClient({ 
+    url: 'redis://redis',
+    port: 6379
+});
+
+redisClient.connect().catch(console.error)
+
+redisClient.on('error', function(err: string) {
+    console.log('Could not establish a connection with redis. ' + err);
+});
+redisClient.on('connect', function(err: string) {
+    console.log('Connected to redis successfully');
+});
+
+// Initialize store.
+let redisStore = new RedisStore({
+    client: redisClient,
+    prefix: "hss-backend-redis:",
+})
+
 
 export function configureAuthentication(app: Express) {
     app.use(RateLimit({
@@ -26,15 +45,15 @@ export function configureAuthentication(app: Express) {
 
     app.use(
         session({
-            store: new RedisStore({ client: redisClient }),
+            store: redisStore,
             secret: REDIS_CONFIG.secret,
             resave: false,
             saveUninitialized: false,
-            cookie: {
-                secure: true,
-                httpOnly: true,
-                maxAge: 1000 * 60 * 60 * 3,
-            },
+            // cookie: {
+            //     secure: false,
+            //     httpOnly: true,
+            //     maxAge: 1000 * 60 * 60 * 3,
+            // },
         })
     )
 
