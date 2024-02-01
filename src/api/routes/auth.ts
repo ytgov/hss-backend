@@ -17,8 +17,8 @@ const db = knex(DB_CONFIG_DENTAL);
 
 //Configure redis client
 const redisClient = redis.createClient({ 
-    url: 'redis://redis',
-    port: 6379
+    host: REDIS_CONFIG.host,
+    port: REDIS_CONFIG.port
 });
 
 redisClient.connect().catch(console.error)
