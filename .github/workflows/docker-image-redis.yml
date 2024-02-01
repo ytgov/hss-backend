@@ -1,4 +1,4 @@
-name: Docker Image CI
+name: Docker Image Redis
 
 on:
   push:
@@ -15,4 +15,4 @@ jobs:
     steps:
     - uses: actions/checkout@v2
     - name: Build the project Docker Redis image
-      run: docker build ./redis --file Dockerfile --tag hss-redis-db:$(date +%s)
+      run: docker pull redis
