@@ -14,5 +14,5 @@ jobs:
 
     steps:
     - uses: actions/checkout@v2
-    - name: Build the project Docker image
-      run: docker build . --file Dockerfile --tag vue-template:$(date +%s)
+    - name: Build the project Docker Redis image
+      run: docker build ../../redis --file Dockerfile --tag hss-redis-db:$(date +%s)
