@@ -33,6 +33,9 @@ Environment variables should never be checked into the repository!
 To perform the data migration from the EDMS legacy database to the current database, the `dataMigration.js` file must be executed with the following command
 `node dataMigration.js`
 
+## Enviroment variables for DENTAL MIGRATION
+- DENTAL_IDS=(comma separated string with IDs referring to the edms id, e.g. '1,2, 3, 4'. )
+
 ## Enviroment variables for EDMS database
 - DB_HOST_EDMS=(the host address of the EDMS database.)
 - DB_USER_EDMS=(Specifies the name of the user to connect as EDMS database)
@@ -44,3 +47,4 @@ To perform the data migration from the EDMS legacy database to the current datab
 - REDIS_HOST=(the host address for Redis)
 - REDIS_PASS=(the password for Redis)
 - REDIS_PORT=(the port for Redis)
+
