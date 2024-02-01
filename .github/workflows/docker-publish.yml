@@ -30,7 +30,7 @@ jobs:
       fail-fast: false
       matrix:
         include:
-          - dockerfile: .
+          - dockerfile: ./Dockerfile
             image: ghcr.io/ytgov/hss-web
           - dockerfile: ./redis/Dockerfile
             image: ghcr.io/ytgov/redis

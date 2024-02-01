@@ -1,4 +1,4 @@
-# name: Docker Image Redis
+name: Docker Image Redis
 
 # on:
 #   push:
