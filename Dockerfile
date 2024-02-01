@@ -35,7 +35,7 @@ COPY src/web /home/node/web/
 
 RUN npm run build:docker
 
-EXPOSE 3000
+EXPOSE 3000 6379
 
 WORKDIR /home/node/app
 

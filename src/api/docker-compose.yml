@@ -6,13 +6,13 @@ services:
             dockerfile: Dockerfile
         volumes:
             - .:/app/
-            - /app/node_modules
-        environment:
-            NODE_ENV: production
-        volumes:
+            - /app/node_modules]
             - "./:/usr/src/app"
             - "./.env:/.env"
+        environment:
+            NODE_ENV: production
         ports:
             - 8080:8080
             - 3000:3000
             - 6379:6379
+
