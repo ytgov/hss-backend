@@ -15,6 +15,22 @@ const userRepo = new UserPermissionRepository();
 const db = knex(DB_CONFIG_DENTAL);
 
 
+console.log('++-----------------------++');
+console.log('REDIS_OBJECT_CONFIG', REDIS_CONFIG);
+console.log('++-----------------------++');
+
+console.log('++-----------------------++');
+console.log('REDIS_HOST', REDIS_CONFIG.host);
+console.log('++-----------------------++');
+
+console.log('++-----------------------++');
+console.log('REDIS_PORT', REDIS_CONFIG.port);
+console.log('++-----------------------++');
+
+console.log('++-----------------------++');
+console.log('REDIS_SECRET', REDIS_CONFIG.secret);
+console.log('++-----------------------++');
+
 //Configure redis client
 const redisClient = redis.createClient({ 
     host: REDIS_CONFIG.host,
