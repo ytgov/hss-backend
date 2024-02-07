@@ -35,13 +35,9 @@ export const SCHEMA_HIPMA = process.env.SCHEMA_HIPMA || '';
 export const SCHEMA_GENERAL = process.env.SCHEMA_GENERAL || '';
 export const SCHEMA_DENTAL = process.env.SCHEMA_DENTAL || '';
 
-export const REDIS_HOST = process.env.REDIS_HOST || 'hss-redis-test.hss-backend-test.svc.cluster.local';
+export const REDIS_HOST = process.env.REDIS_HOST || 'localhost';
 export const REDIS_PASS = process.env.REDIS_PASS || '';
 export const REDIS_PORT = process.env.REDIS_PORT || '6379';
-
-console.log('++-----------------------++');
-console.log('TEST ENV', process.env);
-console.log('++-----------------------++');
 
 const postProcessToLowerCase = (result: any, queryContext: any) => {
   if (Array.isArray(result)) {
