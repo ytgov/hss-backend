@@ -362,10 +362,10 @@ async function main() {
 							}
 						}
 
-						console.log('Submission migration successful!');
+						console.log('Submission migration successful! ID:'+dentalId.ID);
 
 					}else{
-						console.log('Error while inserting Dental Service.');
+						console.log('Error while inserting Dental Service ID:'+dentalId.ID);
 					}
 
 				}
