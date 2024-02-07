@@ -156,7 +156,7 @@ export const DB_CONFIG_DENTAL = {
 };
 
 export const REDIS_CONFIG = {
-  url: `redis://:${REDIS_PASS}@${REDIS_HOST}:${REDIS_PORT}`,
+  url: `redis://${REDIS_HOST}:${REDIS_PORT}`,
   secret: REDIS_PASS,
   host: REDIS_HOST,
   port: REDIS_PORT,
