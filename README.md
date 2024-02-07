@@ -35,7 +35,7 @@ To perform the data migration from the EDMS legacy database to the current datab
 
 ## Enviroment variables for DENTAL MIGRATION
 - DENTAL_IDS=(comma separated string with IDs referring to the edms id, e.g. '1,2, 3, 4'. )
-
+- CONSTELLATION_IDS=(comma separated string with IDs referring to the edms id, e.g. '1,2, 3, 4'. )
 ## Enviroment variables for EDMS database
 - DB_HOST_EDMS=(the host address of the EDMS database.)
 - DB_USER_EDMS=(Specifies the name of the user to connect as EDMS database)
