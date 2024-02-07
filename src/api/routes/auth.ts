@@ -31,10 +31,15 @@ console.log('++-----------------------++');
 console.log('REDIS_SECRET', REDIS_CONFIG.secret);
 console.log('++-----------------------++');
 
+console.log('++-----------------------++');
+console.log('REDIS_URL', REDIS_CONFIG.url);
+console.log('++-----------------------++');
+
 //Configure redis client
 const redisClient = redis.createClient({ 
-    host: REDIS_CONFIG.host,
-    port: REDIS_CONFIG.port
+    // host: REDIS_CONFIG.host,
+    // port: REDIS_CONFIG.port
+    url: REDIS_CONFIG.url
 });
 
 redisClient.connect().catch(console.error)
