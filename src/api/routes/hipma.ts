@@ -330,6 +330,15 @@ hipmaRouter.post("/store", async (req: Request, res: Response) => {
         data = req.body;
 
         let stringOriginalData = JSON.stringify(data);
+
+        // Verify the length of the serialized JSON
+        const maxLengthInBytes = 5 * (1024 * 1024); // 5MB to  bytes
+
+        if (Buffer.byteLength(stringOriginalData, 'utf8') > maxLengthInBytes) {
+            console.log('The object exceeds 5MB. It will be truncated.');
+            stringOriginalData = stringOriginalData.substring(0, maxLengthInBytes);
+        }
+
         let bufferOriginalData = Buffer.from(stringOriginalData);
 
         let logOriginalSubmission = {
@@ -521,7 +530,7 @@ hipmaRouter.post("/store", async (req: Request, res: Response) => {
                         END;
                         `, [hipma_id.id, value.description, value.file_name,value.file_type,value.file_size]);
                     if(!filesSaved){
-                        res.json({ status:400, message: 'Request could not be processed' });
+                        res.json({ status:400, message: 'Request could not be processed: HEALTH INFORMATION store attachment failed' });
                     }
                 }
             });
@@ -1257,7 +1266,7 @@ function saveFile(field_name: any, data: any){
         // Convert the file size to megabytes
         var fileSizeInMegabytes = stats.size / (1024*1024);
 
-        if(fileSizeInMegabytes > 2){
+        if(fileSizeInMegabytes > 10){
 
             fs.unlinkSync(path);
 

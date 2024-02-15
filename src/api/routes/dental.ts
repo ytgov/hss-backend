@@ -1127,6 +1127,15 @@ dentalRouter.post("/store", async (req: Request, res: Response) => {
         data = req.body;
 
         let stringOriginalSubmission = JSON.stringify(data);
+
+        // Verify the length of the serialized JSON
+        const maxLengthInBytes = 2 * (1024 * 1024); // 5MB to  bytes
+
+        if (Buffer.byteLength(stringOriginalSubmission, 'utf8') > maxLengthInBytes) {
+            console.log('The object exceeds 5MB. It will be truncated.');
+            stringOriginalSubmission = stringOriginalSubmission.substring(0, maxLengthInBytes);
+        }
+
         let bufferOriginalSubmission = Buffer.from(stringOriginalSubmission);
 
         let logOriginalSubmission = {
@@ -1216,7 +1225,7 @@ dentalRouter.post("/store", async (req: Request, res: Response) => {
 
             fileData = saveFile('_attach_proof', data);
 
-            if(parseFloat(fileData["file_size"]) > 2){
+            if(parseFloat(fileData["file_size"]) > 10){
                 fileData = null;
             }
 
@@ -1292,7 +1301,7 @@ dentalRouter.post("/store", async (req: Request, res: Response) => {
                 `, [dentalId.id,fileData.description,fileData.file_name,fileData.file_type,fileData.file_size]);
 
             if(!filesSaved){
-                res.json({ status:400, message: 'Request could not be processed' });
+                res.json({ status:400, message: 'Request could not be processed: DENTAL SERVICE store attachment failed' });
             }
 
         }

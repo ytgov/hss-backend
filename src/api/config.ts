@@ -76,8 +76,8 @@ export const DB_CONFIG_CONSTELLATION = {
         (CONNECT_DATA=(SERVICE_NAME=${DB_SERVICE}) ) )`
   },
   pool: {
-    min: 2,
-    max: 12,
+    min: 1,
+    max: 20,
     propagateCreateError: false
   },
   postProcessResponse: postProcessToLowerCase,
@@ -100,8 +100,8 @@ export const DB_CONFIG_MIDWIFERY = {
         (CONNECT_DATA=(SERVICE_NAME=${DB_SERVICE}) ) )`
   },
   pool: {
-    min: 2,
-    max: 12,
+    min: 1,
+    max: 20,
     propagateCreateError: false
   },
   postProcessResponse: postProcessToLowerCase
@@ -123,8 +123,8 @@ export const DB_CONFIG_HIPMA = {
         (CONNECT_DATA=(SERVICE_NAME=${DB_SERVICE}) ) )`
   },
   pool: {
-    min: 2,
-    max: 12,
+    min: 1,
+    max: 20,
     propagateCreateError: false
   },
   postProcessResponse: postProcessToLowerCase
@@ -146,8 +146,8 @@ export const DB_CONFIG_GENERAL = {
         (CONNECT_DATA=(SERVICE_NAME=${DB_SERVICE}) ) )`
   },
   pool: {
-    min: 2,
-    max: 12,
+    min: 1,
+    max: 20,
     propagateCreateError: false
   },
   postProcessResponse: postProcessToLowerCase
@@ -169,8 +169,8 @@ export const DB_CONFIG_DENTAL = {
         (CONNECT_DATA=(SERVICE_NAME=${DB_SERVICE}) ) )`
   },
   pool: {
-    min: 2,
-    max: 12,
+    min: 1,
+    max: 20,
     propagateCreateError: false
   },
   postProcessResponse: postProcessToLowerCase

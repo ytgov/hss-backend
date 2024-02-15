@@ -79,7 +79,7 @@
 								>
 								mdi-alert
 								</v-icon>
-								&nbsp;The attachment must not be larger than 2MB
+								&nbsp;The attachment must not be larger than 10MB
 						</v-row>
 						<v-row class="red--text ma-3" v-if="showAttachmentType">
 								<v-icon
@@ -130,7 +130,7 @@ export default {
 			showAttachmentType: false,
 			allowedExtensions: ["pdf", "doc", "docx", "jpg", "jpeg", "png"],
 			showAttachmentSize: false,
-			maxFileSize: 2 * 1024 * 1024, // 2 MB in bytes,
+			maxFileSize: 10 * 1024 * 1024, // 10 MB in bytes,
 			updatedFields: []
 		};
 	},
