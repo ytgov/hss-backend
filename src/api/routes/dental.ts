@@ -1129,7 +1129,7 @@ dentalRouter.post("/store", async (req: Request, res: Response) => {
         let stringOriginalSubmission = JSON.stringify(data);
 
         // Verify the length of the serialized JSON
-        const maxLengthInBytes = 2 * (1024 * 1024); // 5MB to  bytes
+        const maxLengthInBytes = 5 * (1024 * 1024); // 5MB to  bytes
 
         if (Buffer.byteLength(stringOriginalSubmission, 'utf8') > maxLengthInBytes) {
             console.log('The object exceeds 5MB. It will be truncated.');
