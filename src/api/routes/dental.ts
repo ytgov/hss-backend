@@ -252,9 +252,16 @@ dentalRouter.get("/show/:dentalService_id", checkPermissions("dental_view"), [pa
                                         )
                                         .where('DENTAL_SERVICE_DEPENDENTS.DENTAL_SERVICE_ID', dentalService_id);
 
-        dentalFiles = await db(`${SCHEMA_DENTAL}.DENTAL_SERVICE_FILES`).where("DENTAL_SERVICE_ID", dentalService_id).select().then((data:any) => {
-            return data[0];
-        });
+        dentalFiles = await db(`${SCHEMA_DENTAL}.DENTAL_SERVICE_FILES`).where("DENTAL_SERVICE_ID", dentalService_id)
+            .select('ID',
+                    'DENTAL_SERVICE_ID',
+                    'DESCRIPTION',
+                    'FILE_NAME',
+                    'FILE_TYPE',
+                    'FILE_SIZE'
+            ).then((data:any) => {
+                return data[0];
+            });
 
         dentalInternalFields = await db(`${SCHEMA_DENTAL}.DENTAL_SERVICE_INTERNAL_FIELDS`)
                                 .select('ID',
@@ -1120,6 +1127,15 @@ dentalRouter.post("/store", async (req: Request, res: Response) => {
         data = req.body;
 
         let stringOriginalSubmission = JSON.stringify(data);
+
+        // Verify the length of the serialized JSON
+        const maxLengthInBytes = 5 * (1024 * 1024); // 5MB to  bytes
+
+        if (Buffer.byteLength(stringOriginalSubmission, 'utf8') > maxLengthInBytes) {
+            console.log('The object exceeds 5MB. It will be truncated.');
+            stringOriginalSubmission = stringOriginalSubmission.substring(0, maxLengthInBytes);
+        }
+
         let bufferOriginalSubmission = Buffer.from(stringOriginalSubmission);
 
         let logOriginalSubmission = {
@@ -1206,7 +1222,13 @@ dentalRouter.post("/store", async (req: Request, res: Response) => {
         }
 
         if(!_.isEmpty(data._attach_proof)){
+
             fileData = saveFile('_attach_proof', data);
+
+            if(parseFloat(fileData["file_size"]) > 10){
+                fileData = null;
+            }
+
         }
 
         dentalServiceSaved = await db(`${SCHEMA_DENTAL}.DENTAL_SERVICE`).insert(dentalService).into(`${SCHEMA_DENTAL}.DENTAL_SERVICE`).returning('ID');
@@ -1279,7 +1301,7 @@ dentalRouter.post("/store", async (req: Request, res: Response) => {
                 `, [dentalId.id,fileData.description,fileData.file_name,fileData.file_type,fileData.file_size]);
 
             if(!filesSaved){
-                res.json({ status:400, message: 'Request could not be processed' });
+                res.json({ status:400, message: 'Request could not be processed: DENTAL SERVICE store attachment failed' });
             }
 
         }

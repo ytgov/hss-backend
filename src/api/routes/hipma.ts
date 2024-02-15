@@ -271,7 +271,14 @@ hipmaRouter.get("/show/:hipma_id",[param("hipma_id").isInt().notEmpty()], async 
 
             hipma.indicate_the_hss_system_s_you_would_like_a_record_of_user_activ = dataString.replace(/,/g, ', ');
         }
-        var hipmaFiles = await db(`${SCHEMA_HIPMA}.HIPMA_FILES`).where("HIPMA_ID", hipma_id).select();
+        var hipmaFiles = await db(`${SCHEMA_HIPMA}.HIPMA_FILES`).where("HIPMA_ID", hipma_id)
+            .select('ID',
+                    'HIPMA_ID',
+                    'DESCRIPTION',
+                    'FILE_NAME',
+                    'FILE_TYPE',
+                    'FILE_SIZE'
+            );
         var files = Object();
 
         if(!_.isEmpty(hipmaFiles)){
@@ -323,6 +330,15 @@ hipmaRouter.post("/store", async (req: Request, res: Response) => {
         data = req.body;
 
         let stringOriginalData = JSON.stringify(data);
+
+        // Verify the length of the serialized JSON
+        const maxLengthInBytes = 5 * (1024 * 1024); // 5MB to  bytes
+
+        if (Buffer.byteLength(stringOriginalData, 'utf8') > maxLengthInBytes) {
+            console.log('The object exceeds 5MB. It will be truncated.');
+            stringOriginalData = stringOriginalData.substring(0, maxLengthInBytes);
+        }
+
         let bufferOriginalData = Buffer.from(stringOriginalData);
 
         let logOriginalSubmission = {
@@ -489,30 +505,33 @@ hipmaRouter.post("/store", async (req: Request, res: Response) => {
             var filesSaved =  true;
             _.forEach(files, async function(value: any) {
                 var hipmaFiles = Object();
-                hipmaFiles.HIPMA_ID = hipma_id.id
-                hipmaFiles.DESCRIPTION = value.description;
-                hipmaFiles.FILE_NAME = value.file_name;
-                hipmaFiles.FILE_TYPE = value.file_type;
-                hipmaFiles.FILE_SIZE = value.file_size;
-                let array_file = value.file_data.match(/.{1,4000}/g)
-                let query = '';
-                array_file.forEach((element: string) => {
-                    query = query + " DBMS_LOB.APPEND(v_long_text, to_blob(utl_raw.cast_to_raw('" +element+"'))); ";
-                });
 
-                filesInsert.push(hipmaFiles);
-                var filesSaved = await db.raw(`
-                    DECLARE
-                        v_long_text BLOB;
-                    BEGIN
-                        DBMS_LOB.CREATETEMPORARY(v_long_text,true);`
-                        + query +
-                    `
-                        INSERT INTO ${SCHEMA_HIPMA}.HIPMA_FILES (HIPMA_ID, DESCRIPTION, FILE_NAME, FILE_TYPE, FILE_SIZE, FILE_DATA) VALUES (?,?,?,?, ?,v_long_text);
-                    END;
-                    `, [hipma_id.id, value.description, value.file_name,value.file_type,value.file_size]);
-                if(!filesSaved){
-                    res.json({ status:400, message: 'Request could not be processed' });
+                if(!_.isEmpty(value)){
+                    hipmaFiles.HIPMA_ID = hipma_id.id
+                    hipmaFiles.DESCRIPTION = value.description;
+                    hipmaFiles.FILE_NAME = value.file_name;
+                    hipmaFiles.FILE_TYPE = value.file_type;
+                    hipmaFiles.FILE_SIZE = value.file_size;
+                    let array_file = value.file_data.match(/.{1,4000}/g)
+                    let query = '';
+                    array_file.forEach((element: string) => {
+                        query = query + " DBMS_LOB.APPEND(v_long_text, to_blob(utl_raw.cast_to_raw('" +element+"'))); ";
+                    });
+
+                    filesInsert.push(hipmaFiles);
+                    var filesSaved = await db.raw(`
+                        DECLARE
+                            v_long_text BLOB;
+                        BEGIN
+                            DBMS_LOB.CREATETEMPORARY(v_long_text,true);`
+                            + query +
+                        `
+                            INSERT INTO ${SCHEMA_HIPMA}.HIPMA_FILES (HIPMA_ID, DESCRIPTION, FILE_NAME, FILE_TYPE, FILE_SIZE, FILE_DATA) VALUES (?,?,?,?, ?,v_long_text);
+                        END;
+                        `, [hipma_id.id, value.description, value.file_name,value.file_type,value.file_size]);
+                    if(!filesSaved){
+                        res.json({ status:400, message: 'Request could not be processed: HEALTH INFORMATION store attachment failed' });
+                    }
                 }
             });
 
@@ -1246,6 +1265,13 @@ function saveFile(field_name: any, data: any){
 
         // Convert the file size to megabytes
         var fileSizeInMegabytes = stats.size / (1024*1024);
+
+        if(fileSizeInMegabytes > 10){
+
+            fs.unlinkSync(path);
+
+            return filesHipma;
+        }
 
         filesHipma["description"] = field_name;
         filesHipma["file_name"] = fileName[0];
