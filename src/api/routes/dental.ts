@@ -252,9 +252,16 @@ dentalRouter.get("/show/:dentalService_id", checkPermissions("dental_view"), [pa
                                         )
                                         .where('DENTAL_SERVICE_DEPENDENTS.DENTAL_SERVICE_ID', dentalService_id);
 
-        dentalFiles = await db(`${SCHEMA_DENTAL}.DENTAL_SERVICE_FILES`).where("DENTAL_SERVICE_ID", dentalService_id).select().then((data:any) => {
-            return data[0];
-        });
+        dentalFiles = await db(`${SCHEMA_DENTAL}.DENTAL_SERVICE_FILES`).where("DENTAL_SERVICE_ID", dentalService_id)
+            .select('ID',
+                    'DENTAL_SERVICE_ID',
+                    'DESCRIPTION',
+                    'FILE_NAME',
+                    'FILE_TYPE',
+                    'FILE_SIZE'
+            ).then((data:any) => {
+                return data[0];
+            });
 
         dentalInternalFields = await db(`${SCHEMA_DENTAL}.DENTAL_SERVICE_INTERNAL_FIELDS`)
                                 .select('ID',
@@ -1206,7 +1213,13 @@ dentalRouter.post("/store", async (req: Request, res: Response) => {
         }
 
         if(!_.isEmpty(data._attach_proof)){
+
             fileData = saveFile('_attach_proof', data);
+
+            if(parseFloat(fileData["file_size"]) > 2){
+                fileData = null;
+            }
+
         }
 
         dentalServiceSaved = await db(`${SCHEMA_DENTAL}.DENTAL_SERVICE`).insert(dentalService).into(`${SCHEMA_DENTAL}.DENTAL_SERVICE`).returning('ID');
