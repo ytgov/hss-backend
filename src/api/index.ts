@@ -18,7 +18,7 @@ const routes: Record<string, Router> = {
   "/api/dental": dentalRouter
 };
 
-const maxRequestBodySize = '15mb';
+const maxRequestBodySize = '40mb';
 app.use(express.json({limit: maxRequestBodySize})) // for parsing application/json
 app.use(express.urlencoded({ extended: true, limit: maxRequestBodySize})) // for parsing application/x-www-form-urlencoded
 //app.use(helmet());
