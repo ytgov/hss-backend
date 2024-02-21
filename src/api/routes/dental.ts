@@ -943,9 +943,9 @@ dentalRouter.get("/duplicates/validateWarning/:duplicate_id",[param("duplicate_i
         if(!warning){
             flagExists = false;
             message = "The request you are consulting is non existant, please choose a valid request.";
-        }else{
-            res.json({ status: 200, flagWarning: flagExists, message: message, type: type});
         }
+        res.json({ status: 200, flagWarning: flagExists, message: message, type: type});
+
 
     } catch(e) {
         console.log(e);  // debug if needed
