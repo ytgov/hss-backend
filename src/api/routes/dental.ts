@@ -943,9 +943,9 @@ dentalRouter.get("/duplicates/validateWarning/:duplicate_id",[param("duplicate_i
         if(!warning){
             flagExists = false;
             message = "The request you are consulting is non existant, please choose a valid request.";
+        }else{
+            res.json({ status: 200, flagWarning: flagExists, message: message, type: type});
         }
-
-        res.json({ status: 200, flagWarning: flagExists, message: message, type: type});
 
     } catch(e) {
         console.log(e);  // debug if needed
@@ -1060,10 +1060,19 @@ dentalRouter.get("/downloadFile/:dentalFile_id",[param("dentalFile_id").isInt().
     try {
         var pathFile = "";
         var fs = require("fs");
+        var buffer;
 
         var dentalFile_id = Number(req.params.dentalFile_id);
         var dentalFiles = await db(`${SCHEMA_DENTAL}.DENTAL_SERVICE_FILES`).where("ID", dentalFile_id).select().first();
-        var buffer = Buffer.from(dentalFiles.file_data.toString(), 'base64');
+
+        if(dentalFiles.is_base64){
+            buffer = Buffer.from(dentalFiles.file_data.toString(), 'base64');
+        }else{
+            buffer = dentalFiles.file_data;
+        }
+        
+        
+
         let safeName = (Math.random() + 1).toString(36).substring(7)+'_'+dentalFiles.file_name;
         let pathPublicFront = path.join(__dirname, "../../");
         pathFile = pathPublicFront+"dist/web/"+safeName+"."+dentalFiles.file_type;
@@ -1112,7 +1121,7 @@ dentalRouter.post("/deleteFile", async (req: Request, res: Response) => {
 
 
 /**
- * Store midwifery data
+ * Store Dental data
  *
  * @return json
  */
@@ -1123,6 +1132,7 @@ dentalRouter.post("/store", async (req: Request, res: Response) => {
         const dentalService = Object();
         let dentalServiceSaved = Object();
         var fileData = Object();
+        let responseSent = false;
 
         data = req.body;
 
@@ -1234,7 +1244,12 @@ dentalRouter.post("/store", async (req: Request, res: Response) => {
         dentalServiceSaved = await db(`${SCHEMA_DENTAL}.DENTAL_SERVICE`).insert(dentalService).into(`${SCHEMA_DENTAL}.DENTAL_SERVICE`).returning('ID');
 
         if(!dentalServiceSaved){
-            res.json({ status:400, message: 'Request could not be processed' });
+            if (!responseSent) {
+                res.json({ status:400, message: 'Request could not be processed' });
+            }else{
+                console.log( 'Request could not be processed');
+            }
+            responseSent = true;
         }
 
         let dentalId = dentalServiceSaved.find((obj: any) => {return obj.id;});
@@ -1272,7 +1287,7 @@ dentalRouter.post("/store", async (req: Request, res: Response) => {
 
         if(!_.isEmpty(fileData)){
             var dentalFiles = Object();
-
+            
             dentalFiles.DENTAL_SERVICE_ID = dentalId.id;
             dentalFiles.DESCRIPTION = fileData.description;
             dentalFiles.FILE_NAME = fileData.file_name;
@@ -1292,7 +1307,12 @@ dentalRouter.post("/store", async (req: Request, res: Response) => {
             });;
     
             if(!filesSaved){
-                res.json({ status:400, message: 'Request could not be processed: DENTAL SERVICE store attachment failed' });
+                if (!responseSent) {
+                    res.json({ status:400, message: 'Request could not be processed: DENTAL SERVICE store attachment failed' });
+                }else{
+                    console.log( `ID: ${dentalId.id.toString()}: Request could not be processed: DENTAL SERVICE store attachment failed`);
+                }
+                responseSent = true;
             }
 
         }
@@ -1310,8 +1330,9 @@ dentalRouter.post("/store", async (req: Request, res: Response) => {
         if(!loggedAction){
             console.log('The action could not be logged: '+logFields.TABLE_NAME+' '+logFields.TITLE);
         }
-
-        res.json({ status:200, message: 'Request saved' });
+        if (!responseSent) {
+            res.json({ status:200, message: 'Request saved' });
+        }
 
     } catch(e) {
         console.log(e);  // debug if needed
@@ -1366,9 +1387,10 @@ dentalRouter.post("/storeInternalFields", async (req: Request, res: Response) =>
 
         if(!internalFieldsSaved){
             res.json({ status:400, message: 'Request could not be processed' });
+        }else{
+            res.json({ status:200, message: 'Internal Field saved' });
         }
 
-        res.json({ status:200, message: 'Internal Field saved' });
     } catch(e) {
         console.log(e);  // debug if needed
         res.send( {
