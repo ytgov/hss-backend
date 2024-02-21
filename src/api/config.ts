@@ -67,7 +67,7 @@ export const DB_CONFIG_CONSTELLATION = {
     user: DB_USER,
     password: DB_PASS,
     database: DB_NAME,
-    requestTimeout: 15000,
+    requestTimeout: 120000,
     instanceName: DB_SERVICE,
     connectString: `(DESCRIPTION=                   
         (ADDRESS_LIST=            
@@ -91,7 +91,7 @@ export const DB_CONFIG_MIDWIFERY = {
     user: DB_USER,
     password: DB_PASS,
     database: DB_NAME,
-    requestTimeout: 15000,
+    requestTimeout: 120000,
     instanceName: DB_SERVICE,
     connectString: `(DESCRIPTION=                   
         (ADDRESS_LIST=            
@@ -114,7 +114,7 @@ export const DB_CONFIG_HIPMA = {
     user: DB_USER,
     password: DB_PASS,
     database: DB_NAME,
-    requestTimeout: 15000,
+    requestTimeout: 120000,
     instanceName: DB_SERVICE,
     connectString: `(DESCRIPTION=                   
         (ADDRESS_LIST=            
@@ -137,7 +137,7 @@ export const DB_CONFIG_GENERAL = {
     user: DB_USER,
     password: DB_PASS,
     database: DB_NAME,
-    requestTimeout: 15000,
+    requestTimeout: 120000,
     instanceName: DB_SERVICE,
     connectString: `(DESCRIPTION=                   
         (ADDRESS_LIST=            
@@ -160,7 +160,7 @@ export const DB_CONFIG_DENTAL = {
     user: DB_USER,
     password: DB_PASS,
     database: DB_NAME,
-    requestTimeout: 15000,
+    requestTimeout: 120000,
     instanceName: DB_SERVICE,
     connectString: `(DESCRIPTION=                   
         (ADDRESS_LIST=            

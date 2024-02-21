@@ -1129,10 +1129,10 @@ dentalRouter.post("/store", async (req: Request, res: Response) => {
         let stringOriginalSubmission = JSON.stringify(data);
 
         // Verify the length of the serialized JSON
-        const maxLengthInBytes = 5 * (1024 * 1024); // 5MB to  bytes
+        const maxLengthInBytes = 1 * (1024 * 1024); // 1MB to  bytes
 
         if (Buffer.byteLength(stringOriginalSubmission, 'utf8') > maxLengthInBytes) {
-            console.log('The object exceeds 5MB. It will be truncated.');
+            console.log('The object exceeds 1MB. It will be truncated.');
             stringOriginalSubmission = stringOriginalSubmission.substring(0, maxLengthInBytes);
         }
 
@@ -1271,35 +1271,26 @@ dentalRouter.post("/store", async (req: Request, res: Response) => {
         }
 
         if(!_.isEmpty(fileData)){
-            var filesInsert = Array();
             var dentalFiles = Object();
 
-            dentalFiles.DENTAL_SERVICE_ID = dentalId.id
+            dentalFiles.DENTAL_SERVICE_ID = dentalId.id;
             dentalFiles.DESCRIPTION = fileData.description;
             dentalFiles.FILE_NAME = fileData.file_name;
             dentalFiles.FILE_TYPE = fileData.file_type;
             dentalFiles.FILE_SIZE = fileData.file_size;
-
-            let array_file = fileData.file_data.match(/.{1,4000}/g)
-            let query = '';
-
-            array_file.forEach((element: string) => {
-                query = query + " DBMS_LOB.APPEND(v_long_text, to_blob(utl_raw.cast_to_raw('" +element+"'))); ";
-            });
-
-            filesInsert.push(dentalFiles);
-
-            var filesSaved = await db.raw(`
-                DECLARE
-                    v_long_text BLOB;
+            
+            const blobData = Buffer.from( fileData.file_data, 'base64');
+       
+            // Execute the stored procedure using Knex
+            const filesSaved = await db.raw(`
                 BEGIN
-                    DBMS_LOB.CREATETEMPORARY(v_long_text,true);`
-                    + query +
-                `
-                    INSERT INTO ${SCHEMA_DENTAL}.DENTAL_SERVICE_FILES (DENTAL_SERVICE_ID, DESCRIPTION, FILE_NAME, FILE_TYPE, FILE_SIZE, FILE_DATA) VALUES (?,?,?,?, ?,v_long_text);
+                DENTAL.INSERT_FILES(?,?,?,?,?,?);
                 END;
-                `, [dentalId.id,fileData.description,fileData.file_name,fileData.file_type,fileData.file_size]);
-
+            `, [parseInt(dentalId.id), fileData.description.toString(),fileData.file_name.toString(),fileData.file_type.toString() , fileData.file_size.toString(),blobData]
+            ).catch(error => {
+                console.error("Error when trying to insert a document:", error);
+            });;
+    
             if(!filesSaved){
                 res.json({ status:400, message: 'Request could not be processed: DENTAL SERVICE store attachment failed' });
             }
