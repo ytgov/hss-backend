@@ -67,13 +67,18 @@ export const DB_CONFIG_CONSTELLATION = {
     user: DB_USER,
     password: DB_PASS,
     database: DB_NAME,
-    requestTimeout: 100,
+    requestTimeout: 120000,
     instanceName: DB_SERVICE,
     connectString: `(DESCRIPTION=                   
         (ADDRESS_LIST=            
         (ADDRESS=(PROTOCOL=TCP)              
         (HOST=${DB_HOST})(PORT=${DB_PORT}) ) )           
         (CONNECT_DATA=(SERVICE_NAME=${DB_SERVICE}) ) )`
+  },
+  pool: {
+    min: 1,
+    max: 20,
+    propagateCreateError: false
   },
   postProcessResponse: postProcessToLowerCase,
   wrapIdentifier: wrapIdentifierUpper
@@ -86,13 +91,18 @@ export const DB_CONFIG_MIDWIFERY = {
     user: DB_USER,
     password: DB_PASS,
     database: DB_NAME,
-    requestTimeout: 100,
+    requestTimeout: 120000,
     instanceName: DB_SERVICE,
     connectString: `(DESCRIPTION=                   
         (ADDRESS_LIST=            
         (ADDRESS=(PROTOCOL=TCP)              
         (HOST=${DB_HOST})(PORT=${DB_PORT}) ) )           
         (CONNECT_DATA=(SERVICE_NAME=${DB_SERVICE}) ) )`
+  },
+  pool: {
+    min: 1,
+    max: 20,
+    propagateCreateError: false
   },
   postProcessResponse: postProcessToLowerCase
 };
@@ -104,13 +114,18 @@ export const DB_CONFIG_HIPMA = {
     user: DB_USER,
     password: DB_PASS,
     database: DB_NAME,
-    requestTimeout: 100,
+    requestTimeout: 120000,
     instanceName: DB_SERVICE,
     connectString: `(DESCRIPTION=                   
         (ADDRESS_LIST=            
         (ADDRESS=(PROTOCOL=TCP)              
         (HOST=${DB_HOST})(PORT=${DB_PORT}) ) )           
         (CONNECT_DATA=(SERVICE_NAME=${DB_SERVICE}) ) )`
+  },
+  pool: {
+    min: 1,
+    max: 20,
+    propagateCreateError: false
   },
   postProcessResponse: postProcessToLowerCase
 };
@@ -122,13 +137,18 @@ export const DB_CONFIG_GENERAL = {
     user: DB_USER,
     password: DB_PASS,
     database: DB_NAME,
-    requestTimeout: 100,
+    requestTimeout: 120000,
     instanceName: DB_SERVICE,
     connectString: `(DESCRIPTION=                   
         (ADDRESS_LIST=            
         (ADDRESS=(PROTOCOL=TCP)              
         (HOST=${DB_HOST})(PORT=${DB_PORT}) ) )           
         (CONNECT_DATA=(SERVICE_NAME=${DB_SERVICE}) ) )`
+  },
+  pool: {
+    min: 1,
+    max: 20,
+    propagateCreateError: false
   },
   postProcessResponse: postProcessToLowerCase
 };
@@ -140,13 +160,18 @@ export const DB_CONFIG_DENTAL = {
     user: DB_USER,
     password: DB_PASS,
     database: DB_NAME,
-    requestTimeout: 100,
+    requestTimeout: 120000,
     instanceName: DB_SERVICE,
     connectString: `(DESCRIPTION=                   
         (ADDRESS_LIST=            
         (ADDRESS=(PROTOCOL=TCP)              
         (HOST=${DB_HOST})(PORT=${DB_PORT}) ) )           
         (CONNECT_DATA=(SERVICE_NAME=${DB_SERVICE}) ) )`
+  },
+  pool: {
+    min: 1,
+    max: 20,
+    propagateCreateError: false
   },
   postProcessResponse: postProcessToLowerCase
 };

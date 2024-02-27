@@ -252,9 +252,16 @@ dentalRouter.get("/show/:dentalService_id", checkPermissions("dental_view"), [pa
                                         )
                                         .where('DENTAL_SERVICE_DEPENDENTS.DENTAL_SERVICE_ID', dentalService_id);
 
-        dentalFiles = await db(`${SCHEMA_DENTAL}.DENTAL_SERVICE_FILES`).where("DENTAL_SERVICE_ID", dentalService_id).select().then((data:any) => {
-            return data[0];
-        });
+        dentalFiles = await db(`${SCHEMA_DENTAL}.DENTAL_SERVICE_FILES`).where("DENTAL_SERVICE_ID", dentalService_id)
+            .select('ID',
+                    'DENTAL_SERVICE_ID',
+                    'DESCRIPTION',
+                    'FILE_NAME',
+                    'FILE_TYPE',
+                    'FILE_SIZE'
+            ).then((data:any) => {
+                return data[0];
+            });
 
         dentalInternalFields = await db(`${SCHEMA_DENTAL}.DENTAL_SERVICE_INTERNAL_FIELDS`)
                                 .select('ID',
@@ -937,8 +944,8 @@ dentalRouter.get("/duplicates/validateWarning/:duplicate_id",[param("duplicate_i
             flagExists = false;
             message = "The request you are consulting is non existant, please choose a valid request.";
         }
-
         res.json({ status: 200, flagWarning: flagExists, message: message, type: type});
+
 
     } catch(e) {
         console.log(e);  // debug if needed
@@ -1053,10 +1060,17 @@ dentalRouter.get("/downloadFile/:dentalFile_id",[param("dentalFile_id").isInt().
     try {
         var pathFile = "";
         var fs = require("fs");
+        var buffer;
 
         var dentalFile_id = Number(req.params.dentalFile_id);
         var dentalFiles = await db(`${SCHEMA_DENTAL}.DENTAL_SERVICE_FILES`).where("ID", dentalFile_id).select().first();
-        var buffer = Buffer.from(dentalFiles.file_data.toString(), 'base64');
+
+        if(dentalFiles.is_base64){
+            buffer = Buffer.from(dentalFiles.file_data.toString(), 'base64');
+        }else{
+            buffer = dentalFiles.file_data;
+        }
+
         let safeName = (Math.random() + 1).toString(36).substring(7)+'_'+dentalFiles.file_name;
         let pathPublicFront = path.join(__dirname, "../../");
         pathFile = pathPublicFront+"dist/web/"+safeName+"."+dentalFiles.file_type;
@@ -1105,7 +1119,7 @@ dentalRouter.post("/deleteFile", async (req: Request, res: Response) => {
 
 
 /**
- * Store midwifery data
+ * Store Dental data
  *
  * @return json
  */
@@ -1116,10 +1130,20 @@ dentalRouter.post("/store", async (req: Request, res: Response) => {
         const dentalService = Object();
         let dentalServiceSaved = Object();
         var fileData = Object();
+        let responseSent = false;
 
         data = req.body;
 
         let stringOriginalSubmission = JSON.stringify(data);
+
+        // Verify the length of the serialized JSON
+        const maxLengthInBytes = 1 * (1024 * 1024); // 1MB to  bytes
+
+        if (Buffer.byteLength(stringOriginalSubmission, 'utf8') > maxLengthInBytes) {
+            console.log('The object exceeds 1MB. It will be truncated.');
+            stringOriginalSubmission = stringOriginalSubmission.substring(0, maxLengthInBytes);
+        }
+
         let bufferOriginalSubmission = Buffer.from(stringOriginalSubmission);
 
         let logOriginalSubmission = {
@@ -1206,13 +1230,24 @@ dentalRouter.post("/store", async (req: Request, res: Response) => {
         }
 
         if(!_.isEmpty(data._attach_proof)){
+
             fileData = saveFile('_attach_proof', data);
+
+            if(parseFloat(fileData["file_size"]) > 10){
+                fileData = null;
+            }
+
         }
 
         dentalServiceSaved = await db(`${SCHEMA_DENTAL}.DENTAL_SERVICE`).insert(dentalService).into(`${SCHEMA_DENTAL}.DENTAL_SERVICE`).returning('ID');
 
         if(!dentalServiceSaved){
-            res.json({ status:400, message: 'Request could not be processed' });
+            if (!responseSent) {
+                res.json({ status:400, message: 'Request could not be processed' });
+            }else{
+                console.log( 'Request could not be processed');
+            }
+            responseSent = true;
         }
 
         let dentalId = dentalServiceSaved.find((obj: any) => {return obj.id;});
@@ -1249,37 +1284,33 @@ dentalRouter.post("/store", async (req: Request, res: Response) => {
         }
 
         if(!_.isEmpty(fileData)){
-            var filesInsert = Array();
             var dentalFiles = Object();
-
-            dentalFiles.DENTAL_SERVICE_ID = dentalId.id
+            
+            dentalFiles.DENTAL_SERVICE_ID = dentalId.id;
             dentalFiles.DESCRIPTION = fileData.description;
             dentalFiles.FILE_NAME = fileData.file_name;
             dentalFiles.FILE_TYPE = fileData.file_type;
             dentalFiles.FILE_SIZE = fileData.file_size;
-
-            let array_file = fileData.file_data.match(/.{1,4000}/g)
-            let query = '';
-
-            array_file.forEach((element: string) => {
-                query = query + " DBMS_LOB.APPEND(v_long_text, to_blob(utl_raw.cast_to_raw('" +element+"'))); ";
-            });
-
-            filesInsert.push(dentalFiles);
-
-            var filesSaved = await db.raw(`
-                DECLARE
-                    v_long_text BLOB;
+            
+            const blobData = Buffer.from( fileData.file_data, 'base64');
+       
+            // Execute the stored procedure using Knex
+            const filesSaved = await db.raw(`
                 BEGIN
-                    DBMS_LOB.CREATETEMPORARY(v_long_text,true);`
-                    + query +
-                `
-                    INSERT INTO ${SCHEMA_DENTAL}.DENTAL_SERVICE_FILES (DENTAL_SERVICE_ID, DESCRIPTION, FILE_NAME, FILE_TYPE, FILE_SIZE, FILE_DATA) VALUES (?,?,?,?, ?,v_long_text);
+                DENTAL.INSERT_FILES(?,?,?,?,?,?);
                 END;
-                `, [dentalId.id,fileData.description,fileData.file_name,fileData.file_type,fileData.file_size]);
-
+            `, [parseInt(dentalId.id), fileData.description.toString(),fileData.file_name.toString(),fileData.file_type.toString() , fileData.file_size.toString(),blobData]
+            ).catch(error => {
+                console.error("Error when trying to insert a document:", error);
+            });
+    
             if(!filesSaved){
-                res.json({ status:400, message: 'Request could not be processed' });
+                if (!responseSent) {
+                    res.json({ status:400, message: 'Request could not be processed: DENTAL SERVICE store attachment failed' });
+                }else{
+                    console.log( `ID: ${dentalId.id.toString()}: Request could not be processed: DENTAL SERVICE store attachment failed`);
+                }
+                responseSent = true;
             }
 
         }
@@ -1297,8 +1328,9 @@ dentalRouter.post("/store", async (req: Request, res: Response) => {
         if(!loggedAction){
             console.log('The action could not be logged: '+logFields.TABLE_NAME+' '+logFields.TITLE);
         }
-
-        res.json({ status:200, message: 'Request saved' });
+        if (!responseSent) {
+            res.json({ status:200, message: 'Request saved' });
+        }
 
     } catch(e) {
         console.log(e);  // debug if needed
@@ -1353,9 +1385,10 @@ dentalRouter.post("/storeInternalFields", async (req: Request, res: Response) =>
 
         if(!internalFieldsSaved){
             res.json({ status:400, message: 'Request could not be processed' });
+        }else{
+            res.json({ status:200, message: 'Internal Field saved' });
         }
 
-        res.json({ status:200, message: 'Internal Field saved' });
     } catch(e) {
         console.log(e);  // debug if needed
         res.send( {
@@ -1419,6 +1452,7 @@ dentalRouter.patch("/update", async (req: Request, res: Response) => {
         var have_children = req.body.params.dataDependents.haveChildren;
         var updatedFields = req.body.params.dataUpdatedFields;
         var fieldList = Object();
+        let responseSent = false;
 
         if(!_.isEmpty(data.DATE_OF_BIRTH)){
             let dob = new Date(data.DATE_OF_BIRTH);
@@ -1429,52 +1463,46 @@ dentalRouter.patch("/update", async (req: Request, res: Response) => {
         }
 
         if(_.isNull(dataFile.FILE_ID) && !_.isNull(dataFile.FILE_NAME) && !dataFile.PROOF_INCOME){
-            var filesInsert = Array();
 
             dentalFiles.DENTAL_SERVICE_ID = idSubmission;
             dentalFiles.DESCRIPTION = dataFile.DESCRIPTION;
             dentalFiles.FILE_NAME = dataFile.FILE_NAME;
             dentalFiles.FILE_TYPE = dataFile.FILE_TYPE;
-            dentalFiles.FILE_SIZE = dataFile.FILE_SIZE;
+            dentalFiles.FILE_SIZE = dataFile.FILE_SIZE ? dataFile.FILE_SIZE.toString() : dataFile.FILE_SIZE;
 
-            let array_file = dataFile.FILE_DATA.match(/.{1,4000}/g);
-            const elements: Buffer[] = array_file.map((element: string) => Buffer.from(element, 'utf8'));
+            const blobData = Buffer.from(dataFile.FILE_DATA , 'base64');
 
-            filesInsert.push(dentalFiles);
-
-            const insertQuery = `
-                DECLARE
-                    v_long_text BLOB;
+            // Execute the stored procedure using Knex
+            const filesSaved = await db.raw(`
                 BEGIN
-                    DBMS_LOB.CREATETEMPORARY(v_long_text, true);
-                    ${elements.map((element) => `DBMS_LOB.APPEND(v_long_text, ?);`).join('\n')}
-                    INSERT INTO ${SCHEMA_DENTAL}.DENTAL_SERVICE_FILES (DENTAL_SERVICE_ID, DESCRIPTION, FILE_NAME, FILE_TYPE, FILE_SIZE, FILE_DATA)
-                    VALUES (?, ?, ?, ?, ?, v_long_text);
+                DENTAL.INSERT_FILES(?,?,?,?,?,?);
                 END;
-            `;
-
-            const queryParams = [
-                ...elements,
-                idSubmission,
-                dataFile.DESCRIPTION,
-                dataFile.FILE_NAME,
-                dataFile.FILE_TYPE,
-                dataFile.FILE_SIZE,
-            ];
-
-            var filesSaved = await db.raw(insertQuery, queryParams);
-
+            `, [parseInt(idSubmission), dataFile.DESCRIPTION, dataFile.FILE_NAME, dataFile.FILE_TYPE,  dataFile.FILE_SIZE, blobData]
+            ).catch(error => {
+                console.error("Error when trying to insert a document:", error);
+            });
 
             if(!filesSaved){
-                res.json({ status:400, message: 'Request could not be processed' });
+                if (!responseSent) {
+                    res.json({ status:400, message: 'Request could not be processed' });
+                }else{
+                    console.log( 'Request could not be processed');
+                }
+                responseSent = true;
+
+                
             }
 
         }else if(!_.isNull(dataFile.FILE_ID) && dataFile.PROOF_INCOME){
 
             var deleteFile = await db(`${SCHEMA_DENTAL}.DENTAL_SERVICE_FILES`).where("ID", dataFile.FILE_ID).del();
-
             if(!deleteFile){
-                res.json({ status:400, message: 'Request could not be processed' });
+                if (!responseSent) {
+                    res.json({ status:400, message: 'Request could not be processed' });
+                }else{
+                    console.log( 'Error when delete file');
+                }
+                responseSent = true;
             }
 
         }else if(!_.isNull(dataFile.FILE_ID) && !_.isNull(dataFile.FILE_DATA) && !dataFile.PROOF_INCOME){
@@ -1483,33 +1511,27 @@ dentalRouter.patch("/update", async (req: Request, res: Response) => {
             dentalFiles.DESCRIPTION = dataFile.DESCRIPTION;
             dentalFiles.FILE_NAME = dataFile.FILE_NAME;
             dentalFiles.FILE_TYPE = dataFile.FILE_TYPE;
-            dentalFiles.FILE_SIZE = dataFile.FILE_SIZE;
+            dentalFiles.FILE_SIZE = dataFile.FILE_SIZE ?  dataFile.FILE_SIZE.toString() : dataFile.FILE_SIZE ;
             dentalFiles.FILE_DATA = dataFile.FILE_DATA;
+            
+            const blobData = Buffer.from(dentalFiles.FILE_DATA, 'base64');
 
-            let array_file = dataFile.FILE_DATA.match(/.{1,4000}/g);
-            const elements: Buffer[] = array_file.map((element: string) => Buffer.from(element, 'utf8'));
-
-            var updateFile = db.raw(`
-                DECLARE
-                    v_long_text BLOB;
+            const updateFile = await db.raw(`
                 BEGIN
-                    DBMS_LOB.CREATETEMPORARY(v_long_text, true);
-                    DBMS_LOB.APPEND(v_long_text, ?);
-                    UPDATE ${SCHEMA_DENTAL}.DENTAL_SERVICE_FILES SET
-                        DESCRIPTION = ?,
-                        FILE_NAME = ?,
-                        FILE_TYPE = ?,
-                        FILE_SIZE = ?,
-                        FILE_DATA = v_long_text
-                    WHERE
-                        DENTAL_SERVICE_ID = ?;
+                DENTAL.UPDATE_FILES(?,?,?,?,?,?);
                 END;
-            `, [Buffer.concat(elements), dentalFiles.DESCRIPTION, dentalFiles.FILE_NAME, dentalFiles.FILE_TYPE, dentalFiles.FILE_SIZE, dentalFiles.DENTAL_SERVICE_ID]);
-
-            await updateFile;
+            `, [parseInt(idSubmission), dentalFiles.DESCRIPTION, dentalFiles.FILE_NAME, dentalFiles.FILE_TYPE, dentalFiles.FILE_SIZE, blobData]
+            ).catch(error => {
+                console.error("Error when trying to insert a document:", error);
+            });
 
             if(!updateFile){
-                res.json({ status:400, message: 'Request could not be processed' });
+                if (!responseSent) {
+                    res.json({ status:400, message: 'Request could not be processed' });
+                }else{
+                    console.log( 'Error when update file');
+                }
+                responseSent = true;                
             }
 
         }
@@ -1529,7 +1551,12 @@ dentalRouter.patch("/update", async (req: Request, res: Response) => {
             var deleteDependets = await db(`${SCHEMA_DENTAL}.DENTAL_SERVICE_DEPENDENTS`).where("DENTAL_SERVICE_ID", idSubmission).del();
 
             if(!deleteDependets){
-                res.json({ status:400, message: 'Request could not be processed' });
+                if (!responseSent) {
+                    res.json({ status:400, message: 'Request could not be processed' });
+                }else{
+                    console.log( 'Error when delete dependents');
+                }
+                responseSent = true;         
             }
         }
 
@@ -1550,7 +1577,12 @@ dentalRouter.patch("/update", async (req: Request, res: Response) => {
                                     .into(`${SCHEMA_DENTAL}.DENTAL_SERVICE_DEPENDENTS`);
 
             if(!dependentCreation){
-                res.json({ status:400, message: 'Request could not be processed' });
+                if (!responseSent) {
+                    res.json({ status:400, message: 'Request could not be processed' });
+                }else{
+                    console.log( 'Error when create dependents');
+                }
+                responseSent = true;                   
             }
 
         }
@@ -1572,7 +1604,12 @@ dentalRouter.patch("/update", async (req: Request, res: Response) => {
                                         .where("ID", row.ID);
 
                 if(!dependentUpdate){
-                    res.json({ status:400, message: 'Request could not be processed' });
+                    if (!responseSent) {
+                        res.json({ status:400, message: 'Request could not be processed' });
+                    }else{
+                        console.log( 'Error when update dependents');
+                    }
+                    responseSent = true;       
                 }
 
             }
@@ -1589,7 +1626,12 @@ dentalRouter.patch("/update", async (req: Request, res: Response) => {
             var dependentDelete = await db(`${SCHEMA_DENTAL}.DENTAL_SERVICE_DEPENDENTS`).whereIn("ID", idSubmission).del();
 
             if(!dependentDelete){
-                res.json({ status:400, message: 'Request could not be processed' });
+                if (!responseSent) {
+                    res.json({ status:400, message: 'Request could not be processed' });
+                }else{
+                    console.log( 'Error when delete dependents');
+                }
+                responseSent = true;       
             }
         }
 
@@ -1640,7 +1682,14 @@ dentalRouter.patch("/update", async (req: Request, res: Response) => {
             let type = "success";
             let message = "Submission updated successfully.";
 
-            res.json({ status:200, message: message, type: type });
+            if (!responseSent) {
+                res.json({ status:200, message: message, type: type });
+            }else{
+                console.log( 'Success:Updated submission');
+            }
+            responseSent = true;  
+
+           
         }
 
         if(!_.isEmpty(updatedFields)) {

@@ -79,7 +79,7 @@
 								>
 								mdi-alert
 								</v-icon>
-								&nbsp;The attachment must not be larger than 5MB
+								&nbsp;The attachment must not be larger than 10MB
 						</v-row>
 						<v-row class="red--text ma-3" v-if="showAttachmentType">
 								<v-icon
@@ -130,7 +130,7 @@ export default {
 			showAttachmentType: false,
 			allowedExtensions: ["pdf", "doc", "docx", "jpg", "jpeg", "png"],
 			showAttachmentSize: false,
-			maxFileSize: 5 * 1024 * 1024, // 5 MB in bytes,
+			maxFileSize: 10 * 1024 * 1024, // 10 MB in bytes,
 			updatedFields: []
 		};
 	},
@@ -180,7 +180,7 @@ export default {
 
 				let fileType = this.fileProofIncome.name.split('.')[1];
 
-				if(!this.allowedExtensions.includes(fileType)){
+				if(!this.allowedExtensions.includes(fileType.toLowerCase())){
 					this.showAttachmentType = true;
 					flagReset = true;
 				}else{
