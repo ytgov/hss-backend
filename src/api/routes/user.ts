@@ -13,22 +13,38 @@ userRouter.use(RateLimit({
 }));
 
 userRouter.get("/", EnsureAuthenticated, async (req: Request, res: Response) => {
-    var appUser: AppUser;
-    appUser = req.user;
+    try {
+        var appUser: AppUser;
+        appUser = req.user;
 
-    // teams could be pulled from the database
-    appUser.teams = new Array<Team>();
-    appUser.teams[0] = { id: "1234", name: "Team one", role: "Member" }
-    appUser.teams[1] = { id: "1234", name: "Team two", role: "Admin" }
+        // teams could be pulled from the database
+        appUser.teams = new Array<Team>();
+        appUser.teams[0] = { id: "1234", name: "Team one", role: "Member" }
+        appUser.teams[1] = { id: "1234", name: "Team two", role: "Admin" }
 
-    res.send(appUser);
+        res.send(appUser);
+    } catch(e) {
+        console.log(e);  // debug if needed
+        res.send( {
+            status: 400,
+            message: 'Request could not be processed'
+        });
+    }
 });
 
 userRouter.get("/roles/options", EnsureAuthenticated, async (req: Request, res: Response) => {
-    const email = req.oidc.user.email;
-    const userName = req.oidc.user.name;
+    try {
+        const email = req.oidc.user.email;
+        const userName = req.oidc.user.name;
 
-    res.send({
-        data: {email: email, userName: userName}
-    });
+        res.send({
+            data: {email: email, userName: userName}
+        });
+    } catch(e) {
+        console.log(e);  // debug if needed
+        res.send( {
+            status: 400,
+            message: 'Request could not be processed'
+        });
+    }
 });

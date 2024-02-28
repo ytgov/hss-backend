@@ -67,76 +67,107 @@ export function configureAuthentication(app: Express) {
     }));
 
     app.use("/", async (req: Request, res: Response, next: NextFunction) => {
-        if (req.oidc.isAuthenticated()) {
-            req.user = {
-                oid_user: AuthUser.fromOpenId(req.oidc.user),
-                db_user: await userRepo.getUserByEmail(req.oidc.user.email)
-            };
-            (req.session as any).user = req.user;
-        }
+        try {
+            if (req.oidc.isAuthenticated()) {
+                req.user = {
+                    oid_user: AuthUser.fromOpenId(req.oidc.user),
+                    db_user: await userRepo.getUserByEmail(req.oidc.user.email)
+                };
+                (req.session as any).user = req.user;
+            }
 
-        next();
+            next();
+        } catch(e) {
+            console.log(e);  // debug if needed
+            res.send( {
+                status: 400,
+                message: 'Request could not be processed'
+            });
+        }
     });
 
     app.get("/", async (req: Request, res: Response) => {
-        if (req.oidc.isAuthenticated()) {
-            let user = AuthUser.fromOpenId(req.oidc.user) as AuthUser;
-            req.user = {
-                oid_user: user,
-                db_user: await userRepo.getUserByEmail(req.oidc.user.email)
-            };
+        try {
+            if (req.oidc.isAuthenticated()) {
+                let user = AuthUser.fromOpenId(req.oidc.user) as AuthUser;
+                req.user = {
+                    oid_user: user,
+                    db_user: await userRepo.getUserByEmail(req.oidc.user.email)
+                };
 
-            let logFields = {
-                ACTION_TYPE: 1,
-                TITLE: "Login",
-                SCHEMA_NAME: SCHEMA_GENERAL,
-                USER_ID: req.user.db_user.user.id
-            };
+                let logFields = {
+                    ACTION_TYPE: 1,
+                    TITLE: "Login",
+                    SCHEMA_NAME: SCHEMA_GENERAL,
+                    USER_ID: req.user.db_user.user.id
+                };
 
-            let loggedAction = helper.insertLog(logFields);
+                let loggedAction = helper.insertLog(logFields);
 
-            if(!loggedAction){
-                res.send( {
-                    status: 400,
-                    message: 'The action could not be logged'
-                });
+                if(!loggedAction){
+                    res.send( {
+                        status: 400,
+                        message: 'The action could not be logged'
+                    });
+                }
+
+                res.redirect(AUTH_REDIRECT);
             }
-
-            res.redirect(AUTH_REDIRECT);
-        }
-        else {
-            // this is hard-coded to accomodate strage behaving in sendFile not allowing `../` in the path.
-            // this won't hit in development because web access is served by the Vue CLI - only an issue in Docker
-            res.sendFile("/home/node/app/dist/web/index.html");
+            else {
+                // this is hard-coded to accomodate strage behaving in sendFile not allowing `../` in the path.
+                // this won't hit in development because web access is served by the Vue CLI - only an issue in Docker
+                res.sendFile("/home/node/app/dist/web/index.html");
+            }
+        } catch(e) {
+            console.log(e);  // debug if needed
+            res.send( {
+                status: 400,
+                message: 'Request could not be processed'
+            });
         }
     });
 
     app.get("/api/auth/isAuthenticated", (req: Request, res: Response) => {
-        if (req.oidc.isAuthenticated()) {
-            return res.send({ data: req.user });
-        }
+        try {
+            if (req.oidc.isAuthenticated()) {
+                return res.send({ data: req.user });
+            }
 
-        return res.status(401).send();
+            return res.status(401).send();
+        } catch(e) {
+            console.log(e);  // debug if needed
+            res.send( {
+                status: 400,
+                message: 'Request could not be processed'
+            });
+        }
     });
 
     app.get('/api/auth/logout', async (req: any, res) => {
-        const claims = req.oidc.idTokenClaims;
-        if (claims) {
-            const url = `${claims.iss}v2/logout?client_id=${claims.aud}`;
-            const result = await axios.get(url);
-            if (result.data === "OK") {
-                req["appSession"] = undefined;
-                req.session.destroy();
-                res.status(200);
-                res.send({
-                    data: {
-                        logout: true,
-                        redirect: AUTH_REDIRECT
-                    }
-                })
+        try {
+            const claims = req.oidc.idTokenClaims;
+            if (claims) {
+                const url = `${claims.iss}v2/logout?client_id=${claims.aud}`;
+                const result = await axios.get(url);
+                if (result.data === "OK") {
+                    req["appSession"] = undefined;
+                    req.session.destroy();
+                    res.status(200);
+                    res.send({
+                        data: {
+                            logout: true,
+                            redirect: AUTH_REDIRECT
+                        }
+                    })
+                }
             }
+        } catch(e) {
+            console.log(e);  // debug if needed
+            res.send( {
+                status: 400,
+                message: 'Request could not be processed'
+            });
         }
-
     });
 }
 
