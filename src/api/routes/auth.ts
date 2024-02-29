@@ -5,14 +5,13 @@ import { AuthUser } from "../models/auth";
 import { AUTH_REDIRECT, FRONTEND_URL } from "../config";
 import axios from 'axios';
 import knex from "knex";
-import { DB_CONFIG_DENTAL, SCHEMA_GENERAL, REDIS_CONFIG } from "../config";
+import { SCHEMA_GENERAL, REDIS_CONFIG } from "../config";
 import { helper } from "../utils";
 const redis = require('redis');
 const RedisStore = require("connect-redis").default
 var RateLimit = require('express-rate-limit');
 const {auth} = require('express-openid-connect')
 const userRepo = new UserPermissionRepository();
-const db = knex(DB_CONFIG_DENTAL);
 
 
 //Configure redis client
