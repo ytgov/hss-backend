@@ -10,8 +10,6 @@ var RateLimit = require('express-rate-limit');
 
 var _ = require('lodash');
 
-const db = knex(DB_CONFIG_MIDWIFERY)
-
 export const midwiferyRouter = express.Router();
 midwiferyRouter.use(RateLimit({
     windowMs: 1*60*1000, // 1 minute
@@ -88,8 +86,8 @@ midwiferyRouter.get("/submissions/status/:action_id/:action_value", [ param("act
  * @return json
  */
 midwiferyRouter.post("/", async (req: Request, res: Response) => {
-
     try {
+        const db = knex(DB_CONFIG_MIDWIFERY)
         var dateFrom = req.body.params.dateFrom;
         var dateTo = req.body.params.dateTo;
         let status_request = req.body.params.status;
@@ -216,6 +214,7 @@ midwiferyRouter.post("/", async (req: Request, res: Response) => {
  */
 midwiferyRouter.get("/validateRecord/:midwifery_id",[param("midwifery_id").isInt().notEmpty()], async (req: Request, res: Response) => {
     try {
+        const db = knex(DB_CONFIG_MIDWIFERY)
         var midwifery_id = Number(req.params.midwifery_id);
         var midwifery = Object();
         var flagExists= true;
@@ -255,6 +254,7 @@ midwiferyRouter.get("/validateRecord/:midwifery_id",[param("midwifery_id").isInt
 midwiferyRouter.get("/show/:midwifery_id",[param("midwifery_id").isInt().notEmpty()], async (req: Request, res: Response) => {
 
     try {
+        const db = knex(DB_CONFIG_MIDWIFERY)
         var midwiferyStatus = Array();
         let midwifery_id = Number(req.params.midwifery_id);
         var midwifery = Object();
@@ -458,6 +458,7 @@ midwiferyRouter.get("/show/:midwifery_id",[param("midwifery_id").isInt().notEmpt
 midwiferyRouter.post("/store", async (req: Request, res: Response) => {
 
     try {
+        const db = knex(DB_CONFIG_MIDWIFERY)
         let data = Object();
         var midwifery = Object();
         var midwiferyCommunityLocations = Object();
@@ -611,7 +612,7 @@ midwiferyRouter.post("/store", async (req: Request, res: Response) => {
  */
 midwiferyRouter.post("/export", async (req: Request, res: Response) => {
     try {
-
+        const db = knex(DB_CONFIG_MIDWIFERY)
         var requests = req.body.params.requests;
         var dateFrom = req.body.params.dateFrom;
         var dateTo = req.body.params.dateTo;
@@ -901,6 +902,7 @@ midwiferyRouter.post("/export", async (req: Request, res: Response) => {
 midwiferyRouter.patch("/changeStatus", async (req: Request, res: Response) => {
 
     try {
+        const db = knex(DB_CONFIG_MIDWIFERY)
         var midwifery_id = req.body.params.requests;
         var status_id = req.body.params.requestStatus;
 
@@ -949,7 +951,7 @@ midwiferyRouter.patch("/changeStatus", async (req: Request, res: Response) => {
 midwiferyRouter.post("/duplicates", async (req: Request, res: Response) => {
 
     try {
-
+        const db = knex(DB_CONFIG_MIDWIFERY)
         var midwiferyOriginal = Object();
         var midwiferyDuplicate = Object();
         var midwifery = Array();
@@ -1053,7 +1055,7 @@ midwiferyRouter.post("/duplicates", async (req: Request, res: Response) => {
  */
 midwiferyRouter.get("/duplicates/details/:duplicate_id",[param("duplicate_id").isInt().notEmpty()], async (req: Request, res: Response) => {
     try {
-
+        const db = knex(DB_CONFIG_MIDWIFERY)
         let duplicate_id = Number(req.params.duplicate_id);
         var midwifery = Object();
         var midwiferyDuplicate = Object();
@@ -1259,6 +1261,7 @@ midwiferyRouter.get("/duplicates/details/:duplicate_id",[param("duplicate_id").i
  */
 midwiferyRouter.get("/duplicates/validateWarning/:duplicate_id",[param("duplicate_id").isInt().notEmpty()], async (req: Request, res: Response) => {
     try {
+        const db = knex(DB_CONFIG_MIDWIFERY)
         var duplicate_id = Number(req.params.duplicate_id);
         var warning = Object();
         var flagExists = true;
@@ -1298,7 +1301,7 @@ midwiferyRouter.get("/duplicates/validateWarning/:duplicate_id",[param("duplicat
 midwiferyRouter.patch("/duplicates/primary", async (req: Request, res: Response) => {
 
     try {
-
+        const db = knex(DB_CONFIG_MIDWIFERY)
         var warning = Number(req.body.params.warning);
         var request = Number(req.body.params.request);
         var type = req.body.params.type;
@@ -1416,7 +1419,7 @@ function uniqid(prefix = "", random = false) {
  * @return {array}
  */
 async function getMultipleIdsByModel(model: any, names: any) {
-
+    const db = knex(DB_CONFIG_MIDWIFERY)
     var others = "";
     var groups = Object();
     var contact = Object();
@@ -1504,7 +1507,7 @@ async function getMultipleIdsByModel(model: any, names: any) {
  * @return id of option
  */
 async function getMidwiferyOptions(field: any, data: string) {
-
+    const db = knex(DB_CONFIG_MIDWIFERY)
     var bool = true;
 
     if(data == "yes" || data == "Yes" || data == "YES") {
