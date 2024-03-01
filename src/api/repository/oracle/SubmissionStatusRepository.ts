@@ -12,7 +12,6 @@ export class SubmissionStatusRepository extends BaseRepository<SubmissionStatusD
         let viewName = `${SCHEMA_GENERAL}.SUBMISSIONS_STATUS_WEEK_V`;
         let whereClause = (builder: any) => {
             builder.where(1, "=", "1");
-
         }
 
         if (actionId === "month") {

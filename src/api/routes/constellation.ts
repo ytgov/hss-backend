@@ -8,10 +8,6 @@ import { checkPermissions } from "../middleware/permissions";
 var RateLimit = require('express-rate-limit');
 var _ = require('lodash');
 
-
-const db = knex(DB_CONFIG_CONSTELLATION)
-const submissionStatusRepo = new SubmissionStatusRepository();
-
 export const constellationRouter = express.Router();
 constellationRouter.use(RateLimit({
     windowMs: 1*60*1000, // 1 minute
@@ -30,7 +26,8 @@ constellationRouter.get("/submissions/:action_id/:action_value", [
 ], async (req: Request, res: Response) => {
 
     try {
-
+        const submissionStatusRepo = new SubmissionStatusRepository();
+    
         const actionId = req.params.action_id;
         const actionVal = req.params.action_value;
         const permissions = req.user?.db_user.permissions ?? [];
@@ -65,7 +62,7 @@ constellationRouter.get("/submissions/status/:action_id/:action_value", [
 ], async (req: Request, res: Response) => {
 
     try {
-
+        const submissionStatusRepo = new SubmissionStatusRepository();
         const actionId = req.params.action_id;
         const actionVal = req.params.action_value;
         const permissions = req.user?.db_user.permissions ?? [];
@@ -89,7 +86,9 @@ constellationRouter.get("/submissions/status/:action_id/:action_value", [
  */
 constellationRouter.post("/", async (req: Request, res: Response) => {
 
+    const db = knex(DB_CONFIG_CONSTELLATION);
     try {
+        
         var dateFrom = req.body.params.dateFrom;
         var dateTo = req.body.params.dateTo;
         let status_request = req.body.params.status;
@@ -171,6 +170,8 @@ constellationRouter.post("/", async (req: Request, res: Response) => {
             status: 400,
             message: 'Request could not be processed'
         });
+    } finally {
+        db.destroy();
     }
 });
 
@@ -181,7 +182,9 @@ constellationRouter.post("/", async (req: Request, res: Response) => {
  * @return json
  */
 constellationRouter.get("/validateRecord/:constellationHealth_id",[param("constellationHealth_id").isInt().notEmpty()], async (req: Request, res: Response) => {
+    const db = knex(DB_CONFIG_CONSTELLATION);
     try {
+        
         var constellationHealth_id = Number(req.params.constellationHealth_id);
         var constellationHealth = Object();
         var flagExists= true;
@@ -210,6 +213,8 @@ constellationRouter.get("/validateRecord/:constellationHealth_id",[param("conste
             status: 400,
             message: 'Request could not be processed'
         });
+    } finally {
+        db.destroy();
     }
 });
 
@@ -220,6 +225,7 @@ constellationRouter.get("/validateRecord/:constellationHealth_id",[param("conste
  * @return json
  */
 constellationRouter.get("/show/:constellationHealth_id", checkPermissions("constellation_view"), [param("constellationHealth_id").isInt().notEmpty()], async (req: Request, res: Response) => {
+    const db = knex(DB_CONFIG_CONSTELLATION);
     try {
         var constellationHealth_id = Number(req.params.constellationHealth_id);
         var constellationHealth = Object();
@@ -376,6 +382,8 @@ constellationRouter.get("/show/:constellationHealth_id", checkPermissions("const
             status: 400,
             message: 'Request could not be processed'
         });
+    } finally {
+        db.destroy();
     }
 });
 
@@ -385,7 +393,7 @@ constellationRouter.get("/show/:constellationHealth_id", checkPermissions("const
  * @return json
  */
 constellationRouter.post("/store", async (req: Request, res: Response) => {
-
+    const db = knex(DB_CONFIG_CONSTELLATION);
     try {
         let data = Object();
         const constellationHealth = Object();
@@ -535,6 +543,8 @@ constellationRouter.post("/store", async (req: Request, res: Response) => {
             status: 404,
             message: 'Request could not be processed ' + e
         });
+    } finally {
+        db.destroy()
     }
 
 });
@@ -546,6 +556,7 @@ constellationRouter.post("/store", async (req: Request, res: Response) => {
  * @return json
  */
 constellationRouter.post("/export/", async (req: Request, res: Response) => {
+    const db = knex(DB_CONFIG_CONSTELLATION);
     try {
         var requests = req.body.params.requests;
         let status_request = req.body.params.status;
@@ -733,8 +744,10 @@ constellationRouter.post("/export/", async (req: Request, res: Response) => {
             status: 400,
             message: 'Request could not be processed'
         });
-    }
-    });
+    } finally {
+        db.destroy();
+    }    
+});
 
 
 /**
@@ -745,6 +758,7 @@ constellationRouter.post("/export/", async (req: Request, res: Response) => {
  */
 
 constellationRouter.patch("/changeStatus", async (req: Request, res: Response) => {
+    const db = knex(DB_CONFIG_CONSTELLATION);
     try {
         var constellation_id = req.body.params.requests;
         var status_id = req.body.params.requestStatus;
@@ -787,11 +801,13 @@ constellationRouter.patch("/changeStatus", async (req: Request, res: Response) =
             status: 400,
             message: 'Request could not be processed'
         });
+    } finally {
+        db.destroy();
     }
 });
 
 constellationRouter.post("/duplicates", async (req: Request, res: Response) => {
-
+    const db = knex(DB_CONFIG_CONSTELLATION);
     try {
 
         var constellationOriginal = Object();
@@ -870,6 +886,8 @@ constellationRouter.post("/duplicates", async (req: Request, res: Response) => {
             status: 400,
             message: 'Request could not be processed'
         });
+    } finally {
+        db.destroy();
     }
 
 });
@@ -882,6 +900,7 @@ constellationRouter.post("/duplicates", async (req: Request, res: Response) => {
  * @return json
  */
 constellationRouter.get("/duplicates/details/:duplicate_id",[param("duplicate_id").isInt().notEmpty()], async (req: Request, res: Response) => {
+    const db = knex(DB_CONFIG_CONSTELLATION);
     try {
 
         let duplicate_id = Number(req.params.duplicate_id);
@@ -1045,6 +1064,8 @@ constellationRouter.get("/duplicates/details/:duplicate_id",[param("duplicate_id
             status: 400,
             message: 'Request could not be processed'
         });
+    } finally {
+        db.destroy();
     }
 });
 
@@ -1055,6 +1076,7 @@ constellationRouter.get("/duplicates/details/:duplicate_id",[param("duplicate_id
  * @return json
  */
 constellationRouter.get("/duplicates/validateWarning/:duplicate_id",[param("duplicate_id").isInt().notEmpty()], async (req: Request, res: Response) => {
+    const db = knex(DB_CONFIG_CONSTELLATION);
     try {
         var duplicate_id = Number(req.params.duplicate_id);
         var warning = Object();
@@ -1082,6 +1104,8 @@ constellationRouter.get("/duplicates/validateWarning/:duplicate_id",[param("dupl
             status: 400,
             message: 'Request could not be processed'
         });
+    } finally {
+        db.destroy();
     }
 });
 
@@ -1093,7 +1117,7 @@ constellationRouter.get("/duplicates/validateWarning/:duplicate_id",[param("dupl
  * @return json
  */
 constellationRouter.patch("/duplicates/primary", async (req: Request, res: Response) => {
-
+    const db = knex(DB_CONFIG_CONSTELLATION);
     try {
 
         var warning = Number(req.body.params.warning);
@@ -1178,6 +1202,8 @@ constellationRouter.patch("/duplicates/primary", async (req: Request, res: Respo
             status: 400,
             message: 'Request could not be processed'
         });
+    } finally {
+        db.destroy();
     }
 });
 
@@ -1189,6 +1215,8 @@ constellationRouter.patch("/duplicates/primary", async (req: Request, res: Respo
  * @return {familyMembersInsert}
  */
 async function dataFamilyMembers(idConstellationHealth:number, arrayMembers:any){
+
+    const db = knex(DB_CONFIG_CONSTELLATION);
 
     var familyMembersInsert = Array();
     var languages = Object();
@@ -1255,6 +1283,7 @@ async function dataFamilyMembers(idConstellationHealth:number, arrayMembers:any)
 }
 
 async function getAllStatus(){
+  const db = knex(DB_CONFIG_CONSTELLATION);
   var constellationStatus = Array();
   constellationStatus = await db(`${SCHEMA_CONSTELLATION}.CONSTELLATION_STATUS`).select().then((rows: any) => {
     let arrayResult = Array();
@@ -1273,6 +1302,7 @@ async function getAllStatus(){
  * @return {array}
  */
 async function getMultipleIdsByModel(model: string, names: any) {
+    const db = knex(DB_CONFIG_CONSTELLATION);
     var others = "";
     var data: any[] = [];
     var catalog = Object();
