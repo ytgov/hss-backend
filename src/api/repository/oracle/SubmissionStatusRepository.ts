@@ -2,19 +2,18 @@ import { DB_CONFIG_GENERAL, SCHEMA_GENERAL } from '../../config';
 import { SubmissionsTotalDTO, SubmissionStatusDTO, PermissionDTO, SubmissionsAgeDTO, SubmissionsGenderDTO } from '../../models';
 import { BaseRepository } from '../BaseRepository';
 import knex, { Knex } from "knex";
+import { helper } from './../../utils';
 
 export class SubmissionStatusRepository extends BaseRepository<SubmissionStatusDTO> {
 
+    mainDb: Knex<any, unknown> = knex(DB_CONFIG_GENERAL);
+
     async getSubmissionsStatus(actionId: string, actionVal: string, permissions: Array<PermissionDTO>): Promise<SubmissionStatusDTO[]> {
-
-        const mainDb: Knex<any, unknown> = knex(DB_CONFIG_GENERAL);
-
-        try {
-
         let general = Object();
         let viewName = `${SCHEMA_GENERAL}.SUBMISSIONS_STATUS_WEEK_V`;
         let whereClause = (builder: any) => {
             builder.where(1, "=", "1");
+
         }
 
         if (actionId === "month") {
@@ -38,23 +37,14 @@ export class SubmissionStatusRepository extends BaseRepository<SubmissionStatusD
                 .groupBy('STATUS', 'COLOR')
                 .orderBy('STATUS', 'ASC');
         }
-
+        let mainDb =  await helper.getOracleClient(this.mainDb, DB_CONFIG_GENERAL);
         general = await submissionsStatusQuery(mainDb, viewName);
 
         return this.loadResults(general);
-
-        } finally {
-            await mainDb.destroy();
-        }
-
     }
 
     async getModuleSubmissionsStatus(module: string, actionId: string, actionVal: string, permissions: Array<PermissionDTO>): Promise<SubmissionStatusDTO[]> {
 
-        const mainDb: Knex<any, unknown> = knex(DB_CONFIG_GENERAL);
-
-        try {
-
         let general = Object();
         let viewName = `${SCHEMA_GENERAL}.SUBMISSIONS_STATUS_WEEK_V`;
         let whereClause = (builder: any) => {
@@ -84,23 +74,13 @@ export class SubmissionStatusRepository extends BaseRepository<SubmissionStatusD
                 .groupBy('STATUS', 'COLOR')
                 .orderBy('STATUS', 'ASC');
         }
-
+        let mainDb =  await helper.getOracleClient(this.mainDb, DB_CONFIG_GENERAL);
         general = await submissionsStatusQuery(mainDb, viewName);
 
         return this.loadResults(general);
-
-        } finally {
-            await mainDb.destroy();
-        }
-
     }
 
     async getSubmissions(actionId: string, actionVal: string, permissions: Array<PermissionDTO>): Promise<SubmissionsTotalDTO[]> {
-
-        const mainDb: Knex<any, unknown> = knex(DB_CONFIG_GENERAL);
-
-        try {
-
         let general = Object();
         let viewName = `${SCHEMA_GENERAL}.SUBMISSIONS_WEEK_V`;
         let whereClause = (builder: any) => {
@@ -130,23 +110,13 @@ export class SubmissionStatusRepository extends BaseRepository<SubmissionStatusD
                 .whereIn("PERMISSIONS", permissions.map((x) => x.permission_name))
                 .orderBy('DATE_CODE', 'ASC');
         }
-
+        let mainDb =  await helper.getOracleClient(this.mainDb, DB_CONFIG_GENERAL);
         general = await submissionsStatusQuery(mainDb, viewName);
 
         return this.loadResults(general);
-
-        } finally {
-            await mainDb.destroy();
-        }
-
     }
 
     async getModuleSubmissions(module: string, actionId: string, actionVal: string, permissions: Array<PermissionDTO>): Promise<SubmissionsTotalDTO[]> {
-
-        const mainDb: Knex<any, unknown> = knex(DB_CONFIG_GENERAL);
-
-        try {
-
         let general = Object();
         let viewName = `${SCHEMA_GENERAL}.SUBMISSIONS_WEEK_V`;
         let whereClause = (builder: any) => {
@@ -178,22 +148,14 @@ export class SubmissionStatusRepository extends BaseRepository<SubmissionStatusD
                 .whereIn("PERMISSIONS", permissions.map((x) => x.permission_name))
                 .orderBy('DATE_CODE', 'ASC');
         }
+        let mainDb =  await helper.getOracleClient(this.mainDb, DB_CONFIG_GENERAL);
 
         general = await submissionsStatusQuery(mainDb, viewName);
 
         return this.loadResults(general);
-
-        } finally {
-            await mainDb.destroy();
-        }
-
     }
 
     async getAgeSubmissions(actionId: string, actionVal: string, permissions: Array<PermissionDTO>): Promise<SubmissionsAgeDTO[]> {
-
-        const mainDb: Knex<any, unknown> = knex(DB_CONFIG_GENERAL);
-
-        try {
 
         let general = Object();
         let viewName = `${SCHEMA_GENERAL}.SUBMISSIONS_DENTAL_AGE_WEEK_V`;
@@ -224,23 +186,13 @@ export class SubmissionStatusRepository extends BaseRepository<SubmissionStatusD
                 .whereIn("PERMISSIONS", permissions.map((x) => x.permission_name))
                 .orderBy('AGE_RANGE', 'ASC');
         }
-
+        let mainDb =  await helper.getOracleClient(this.mainDb, DB_CONFIG_GENERAL);
         general = await submissionsAgeQuery(mainDb, viewName);
 
         return this.loadResults(general);
-
-        } finally {
-            await mainDb.destroy();
-        }
-
     }
 
     async getGenderSubmissions(actionId: string, actionVal: string, permissions: Array<PermissionDTO>): Promise<SubmissionsGenderDTO[]> {
-
-        const mainDb: Knex<any, unknown> = knex(DB_CONFIG_GENERAL);
-
-        try {
-
         let general = Object();
         let viewName = `${SCHEMA_GENERAL}.SUBMISSIONS_DENTAL_GENDER_WEEK_V`;
         let whereClause = (builder: any) => {
@@ -271,14 +223,9 @@ export class SubmissionStatusRepository extends BaseRepository<SubmissionStatusD
                 .whereIn("PERMISSIONS", permissions.map((x) => x.permission_name))
                 .orderBy('GENDER_NAME', 'ASC');
         }
-
+        let mainDb =  await helper.getOracleClient(this.mainDb, DB_CONFIG_GENERAL);
         general = await submissionsGenderQuery(mainDb, viewName);
 
         return this.loadResults(general);
-
-        } finally {
-            await mainDb.destroy();
-        }
-
     }
 }

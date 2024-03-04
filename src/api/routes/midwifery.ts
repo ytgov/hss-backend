@@ -5,6 +5,7 @@ import { SubmissionStatusRepository } from "../repository/oracle/SubmissionStatu
 import knex from "knex";
 import { DB_CONFIG_MIDWIFERY, SCHEMA_MIDWIFERY, SCHEMA_GENERAL } from "../config";
 import { groupBy , helper } from "../utils";
+let db = knex(DB_CONFIG_MIDWIFERY)
 
 var RateLimit = require('express-rate-limit');
 
@@ -27,9 +28,7 @@ const submissionStatusRepo = new SubmissionStatusRepository();
  */
 midwiferyRouter.get("/submissions/:action_id/:action_value",[ param("action_id").notEmpty(), 
   param("action_value").notEmpty()], async (req: Request, res: Response) => {
-
     try {
-
         const actionId = req.params.action_id;
         const actionVal = req.params.action_value;
         const permissions = req.user?.db_user.permissions ?? [];
@@ -87,12 +86,12 @@ midwiferyRouter.get("/submissions/status/:action_id/:action_value", [ param("act
  */
 midwiferyRouter.post("/", async (req: Request, res: Response) => {
     try {
-        const db = knex(DB_CONFIG_MIDWIFERY)
         var dateFrom = req.body.params.dateFrom;
         var dateTo = req.body.params.dateTo;
         let status_request = req.body.params.status;
         var midwiferyStatus = Array();
         var midwiferyOptions = Object();
+        db = await helper.getOracleClient(db, DB_CONFIG_MIDWIFERY);
 
         let query = db(`${SCHEMA_MIDWIFERY}.MIDWIFERY_SERVICES`)
         .join(`${SCHEMA_MIDWIFERY}.MIDWIFERY_STATUS`, 'MIDWIFERY_SERVICES.STATUS', '=', 'MIDWIFERY_STATUS.ID')
@@ -214,12 +213,12 @@ midwiferyRouter.post("/", async (req: Request, res: Response) => {
  */
 midwiferyRouter.get("/validateRecord/:midwifery_id",[param("midwifery_id").isInt().notEmpty()], async (req: Request, res: Response) => {
     try {
-        const db = knex(DB_CONFIG_MIDWIFERY)
         var midwifery_id = Number(req.params.midwifery_id);
         var midwifery = Object();
         var flagExists= true;
         var message= "";
         var type= "error";
+        db = await helper.getOracleClient(db, DB_CONFIG_MIDWIFERY);
 
         midwifery = await db(`${SCHEMA_MIDWIFERY}.MIDWIFERY_SERVICES`)
             .join(`${SCHEMA_MIDWIFERY}.MIDWIFERY_STATUS`, 'MIDWIFERY_SERVICES.STATUS', 'MIDWIFERY_STATUS.ID')
@@ -254,13 +253,13 @@ midwiferyRouter.get("/validateRecord/:midwifery_id",[param("midwifery_id").isInt
 midwiferyRouter.get("/show/:midwifery_id",[param("midwifery_id").isInt().notEmpty()], async (req: Request, res: Response) => {
 
     try {
-        const db = knex(DB_CONFIG_MIDWIFERY)
         var midwiferyStatus = Array();
         let midwifery_id = Number(req.params.midwifery_id);
         var midwifery = Object();
         var midwiferyOptions = Object();
         var communityLocations = Object();
         var languages = Object();
+        db = await helper.getOracleClient(db, DB_CONFIG_MIDWIFERY);
 
         midwifery = await db(`${SCHEMA_MIDWIFERY}.MIDWIFERY_SERVICES`)
             .leftJoin(`${SCHEMA_MIDWIFERY}.MIDWIFERY_BIRTH_LOCATIONS`, 'MIDWIFERY_SERVICES.WHERE_TO_GIVE_BIRTH', 'MIDWIFERY_BIRTH_LOCATIONS.ID')
@@ -458,7 +457,6 @@ midwiferyRouter.get("/show/:midwifery_id",[param("midwifery_id").isInt().notEmpt
 midwiferyRouter.post("/store", async (req: Request, res: Response) => {
 
     try {
-        const db = knex(DB_CONFIG_MIDWIFERY)
         let data = Object();
         var midwifery = Object();
         var midwiferyCommunityLocations = Object();
@@ -479,6 +477,7 @@ midwiferyRouter.post("/store", async (req: Request, res: Response) => {
             TABLE_NAME: "MIDWIFERY_SERVICES",
             ACTION_DATA: bufferOriginalData
         };
+        db = await helper.getOracleClient(db, DB_CONFIG_MIDWIFERY);
 
         const logSaved = await helper.insertLogIdReturn(logOriginalSubmission);
         if(!logSaved){
@@ -511,6 +510,7 @@ midwiferyRouter.post("/store", async (req: Request, res: Response) => {
         midwiferyCommunityLocations = await db(`${SCHEMA_MIDWIFERY}.MIDWIFERY_COMMUNITY_LOCATIONS`).where({ DESCRIPTION: data.community_located }).select().then((data:any) => {
             return data[0];
         });
+        db = await helper.getOracleClient(db, DB_CONFIG_DENTAL);
 
         if(midwiferyCommunityLocations) {
             midwifery.COMMUNITY_LOCATED = midwiferyCommunityLocations.id;
@@ -547,6 +547,7 @@ midwiferyRouter.post("/store", async (req: Request, res: Response) => {
         }else{
             midwifery.WHERE_TO_GIVE_BIRTH = null;
         }
+        db = await helper.getOracleClient(db, DB_CONFIG_DENTAL);
 
         const groupValue = await getMultipleIdsByModel("MidwiferyGroupsCommunities", data.do_you_identify_with_one_or_more_of_these_groups_and_communities);
         midwifery.DO_YOU_IDENTIFY_WITH_ONE_OR_MORE_OF_THESE_GROUPS_AND_COMMUNITIE = groupValue ? db.raw(`UTL_RAW.CAST_TO_RAW(?)`,groupValue) : null;
@@ -566,6 +567,7 @@ midwiferyRouter.post("/store", async (req: Request, res: Response) => {
         midwifery.FAMILY_PHYSICIAN = await getMidwiferyOptions("family_physician", data.family_physician);
         midwifery.MAJOR_MEDICAL_CONDITIONS = await getMidwiferyOptions("major_medical_conditions", data.major_medical_conditions);
 
+        db = await helper.getOracleClient(db, DB_CONFIG_DENTAL);
 
         if(!_.isNull(data.due_date) && !_.isEmpty(data.due_date)) {
             data.due_date = new Date(data.due_date);
@@ -612,12 +614,12 @@ midwiferyRouter.post("/store", async (req: Request, res: Response) => {
  */
 midwiferyRouter.post("/export", async (req: Request, res: Response) => {
     try {
-        const db = knex(DB_CONFIG_MIDWIFERY)
         var requests = req.body.params.requests;
         var dateFrom = req.body.params.dateFrom;
         var dateTo = req.body.params.dateTo;
         let status_request = req.body.params.status;
         var midwiferyOptions = Object();
+        db = await helper.getOracleClient(db, DB_CONFIG_MIDWIFERY);
 
         let query = db(`${SCHEMA_MIDWIFERY}.MIDWIFERY_SERVICES`)
         .join(`${SCHEMA_MIDWIFERY}.MIDWIFERY_STATUS`, 'MIDWIFERY_SERVICES.STATUS', '=', 'MIDWIFERY_STATUS.ID')
@@ -902,9 +904,9 @@ midwiferyRouter.post("/export", async (req: Request, res: Response) => {
 midwiferyRouter.patch("/changeStatus", async (req: Request, res: Response) => {
 
     try {
-        const db = knex(DB_CONFIG_MIDWIFERY)
         var midwifery_id = req.body.params.requests;
         var status_id = req.body.params.requestStatus;
+        db = await helper.getOracleClient(db, DB_CONFIG_MIDWIFERY);
 
         var updateStatus = await db(`${SCHEMA_MIDWIFERY}.MIDWIFERY_SERVICES`).update({STATUS: status_id}).whereIn("MIDWIFERY_SERVICES.ID", midwifery_id);
         var statusData = await db(`${SCHEMA_MIDWIFERY}.MIDWIFERY_STATUS`).where('ID', status_id).first();
@@ -951,10 +953,10 @@ midwiferyRouter.patch("/changeStatus", async (req: Request, res: Response) => {
 midwiferyRouter.post("/duplicates", async (req: Request, res: Response) => {
 
     try {
-        const db = knex(DB_CONFIG_MIDWIFERY)
         var midwiferyOriginal = Object();
         var midwiferyDuplicate = Object();
         var midwifery = Array();
+        db = await helper.getOracleClient(db, DB_CONFIG_MIDWIFERY);
 
         midwiferyOriginal = await db(`${SCHEMA_MIDWIFERY}.MIDWIFERY_DUPLICATED_REQUESTS`)
             .join(`${SCHEMA_MIDWIFERY}.MIDWIFERY_SERVICES`, 'MIDWIFERY_DUPLICATED_REQUESTS.ORIGINAL_ID', '=', 'MIDWIFERY_SERVICES.ID')
@@ -1055,7 +1057,6 @@ midwiferyRouter.post("/duplicates", async (req: Request, res: Response) => {
  */
 midwiferyRouter.get("/duplicates/details/:duplicate_id",[param("duplicate_id").isInt().notEmpty()], async (req: Request, res: Response) => {
     try {
-        const db = knex(DB_CONFIG_MIDWIFERY)
         let duplicate_id = Number(req.params.duplicate_id);
         var midwifery = Object();
         var midwiferyDuplicate = Object();
@@ -1065,6 +1066,7 @@ midwiferyRouter.get("/duplicates/details/:duplicate_id",[param("duplicate_id").i
         var languages = Object();
         var communities = Object();
         var contact = Object();
+        db = await helper.getOracleClient(db, DB_CONFIG_MIDWIFERY);
 
         var duplicateEntry = await db(`${SCHEMA_MIDWIFERY}.MIDWIFERY_DUPLICATED_REQUESTS`)
         .where("ID", duplicate_id).then((rows: any) => {
@@ -1261,12 +1263,12 @@ midwiferyRouter.get("/duplicates/details/:duplicate_id",[param("duplicate_id").i
  */
 midwiferyRouter.get("/duplicates/validateWarning/:duplicate_id",[param("duplicate_id").isInt().notEmpty()], async (req: Request, res: Response) => {
     try {
-        const db = knex(DB_CONFIG_MIDWIFERY)
         var duplicate_id = Number(req.params.duplicate_id);
         var warning = Object();
         var flagExists = true;
         var message = "";
         var type = "error";
+        db = await helper.getOracleClient(db, DB_CONFIG_MIDWIFERY);
 
         warning = await db(`${SCHEMA_MIDWIFERY}.MIDWIFERY_DUPLICATED_REQUESTS`)
             .where('ID', duplicate_id)
@@ -1301,7 +1303,6 @@ midwiferyRouter.get("/duplicates/validateWarning/:duplicate_id",[param("duplicat
 midwiferyRouter.patch("/duplicates/primary", async (req: Request, res: Response) => {
 
     try {
-        const db = knex(DB_CONFIG_MIDWIFERY)
         var warning = Number(req.body.params.warning);
         var request = Number(req.body.params.request);
         var type = req.body.params.type;
@@ -1312,6 +1313,7 @@ midwiferyRouter.patch("/duplicates/primary", async (req: Request, res: Response)
         var fieldList = Object();
         var primarySubmission = Number();
         var logFields = Array();
+        db = await helper.getOracleClient(db, DB_CONFIG_MIDWIFERY);
 
         if(!request){
             rejectWarning = await db(`${SCHEMA_MIDWIFERY}.MIDWIFERY_DUPLICATED_REQUESTS`).where("ID", warning).del();
@@ -1419,11 +1421,11 @@ function uniqid(prefix = "", random = false) {
  * @return {array}
  */
 async function getMultipleIdsByModel(model: any, names: any) {
-    const db = knex(DB_CONFIG_MIDWIFERY)
     var others = "";
     var groups = Object();
     var contact = Object();
     var data = Object();
+    db = await helper.getOracleClient(db, DB_CONFIG_MIDWIFERY);
 
     if(model == "MidwiferyGroupsCommunities") {
 
@@ -1507,7 +1509,6 @@ async function getMultipleIdsByModel(model: any, names: any) {
  * @return id of option
  */
 async function getMidwiferyOptions(field: any, data: string) {
-    const db = knex(DB_CONFIG_MIDWIFERY)
     var bool = true;
 
     if(data == "yes" || data == "Yes" || data == "YES") {
@@ -1517,6 +1518,7 @@ async function getMidwiferyOptions(field: any, data: string) {
     }else if(!data || data == "") {
         return null;
     }
+    db = await helper.getOracleClient(db, DB_CONFIG_MIDWIFERY);
 
     var options = await db(`${SCHEMA_MIDWIFERY}.MIDWIFERY_OPTIONS`).where({ FIELD_NAME: field }).where({ FIELD_VALUE: bool }).select().first();
 

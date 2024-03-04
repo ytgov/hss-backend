@@ -7,7 +7,7 @@ import { groupBy, helper } from "../utils";
 import { checkPermissions } from "../middleware/permissions";
 var RateLimit = require('express-rate-limit');
 var _ = require('lodash');
-
+let db = knex(DB_CONFIG_DENTAL);
 
 const submissionStatusRepo = new SubmissionStatusRepository();
 const path = require('path');
@@ -91,9 +91,6 @@ dentalRouter.get("/submissions/status/:action_id/:action_value", [
  * @return json
  */
 dentalRouter.post("/", async (req: Request, res: Response) => {
-
-    const db = knex(DB_CONFIG_DENTAL);
-
     try {
 
         var dateFrom = req.body.params.dateFrom;
@@ -143,12 +140,10 @@ dentalRouter.post("/", async (req: Request, res: Response) => {
  */
 
 dentalRouter.patch("/changeStatus", async (req: Request, res: Response) => {
-
-    const db = knex(DB_CONFIG_DENTAL);
-
     try {
         var dentalService_id = req.body.params.requests;
         var status_id = req.body.params.requestStatus;
+        db = await helper.getOracleClient(db, DB_CONFIG_DENTAL);
         var updateStatus = await db(`${SCHEMA_DENTAL}.DENTAL_SERVICE`).update({STATUS: status_id}).whereIn("ID", dentalService_id);
         var statusData = await db(`${SCHEMA_DENTAL}.DENTAL_STATUS`).where('ID', status_id).first();
         var logFields = Array();
@@ -200,15 +195,13 @@ dentalRouter.patch("/changeStatus", async (req: Request, res: Response) => {
  * @return json
  */
 dentalRouter.get("/validateRecord/:dentalService_id",[param("dentalService_id").isInt().notEmpty()], async (req: Request, res: Response) => {
-
-    const db = knex(DB_CONFIG_DENTAL);
-
     try {
         var dentalService_id = Number(req.params.dentalService_id);
         var dentalService = Object();
         var flagExists = true;
         var message = "";
         var type = "error";
+        db = await helper.getOracleClient(db, DB_CONFIG_DENTAL);
 
         dentalService = await db(`${SCHEMA_DENTAL}.DENTAL_SERVICE`)
             .join(`${SCHEMA_DENTAL}.DENTAL_STATUS`, 'DENTAL_SERVICE.STATUS', '=', 'DENTAL_STATUS.ID')
@@ -243,9 +236,6 @@ dentalRouter.get("/validateRecord/:dentalService_id",[param("dentalService_id").
  * @return json
  */
 dentalRouter.get("/show/:dentalService_id", checkPermissions("dental_view"), [param("dentalService_id").isInt().notEmpty()], async (req: Request, res: Response) => {
-
-    const db = knex(DB_CONFIG_DENTAL);
-
     try {
         var dentalService_id = Number(req.params.dentalService_id);
         var dentalService = Object();
@@ -253,6 +243,7 @@ dentalRouter.get("/show/:dentalService_id", checkPermissions("dental_view"), [pa
         var dentalFiles = Object();
         var dentalInternalFields = Object();
         var dentalComments = Object();
+        db = await helper.getOracleClient(db, DB_CONFIG_DENTAL);
 
         dentalService = await db(`${SCHEMA_DENTAL}.DENTAL_SERVICE_SUBMISSIONS_DETAILS`)
             .where('ID', dentalService_id)
@@ -481,9 +472,6 @@ dentalRouter.get("/show/:dentalService_id", checkPermissions("dental_view"), [pa
  * @return json
  */
 dentalRouter.post("/export/", async (req: Request, res: Response) => {
-
-    const db = knex(DB_CONFIG_DENTAL);
-
     try {
         var requests = req.body.params.requests;
         let status_request = req.body.params.status;
@@ -492,6 +480,7 @@ dentalRouter.post("/export/", async (req: Request, res: Response) => {
         var dateYear = req.body.params.dateYear
         const idSubmission: number[] = [];
         var dentalInternalFields = Object();
+        db = await helper.getOracleClient(db, DB_CONFIG_DENTAL);
 
         let query  = db(`${SCHEMA_DENTAL}.DENTAL_SERVICE_SUBMISSIONS_DETAILS`)
                     .where('DENTAL_SERVICE_SUBMISSIONS_DETAILS.STATUS', '<>', 4);
@@ -669,14 +658,11 @@ dentalRouter.post("/export/", async (req: Request, res: Response) => {
  * @return json
  */
 dentalRouter.post("/duplicates", async (req: Request, res: Response) => {
-
-    const db = knex(DB_CONFIG_DENTAL);
-
     try {
-
         var dentalOriginal = Object();
         var dentalDuplicate = Object();
         var dentalService = Array();
+        db = await helper.getOracleClient(db, DB_CONFIG_DENTAL);
 
         dentalOriginal = await db(`${SCHEMA_DENTAL}.DENTAL_DUPLICATED_REQUESTS`)
             .join(`${SCHEMA_DENTAL}.DENTAL_SERVICE`, 'DENTAL_DUPLICATED_REQUESTS.ORIGINAL_ID', '=', 'DENTAL_SERVICE.ID')
@@ -789,11 +775,7 @@ dentalRouter.post("/duplicates", async (req: Request, res: Response) => {
  * @return json
  */
 dentalRouter.get("/duplicates/details/:duplicate_id",[param("duplicate_id").isInt().notEmpty()], async (req: Request, res: Response) => {
-
-    const db = knex(DB_CONFIG_DENTAL);
-
     try {
-
         let duplicate_id = Number(req.params.duplicate_id);
         var dentalOriginal = Object();
         var dentalDuplicate = Object();
@@ -805,6 +787,7 @@ dentalRouter.get("/duplicates/details/:duplicate_id",[param("duplicate_id").isIn
         var flagDependents = false;
         var flagDemographic = true;
         var flagFile = false;
+        db = await helper.getOracleClient(db, DB_CONFIG_DENTAL);
 
         var duplicateEntry = await db(`${SCHEMA_DENTAL}.DENTAL_DUPLICATED_REQUESTS`)
             .where("ID", duplicate_id).then((rows: any) => {
@@ -959,15 +942,13 @@ dentalRouter.get("/duplicates/details/:duplicate_id",[param("duplicate_id").isIn
  * @return json
  */
 dentalRouter.get("/duplicates/validateWarning/:duplicate_id",[param("duplicate_id").isInt().notEmpty()], async (req: Request, res: Response) => {
-
-    const db = knex(DB_CONFIG_DENTAL);
-
     try {
         var duplicate_id = Number(req.params.duplicate_id);
         var warning = Object();
         var flagExists = true;
         var message = "";
         var type = "error";
+        db = await helper.getOracleClient(db, DB_CONFIG_DENTAL);
 
         warning = await db(`${SCHEMA_DENTAL}.DENTAL_DUPLICATED_REQUESTS`)
             .where('ID', duplicate_id)
@@ -1002,11 +983,7 @@ dentalRouter.get("/duplicates/validateWarning/:duplicate_id",[param("duplicate_i
  * @return json
  */
 dentalRouter.patch("/duplicates/primary", async (req: Request, res: Response) => {
-
-    const db = knex(DB_CONFIG_DENTAL);
-
     try {
-
         var warning = Number(req.body.params.warning);
         var request = Number(req.body.params.request);
         var type = req.body.params.type;
@@ -1017,6 +994,7 @@ dentalRouter.patch("/duplicates/primary", async (req: Request, res: Response) =>
         var fieldList = Object();
         var primarySubmission = Number();
         var logFields = Array();
+        db = await helper.getOracleClient(db, DB_CONFIG_DENTAL);
 
         if(!request){
             rejectWarning = await db(`${SCHEMA_DENTAL}.DENTAL_DUPLICATED_REQUESTS`).where("ID", warning).del();
@@ -1098,15 +1076,13 @@ dentalRouter.patch("/duplicates/primary", async (req: Request, res: Response) =>
  * @return json
  */
 dentalRouter.get("/downloadFile/:dentalFile_id",[param("dentalFile_id").isInt().notEmpty()], async (req: Request, res: Response) => {
-
-    const db = knex(DB_CONFIG_DENTAL);
-
     try {
         var pathFile = "";
         var fs = require("fs");
         var buffer;
-
         var dentalFile_id = Number(req.params.dentalFile_id);
+        db = await helper.getOracleClient(db, DB_CONFIG_DENTAL);
+
         var dentalFiles = await db(`${SCHEMA_DENTAL}.DENTAL_SERVICE_FILES`).where("ID", dentalFile_id).select().first();
 
         if(dentalFiles.is_base64){
@@ -1170,9 +1146,6 @@ dentalRouter.post("/deleteFile", async (req: Request, res: Response) => {
  * @return json
  */
 dentalRouter.post("/store", async (req: Request, res: Response) => {
-
-    const db = knex(DB_CONFIG_DENTAL);
-
     try {
         let data = Object();
         const dentalService = Object();
@@ -1201,6 +1174,7 @@ dentalRouter.post("/store", async (req: Request, res: Response) => {
             TABLE_NAME: "DENTAL_SERVICE",
             ACTION_DATA: bufferOriginalSubmission
         };
+        db = await helper.getOracleClient(db, DB_CONFIG_DENTAL);
 
         const logSaved = await helper.insertLogIdReturn(logOriginalSubmission);
         if(!logSaved){
@@ -1252,6 +1226,7 @@ dentalRouter.post("/store", async (req: Request, res: Response) => {
         }
 
         dentalService.BUY_SUPPLIES = data.buy_supplies;
+        db = await helper.getOracleClient(db, DB_CONFIG_DENTAL);
 
         if(_.isEmpty(data.pay_for_visit) && !_.isArray(data.pay_for_visit)) {
             dentalService.PAY_FOR_VISIT = null;
@@ -1286,7 +1261,7 @@ dentalRouter.post("/store", async (req: Request, res: Response) => {
             }
 
         }
-
+        db = await helper.getOracleClient(db, DB_CONFIG_DENTAL);
         dentalServiceSaved = await db(`${SCHEMA_DENTAL}.DENTAL_SERVICE`).insert(dentalService).into(`${SCHEMA_DENTAL}.DENTAL_SERVICE`).returning('ID');
 
         if(!dentalServiceSaved){
@@ -1314,7 +1289,7 @@ dentalRouter.post("/store", async (req: Request, res: Response) => {
             let dependentsSaved = false;
 
             if(!_.isEmpty(arrayDependents)){
-                for (const dependent of arrayDependents) {
+                for (const dependent of await arrayDependents) {
                     await db(`${SCHEMA_DENTAL}.DENTAL_SERVICE_DEPENDENTS`).insert(dependent).into(`${SCHEMA_DENTAL}.DENTAL_SERVICE_DEPENDENTS`)
                     .then(() => {
                         dependentsSaved = true;
@@ -1333,7 +1308,7 @@ dentalRouter.post("/store", async (req: Request, res: Response) => {
 
         if(!_.isEmpty(fileData)){
             var dentalFiles = Object();
-            
+            db = await helper.getOracleClient(db, DB_CONFIG_DENTAL);
             dentalFiles.DENTAL_SERVICE_ID = dentalId.id;
             dentalFiles.DESCRIPTION = fileData.description;
             dentalFiles.FILE_NAME = fileData.file_name;
@@ -1398,14 +1373,11 @@ dentalRouter.post("/store", async (req: Request, res: Response) => {
  * @param {data}
  */
 dentalRouter.post("/storeInternalFields", async (req: Request, res: Response) => {
-
-    const db = knex(DB_CONFIG_DENTAL);
-
     try {
-
         let data = req.body.params;
         let internalFieldsSaved = Object();
         let dateEnrollment = Object();
+        db = await helper.getOracleClient(db, DB_CONFIG_DENTAL);
 
         if(!_.isEmpty(data.dateEnrollment)){
             data.dateEnrollment = new Date(data.dateEnrollment);
@@ -1459,9 +1431,6 @@ dentalRouter.post("/storeInternalFields", async (req: Request, res: Response) =>
  * @param {data}
  */
 dentalRouter.post("/storeComments", async (req: Request, res: Response) => {
-
-    const db = knex(DB_CONFIG_DENTAL);
-
     try {
 
         let data = req.body.params;
@@ -1471,6 +1440,7 @@ dentalRouter.post("/storeComments", async (req: Request, res: Response) => {
         comments.DENTAL_SERVICE_ID = data.id;
         comments.USER_ID = data.user;
         comments.COMMENT_DESCRIPTION = data.comment;
+        db = await helper.getOracleClient(db, DB_CONFIG_DENTAL);
 
         commentsSaved = await db(`${SCHEMA_DENTAL}.DENTAL_SERVICE_COMMENTS`).insert(comments).into(`${SCHEMA_DENTAL}.DENTAL_SERVICE_COMMENTS`);
 
@@ -1499,9 +1469,6 @@ dentalRouter.post("/storeComments", async (req: Request, res: Response) => {
  */
 
 dentalRouter.patch("/update", async (req: Request, res: Response) => {
-
-    const db = knex(DB_CONFIG_DENTAL);
-
     try {
 
         var idSubmission = req.body.params.idSubmission;
@@ -1516,6 +1483,7 @@ dentalRouter.patch("/update", async (req: Request, res: Response) => {
         var updatedFields = req.body.params.dataUpdatedFields;
         var fieldList = Object();
         let responseSent = false;
+        db = await helper.getOracleClient(db, DB_CONFIG_DENTAL);
 
         if(!_.isEmpty(data.DATE_OF_BIRTH)){
             let dob = new Date(data.DATE_OF_BIRTH);
@@ -1797,10 +1765,10 @@ dentalRouter.patch("/update", async (req: Request, res: Response) => {
  * @param {idDentalService}
  * @return {result}
  */
-function getDependents(idDentalService: any, arrayDependets: any){
+async function getDependents(idDentalService: any, arrayDependets: any): Promise<any[]>{
 
-    const db = knex(DB_CONFIG_DENTAL);
     let dependents = Array();
+    db = await helper.getOracleClient(db, DB_CONFIG_DENTAL);
 
     _.forEach(arrayDependets, function(value: any, key: any) {
         let dataDependent = Object();
@@ -1833,9 +1801,9 @@ function getDependents(idDentalService: any, arrayDependets: any){
     return dependents;
 }
 
-async function getAllStatus(){
-    const db = knex(DB_CONFIG_DENTAL);
+async function getAllStatus(): Promise<any[]>{
     var dentalServiceStatus = Array();
+    db = await helper.getOracleClient(db, DB_CONFIG_DENTAL);
 
     dentalServiceStatus = await db(`${SCHEMA_DENTAL}.DENTAL_STATUS`).select()
     .whereNot('ID', 4).then((rows: any) => {
@@ -1851,9 +1819,9 @@ async function getAllStatus(){
     return dentalServiceStatus;
 }
 
-async function getCatalogSelect(table: any){
-    const db = knex(DB_CONFIG_DENTAL);
+async function getCatalogSelect(table: any): Promise<any[]>{
     var arrayData = Array();
+    db = await helper.getOracleClient(db, DB_CONFIG_DENTAL);
 
     arrayData = await db(`${SCHEMA_DENTAL}.${table}`).select().then((rows: any) => {
         let arrayResult = Array();
