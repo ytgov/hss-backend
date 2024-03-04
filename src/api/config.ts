@@ -77,8 +77,10 @@ export const DB_CONFIG_CONSTELLATION = {
   },
   pool: {
     min: 1,
-    max: 20,
-    propagateCreateError: false
+    max: 30,
+    propagateCreateError: false,
+    idleTimeoutMillis: 30000,
+    reapIntervalMillis: 10000
   },
   postProcessResponse: postProcessToLowerCase,
   wrapIdentifier: wrapIdentifierUpper
@@ -101,8 +103,10 @@ export const DB_CONFIG_MIDWIFERY = {
   },
   pool: {
     min: 1,
-    max: 20,
-    propagateCreateError: false
+    max: 30,
+    propagateCreateError: false,
+    idleTimeoutMillis: 30000,
+    reapIntervalMillis: 10000
   },
   postProcessResponse: postProcessToLowerCase
 };
@@ -124,8 +128,10 @@ export const DB_CONFIG_HIPMA = {
   },
   pool: {
     min: 1,
-    max: 20,
-    propagateCreateError: false
+    max: 30,
+    propagateCreateError: false,
+    idleTimeoutMillis: 30000,
+    reapIntervalMillis: 10000
   },
   postProcessResponse: postProcessToLowerCase
 };
@@ -146,9 +152,11 @@ export const DB_CONFIG_GENERAL = {
         (CONNECT_DATA=(SERVICE_NAME=${DB_SERVICE}) ) )`
   },
   pool: {
-    min: 1,
-    max: 20,
-    propagateCreateError: false
+    min: 3,
+    max: 30,
+    propagateCreateError: false,
+    idleTimeoutMillis: 30000,
+    reapIntervalMillis: 10000
   },
   postProcessResponse: postProcessToLowerCase
 };
@@ -169,9 +177,11 @@ export const DB_CONFIG_DENTAL = {
         (CONNECT_DATA=(SERVICE_NAME=${DB_SERVICE}) ) )`
   },
   pool: {
-    min: 1,
-    max: 20,
-    propagateCreateError: false
+    min: 3,
+    max: 30,
+    propagateCreateError: false,
+    idleTimeoutMillis: 30000,
+    reapIntervalMillis: 10000
   },
   postProcessResponse: postProcessToLowerCase
 };

@@ -1,7 +1,6 @@
 import knex from "knex";
-import { DB_CONFIG_DENTAL, SCHEMA_GENERAL } from "../config";
+import { DB_CONFIG_GENERAL, SCHEMA_GENERAL } from "../config";
 
-const db = knex(DB_CONFIG_DENTAL);
 
 export const getJsonDataList = (fieldData: any): Array<any> => {
     const json = JSON.parse(fieldData);
@@ -10,6 +9,9 @@ export const getJsonDataList = (fieldData: any): Array<any> => {
 };
 
 export const insertLog = (dataLog: any): Array<any> => {
+
+    const db = knex(DB_CONFIG_GENERAL);
+
     let logSaved = Object();
 
     logSaved = db(`${SCHEMA_GENERAL}.ACTION_LOGS`).insert(dataLog).into(`${SCHEMA_GENERAL}.ACTION_LOGS`)
@@ -21,10 +23,15 @@ export const insertLog = (dataLog: any): Array<any> => {
         return false;
     });
 
+    db.destroy();
+
     return logSaved;
 };
 
 export const insertLogIdReturn = async (dataLog: any): Promise<number | boolean | string> => {
+
+    const db = knex(DB_CONFIG_GENERAL);
+
     try {
         const logInsertedId = await db(`${SCHEMA_GENERAL}.ACTION_LOGS`)
             .insert(dataLog)
@@ -35,5 +42,7 @@ export const insertLogIdReturn = async (dataLog: any): Promise<number | boolean 
     } catch (error) {
         console.error(error);
         return false;
+    } finally {
+        await db.destroy();
     }
 };
