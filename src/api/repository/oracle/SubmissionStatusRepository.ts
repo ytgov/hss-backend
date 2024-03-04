@@ -5,14 +5,16 @@ import knex, { Knex } from "knex";
 
 export class SubmissionStatusRepository extends BaseRepository<SubmissionStatusDTO> {
 
-    mainDb: Knex<any, unknown> = knex(DB_CONFIG_GENERAL);
-
     async getSubmissionsStatus(actionId: string, actionVal: string, permissions: Array<PermissionDTO>): Promise<SubmissionStatusDTO[]> {
+
+        const mainDb: Knex<any, unknown> = knex(DB_CONFIG_GENERAL);
+
+        try {
+
         let general = Object();
         let viewName = `${SCHEMA_GENERAL}.SUBMISSIONS_STATUS_WEEK_V`;
         let whereClause = (builder: any) => {
             builder.where(1, "=", "1");
-
         }
 
         if (actionId === "month") {
@@ -37,13 +39,22 @@ export class SubmissionStatusRepository extends BaseRepository<SubmissionStatusD
                 .orderBy('STATUS', 'ASC');
         }
 
-        general = await submissionsStatusQuery(this.mainDb, viewName);
+        general = await submissionsStatusQuery(mainDb, viewName);
 
         return this.loadResults(general);
+
+        } finally {
+            await mainDb.destroy();
+        }
+
     }
 
     async getModuleSubmissionsStatus(module: string, actionId: string, actionVal: string, permissions: Array<PermissionDTO>): Promise<SubmissionStatusDTO[]> {
 
+        const mainDb: Knex<any, unknown> = knex(DB_CONFIG_GENERAL);
+
+        try {
+
         let general = Object();
         let viewName = `${SCHEMA_GENERAL}.SUBMISSIONS_STATUS_WEEK_V`;
         let whereClause = (builder: any) => {
@@ -74,12 +85,22 @@ export class SubmissionStatusRepository extends BaseRepository<SubmissionStatusD
                 .orderBy('STATUS', 'ASC');
         }
 
-        general = await submissionsStatusQuery(this.mainDb, viewName);
+        general = await submissionsStatusQuery(mainDb, viewName);
 
         return this.loadResults(general);
+
+        } finally {
+            await mainDb.destroy();
+        }
+
     }
 
     async getSubmissions(actionId: string, actionVal: string, permissions: Array<PermissionDTO>): Promise<SubmissionsTotalDTO[]> {
+
+        const mainDb: Knex<any, unknown> = knex(DB_CONFIG_GENERAL);
+
+        try {
+
         let general = Object();
         let viewName = `${SCHEMA_GENERAL}.SUBMISSIONS_WEEK_V`;
         let whereClause = (builder: any) => {
@@ -110,12 +131,22 @@ export class SubmissionStatusRepository extends BaseRepository<SubmissionStatusD
                 .orderBy('DATE_CODE', 'ASC');
         }
 
-        general = await submissionsStatusQuery(this.mainDb, viewName);
+        general = await submissionsStatusQuery(mainDb, viewName);
 
         return this.loadResults(general);
+
+        } finally {
+            await mainDb.destroy();
+        }
+
     }
 
     async getModuleSubmissions(module: string, actionId: string, actionVal: string, permissions: Array<PermissionDTO>): Promise<SubmissionsTotalDTO[]> {
+
+        const mainDb: Knex<any, unknown> = knex(DB_CONFIG_GENERAL);
+
+        try {
+
         let general = Object();
         let viewName = `${SCHEMA_GENERAL}.SUBMISSIONS_WEEK_V`;
         let whereClause = (builder: any) => {
@@ -148,12 +179,21 @@ export class SubmissionStatusRepository extends BaseRepository<SubmissionStatusD
                 .orderBy('DATE_CODE', 'ASC');
         }
 
-        general = await submissionsStatusQuery(this.mainDb, viewName);
+        general = await submissionsStatusQuery(mainDb, viewName);
 
         return this.loadResults(general);
+
+        } finally {
+            await mainDb.destroy();
+        }
+
     }
 
     async getAgeSubmissions(actionId: string, actionVal: string, permissions: Array<PermissionDTO>): Promise<SubmissionsAgeDTO[]> {
+
+        const mainDb: Knex<any, unknown> = knex(DB_CONFIG_GENERAL);
+
+        try {
 
         let general = Object();
         let viewName = `${SCHEMA_GENERAL}.SUBMISSIONS_DENTAL_AGE_WEEK_V`;
@@ -185,12 +225,22 @@ export class SubmissionStatusRepository extends BaseRepository<SubmissionStatusD
                 .orderBy('AGE_RANGE', 'ASC');
         }
 
-        general = await submissionsAgeQuery(this.mainDb, viewName);
+        general = await submissionsAgeQuery(mainDb, viewName);
 
         return this.loadResults(general);
+
+        } finally {
+            await mainDb.destroy();
+        }
+
     }
 
     async getGenderSubmissions(actionId: string, actionVal: string, permissions: Array<PermissionDTO>): Promise<SubmissionsGenderDTO[]> {
+
+        const mainDb: Knex<any, unknown> = knex(DB_CONFIG_GENERAL);
+
+        try {
+
         let general = Object();
         let viewName = `${SCHEMA_GENERAL}.SUBMISSIONS_DENTAL_GENDER_WEEK_V`;
         let whereClause = (builder: any) => {
@@ -222,8 +272,13 @@ export class SubmissionStatusRepository extends BaseRepository<SubmissionStatusD
                 .orderBy('GENDER_NAME', 'ASC');
         }
 
-        general = await submissionsGenderQuery(this.mainDb, viewName);
+        general = await submissionsGenderQuery(mainDb, viewName);
 
         return this.loadResults(general);
+
+        } finally {
+            await mainDb.destroy();
+        }
+
     }
 }

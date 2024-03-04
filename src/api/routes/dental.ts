@@ -9,7 +9,6 @@ var RateLimit = require('express-rate-limit');
 var _ = require('lodash');
 
 
-const db = knex(DB_CONFIG_DENTAL)
 const submissionStatusRepo = new SubmissionStatusRepository();
 const path = require('path');
 
@@ -93,7 +92,10 @@ dentalRouter.get("/submissions/status/:action_id/:action_value", [
  */
 dentalRouter.post("/", async (req: Request, res: Response) => {
 
+    const db = knex(DB_CONFIG_DENTAL);
+
     try {
+
         var dateFrom = req.body.params.dateFrom;
         var dateTo = req.body.params.dateTo;
         var dateYear = req.body.params.dateYear;
@@ -128,6 +130,8 @@ dentalRouter.post("/", async (req: Request, res: Response) => {
             status: 400,
             message: 'Request could not be processed'
         });
+    } finally {
+        await db.destroy();
     }
 });
 
@@ -139,6 +143,9 @@ dentalRouter.post("/", async (req: Request, res: Response) => {
  */
 
 dentalRouter.patch("/changeStatus", async (req: Request, res: Response) => {
+
+    const db = knex(DB_CONFIG_DENTAL);
+
     try {
         var dentalService_id = req.body.params.requests;
         var status_id = req.body.params.requestStatus;
@@ -181,6 +188,8 @@ dentalRouter.patch("/changeStatus", async (req: Request, res: Response) => {
             status: 400,
             message: 'Request could not be processed'
         });
+    } finally {
+        await db.destroy();
     }
 });
 
@@ -191,6 +200,9 @@ dentalRouter.patch("/changeStatus", async (req: Request, res: Response) => {
  * @return json
  */
 dentalRouter.get("/validateRecord/:dentalService_id",[param("dentalService_id").isInt().notEmpty()], async (req: Request, res: Response) => {
+
+    const db = knex(DB_CONFIG_DENTAL);
+
     try {
         var dentalService_id = Number(req.params.dentalService_id);
         var dentalService = Object();
@@ -219,6 +231,8 @@ dentalRouter.get("/validateRecord/:dentalService_id",[param("dentalService_id").
             status: 400,
             message: 'Request could not be processed'
         });
+    } finally {
+        await db.destroy();
     }
 });
 
@@ -229,6 +243,9 @@ dentalRouter.get("/validateRecord/:dentalService_id",[param("dentalService_id").
  * @return json
  */
 dentalRouter.get("/show/:dentalService_id", checkPermissions("dental_view"), [param("dentalService_id").isInt().notEmpty()], async (req: Request, res: Response) => {
+
+    const db = knex(DB_CONFIG_DENTAL);
+
     try {
         var dentalService_id = Number(req.params.dentalService_id);
         var dentalService = Object();
@@ -452,6 +469,8 @@ dentalRouter.get("/show/:dentalService_id", checkPermissions("dental_view"), [pa
             status: 400,
             message: 'Request could not be processed'
         });
+    } finally {
+        await db.destroy();
     }
 });
 
@@ -462,6 +481,9 @@ dentalRouter.get("/show/:dentalService_id", checkPermissions("dental_view"), [pa
  * @return json
  */
 dentalRouter.post("/export/", async (req: Request, res: Response) => {
+
+    const db = knex(DB_CONFIG_DENTAL);
+
     try {
         var requests = req.body.params.requests;
         let status_request = req.body.params.status;
@@ -635,6 +657,8 @@ dentalRouter.post("/export/", async (req: Request, res: Response) => {
             status: 400,
             message: 'Request could not be processed'
         });
+    } finally {
+        await db.destroy();
     }
 });
 
@@ -645,6 +669,8 @@ dentalRouter.post("/export/", async (req: Request, res: Response) => {
  * @return json
  */
 dentalRouter.post("/duplicates", async (req: Request, res: Response) => {
+
+    const db = knex(DB_CONFIG_DENTAL);
 
     try {
 
@@ -750,6 +776,8 @@ dentalRouter.post("/duplicates", async (req: Request, res: Response) => {
             status: 400,
             message: 'Request could not be processed'
         });
+    } finally {
+        await db.destroy();
     }
 
 });
@@ -761,6 +789,9 @@ dentalRouter.post("/duplicates", async (req: Request, res: Response) => {
  * @return json
  */
 dentalRouter.get("/duplicates/details/:duplicate_id",[param("duplicate_id").isInt().notEmpty()], async (req: Request, res: Response) => {
+
+    const db = knex(DB_CONFIG_DENTAL);
+
     try {
 
         let duplicate_id = Number(req.params.duplicate_id);
@@ -916,6 +947,8 @@ dentalRouter.get("/duplicates/details/:duplicate_id",[param("duplicate_id").isIn
             status: 400,
             message: 'Request could not be processed'
         });
+    } finally {
+        await db.destroy();
     }
 });
 
@@ -926,6 +959,9 @@ dentalRouter.get("/duplicates/details/:duplicate_id",[param("duplicate_id").isIn
  * @return json
  */
 dentalRouter.get("/duplicates/validateWarning/:duplicate_id",[param("duplicate_id").isInt().notEmpty()], async (req: Request, res: Response) => {
+
+    const db = knex(DB_CONFIG_DENTAL);
+
     try {
         var duplicate_id = Number(req.params.duplicate_id);
         var warning = Object();
@@ -953,6 +989,8 @@ dentalRouter.get("/duplicates/validateWarning/:duplicate_id",[param("duplicate_i
             status: 400,
             message: 'Request could not be processed'
         });
+    } finally {
+        await db.destroy();
     }
 });
 
@@ -964,6 +1002,8 @@ dentalRouter.get("/duplicates/validateWarning/:duplicate_id",[param("duplicate_i
  * @return json
  */
 dentalRouter.patch("/duplicates/primary", async (req: Request, res: Response) => {
+
+    const db = knex(DB_CONFIG_DENTAL);
 
     try {
 
@@ -1046,6 +1086,8 @@ dentalRouter.patch("/duplicates/primary", async (req: Request, res: Response) =>
             status: 400,
             message: 'Request could not be processed'
         });
+    } finally {
+        await db.destroy();
     }
 });
 
@@ -1056,6 +1098,8 @@ dentalRouter.patch("/duplicates/primary", async (req: Request, res: Response) =>
  * @return json
  */
 dentalRouter.get("/downloadFile/:dentalFile_id",[param("dentalFile_id").isInt().notEmpty()], async (req: Request, res: Response) => {
+
+    const db = knex(DB_CONFIG_DENTAL);
 
     try {
         var pathFile = "";
@@ -1087,6 +1131,8 @@ dentalRouter.get("/downloadFile/:dentalFile_id",[param("dentalFile_id").isInt().
             status: 400,
             message: 'Request could not be processed'
         });
+    } finally {
+        await db.destroy();
     }
 });
 
@@ -1124,6 +1170,8 @@ dentalRouter.post("/deleteFile", async (req: Request, res: Response) => {
  * @return json
  */
 dentalRouter.post("/store", async (req: Request, res: Response) => {
+
+    const db = knex(DB_CONFIG_DENTAL);
 
     try {
         let data = Object();
@@ -1338,6 +1386,8 @@ dentalRouter.post("/store", async (req: Request, res: Response) => {
             status: 404,
             message: 'Request could not be processed ' + e
         });
+    } finally {
+        await db.destroy();
     }
 
 });
@@ -1348,6 +1398,9 @@ dentalRouter.post("/store", async (req: Request, res: Response) => {
  * @param {data}
  */
 dentalRouter.post("/storeInternalFields", async (req: Request, res: Response) => {
+
+    const db = knex(DB_CONFIG_DENTAL);
+
     try {
 
         let data = req.body.params;
@@ -1395,6 +1448,8 @@ dentalRouter.post("/storeInternalFields", async (req: Request, res: Response) =>
             status: 400,
             message: 'Request could not be processed'
         });
+    } finally {
+        await db.destroy();
     }
 });
 
@@ -1404,6 +1459,9 @@ dentalRouter.post("/storeInternalFields", async (req: Request, res: Response) =>
  * @param {data}
  */
 dentalRouter.post("/storeComments", async (req: Request, res: Response) => {
+
+    const db = knex(DB_CONFIG_DENTAL);
+
     try {
 
         let data = req.body.params;
@@ -1427,6 +1485,8 @@ dentalRouter.post("/storeComments", async (req: Request, res: Response) => {
             status: 400,
             message: 'Request could not be processed'
         });
+    } finally {
+        await db.destroy();
     }
 });
 
@@ -1439,6 +1499,9 @@ dentalRouter.post("/storeComments", async (req: Request, res: Response) => {
  */
 
 dentalRouter.patch("/update", async (req: Request, res: Response) => {
+
+    const db = knex(DB_CONFIG_DENTAL);
+
     try {
 
         var idSubmission = req.body.params.idSubmission;
@@ -1723,6 +1786,8 @@ dentalRouter.patch("/update", async (req: Request, res: Response) => {
             status: 400,
             message: 'Request could not be processed ' + e
         });
+    } finally {
+        await db.destroy();
     }
 });
 
@@ -1733,6 +1798,8 @@ dentalRouter.patch("/update", async (req: Request, res: Response) => {
  * @return {result}
  */
 function getDependents(idDentalService: any, arrayDependets: any){
+
+    const db = knex(DB_CONFIG_DENTAL);
     let dependents = Array();
 
     _.forEach(arrayDependets, function(value: any, key: any) {
@@ -1767,6 +1834,7 @@ function getDependents(idDentalService: any, arrayDependets: any){
 }
 
 async function getAllStatus(){
+    const db = knex(DB_CONFIG_DENTAL);
     var dentalServiceStatus = Array();
 
     dentalServiceStatus = await db(`${SCHEMA_DENTAL}.DENTAL_STATUS`).select()
@@ -1784,6 +1852,7 @@ async function getAllStatus(){
 }
 
 async function getCatalogSelect(table: any){
+    const db = knex(DB_CONFIG_DENTAL);
     var arrayData = Array();
 
     arrayData = await db(`${SCHEMA_DENTAL}.${table}`).select().then((rows: any) => {
