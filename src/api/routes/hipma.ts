@@ -8,7 +8,8 @@ import { groupBy , helper } from "../utils";
 var RateLimit = require('express-rate-limit');
 var _ = require('lodash');
 
-const db = knex(DB_CONFIG_HIPMA)
+let db = knex(DB_CONFIG_HIPMA)
+
 const submissionStatusRepo = new SubmissionStatusRepository();
 const path = require('path');
 export const hipmaRouter = express.Router();
@@ -91,7 +92,7 @@ hipmaRouter.post("/", async (req: Request, res: Response) => {
     try {
         var dateFrom = req.body.params.dateFrom;
         var dateTo = req.body.params.dateTo;
-
+        db = await helper.getOracleClient(db, DB_CONFIG_HIPMA);
         let query = db(`${SCHEMA_HIPMA}.HEALTH_INFORMATION`)
             .leftJoin(`${SCHEMA_HIPMA}.HIPMA_REQUEST_TYPE`, 'HEALTH_INFORMATION.WHAT_TYPE_OF_REQUEST_DO_YOU_WANT_TO_MAKE_', '=', 'HIPMA_REQUEST_TYPE.ID')
             .leftJoin(`${SCHEMA_HIPMA}.HIPMA_REQUEST_ACCESS_PERSONAL_HEALTH_INFORMATION`, 'HEALTH_INFORMATION.ARE_YOU_REQUESTING_ACCESS_TO_YOUR_OWN_PERSONAL_HEALTH_INFORMATI', '=', 'HIPMA_REQUEST_ACCESS_PERSONAL_HEALTH_INFORMATION.ID')
@@ -144,7 +145,7 @@ hipmaRouter.get("/validateRecord/:hipma_id",[param("hipma_id").isInt().notEmpty(
         var flagExists = true;
         var message = "";
         var type = "error";
-
+        db = await helper.getOracleClient(db, DB_CONFIG_HIPMA);
         hipma = await db(`${SCHEMA_HIPMA}.HEALTH_INFORMATION`)
             .where('HEALTH_INFORMATION.ID', hipma_id)
             .select(`${SCHEMA_HIPMA}.HEALTH_INFORMATION.*`)
@@ -178,7 +179,7 @@ hipmaRouter.get("/validateRecord/:hipma_id",[param("hipma_id").isInt().notEmpty(
 hipmaRouter.get("/show/:hipma_id",[param("hipma_id").isInt().notEmpty()], async (req: Request, res: Response) => {
     try {
         let hipma_id = Number(req.params.hipma_id);
-
+        db = await helper.getOracleClient(db, DB_CONFIG_HIPMA);
         var hipma = await db(`${SCHEMA_HIPMA}.HEALTH_INFORMATION`)
         .leftJoin(`${SCHEMA_HIPMA}.HIPMA_REQUEST_TYPE`, 'HEALTH_INFORMATION.WHAT_TYPE_OF_REQUEST_DO_YOU_WANT_TO_MAKE_', '=', 'HIPMA_REQUEST_TYPE.ID')
         .leftJoin(`${SCHEMA_HIPMA}.HIPMA_REQUEST_ACCESS_PERSONAL_HEALTH_INFORMATION`, 'HEALTH_INFORMATION.ARE_YOU_REQUESTING_ACCESS_TO_YOUR_OWN_PERSONAL_HEALTH_INFORMATI', '=', 'HIPMA_REQUEST_ACCESS_PERSONAL_HEALTH_INFORMATION.ID')
@@ -348,7 +349,7 @@ hipmaRouter.post("/store", async (req: Request, res: Response) => {
             TABLE_NAME: "HEALTH_INFORMATION",
             ACTION_DATA: bufferOriginalData
         };
-
+        db = await helper.getOracleClient(db, DB_CONFIG_HIPMA);
         const logSaved = await helper.insertLogIdReturn(logOriginalSubmission);
 
         if(!logSaved){
@@ -494,7 +495,7 @@ hipmaRouter.post("/store", async (req: Request, res: Response) => {
             SUBMISSION_ID: hipma_id.id
         };
 
-        let loggedAction = helper.insertLog(logFields);
+        let loggedAction = await helper.insertLog(logFields);
 
         if(!loggedAction){
             console.log('The action could not be logged: '+logFields.TABLE_NAME+' '+logFields.TITLE);
@@ -561,6 +562,8 @@ hipmaRouter.patch("/changeStatus", async (req: Request, res: Response) => {
 
     try {
         var hipma = req.body.params.requests;
+        db = await helper.getOracleClient(db, DB_CONFIG_HIPMA);
+
         var updateStatus = await db(`${SCHEMA_HIPMA}.HEALTH_INFORMATION`).update({STATUS: "2"}).whereIn("ID", hipma);
         var statusData = await db(`${SCHEMA_HIPMA}.HIPMA_STATUS`).where('ID', 2).first();
         var logFields = Array();
@@ -581,7 +584,7 @@ hipmaRouter.patch("/changeStatus", async (req: Request, res: Response) => {
                     });
                 });
 
-                let loggedAction = helper.insertLog(logFields);
+                let loggedAction = await helper.insertLog(logFields);
 
                 if(!loggedAction){
                     res.send( {
@@ -614,7 +617,7 @@ hipmaRouter.get("/downloadFile/:hipmaFile_id",[param("hipmaFile_id").isInt().not
     try {
         var pathFile = "";
         var fs = require("fs");
-
+        db = await helper.getOracleClient(db, DB_CONFIG_HIPMA);
         var hipmaFile_id = Number(req.params.hipmaFile_id);
         var hipmaFiles = await db(`${SCHEMA_HIPMA}.HIPMA_FILES`).where("ID", hipmaFile_id).select().first();
         var buffer = Buffer.from(hipmaFiles.file_data.toString(), 'base64');
@@ -650,6 +653,7 @@ hipmaRouter.post("/export", async (req: Request, res: Response) => {
         var requests = req.body.params.requests;
         var dateFrom = req.body.params.dateFrom;
         var dateTo = req.body.params.dateTo;
+        db = await helper.getOracleClient(db, DB_CONFIG_HIPMA);
 
         let query = db(`${SCHEMA_HIPMA}.HEALTH_INFORMATION`)
                 .leftJoin(`${SCHEMA_HIPMA}.HIPMA_REQUEST_TYPE`, 'HEALTH_INFORMATION.WHAT_TYPE_OF_REQUEST_DO_YOU_WANT_TO_MAKE_', '=', 'HIPMA_REQUEST_TYPE.ID')
@@ -778,7 +782,7 @@ hipmaRouter.post("/export", async (req: Request, res: Response) => {
                 });
             });
 
-            let loggedAction = helper.insertLog(logFields);
+            let loggedAction = await helper.insertLog(logFields);
 
             if(!loggedAction){
                 res.send( {
@@ -830,6 +834,7 @@ hipmaRouter.post("/duplicates", async (req: Request, res: Response) => {
         var hipmaOriginal = Object();
         var hipmaDuplicate = Object();
         var hipma = Array();
+        db = await helper.getOracleClient(db, DB_CONFIG_HIPMA);
 
         hipmaOriginal = await db(`${SCHEMA_HIPMA}.HIPMA_DUPLICATED_REQUESTS`)
             .join(`${SCHEMA_HIPMA}.HEALTH_INFORMATION`, 'HIPMA_DUPLICATED_REQUESTS.ORIGINAL_ID', '=', 'HEALTH_INFORMATION.ID')
@@ -912,7 +917,7 @@ hipmaRouter.post("/duplicates", async (req: Request, res: Response) => {
  */
 hipmaRouter.get("/duplicates/details/:duplicate_id",[param("duplicate_id").isInt().notEmpty()], async (req: Request, res: Response) => {
     try {
-
+        db = await helper.getOracleClient(db, DB_CONFIG_HIPMA);
         let duplicate_id = Number(req.params.duplicate_id);
         var hipma = Object();
         var hipmaDuplicate = Object();
@@ -1099,6 +1104,7 @@ hipmaRouter.patch("/duplicates/primary", async (req: Request, res: Response) => 
         var fieldList = Object();
         var primarySubmission = Number();
         var logFields = Array();
+        db = await helper.getOracleClient(db, DB_CONFIG_HIPMA);
 
         if(!request){
             rejectWarning = await db(`${SCHEMA_HIPMA}.HIPMA_DUPLICATED_REQUESTS`).where("ID", warning).del();
@@ -1147,7 +1153,7 @@ hipmaRouter.patch("/duplicates/primary", async (req: Request, res: Response) => 
                 ACTION_DATA: fieldList
         });
 
-        let loggedAction = helper.insertLog(logFields);
+        let loggedAction = await helper.insertLog(logFields);
 
         if(!loggedAction){
             res.send( {
@@ -1184,6 +1190,7 @@ hipmaRouter.get("/duplicates/validateWarning/:duplicate_id",[param("duplicate_id
         var flagExists = true;
         var message = "";
         var type = "error";
+        db = await helper.getOracleClient(db, DB_CONFIG_HIPMA);
 
         warning = await db(`${SCHEMA_HIPMA}.HIPMA_DUPLICATED_REQUESTS`)
             .where('ID', duplicate_id)

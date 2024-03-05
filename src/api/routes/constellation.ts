@@ -7,6 +7,7 @@ import { groupBy, helper } from "../utils";
 import { checkPermissions } from "../middleware/permissions";
 var RateLimit = require('express-rate-limit');
 var _ = require('lodash');
+let db = knex(DB_CONFIG_CONSTELLATION);
 
 export const constellationRouter = express.Router();
 constellationRouter.use(RateLimit({
@@ -27,7 +28,7 @@ constellationRouter.get("/submissions/:action_id/:action_value", [
 
     try {
         const submissionStatusRepo = new SubmissionStatusRepository();
-    
+
         const actionId = req.params.action_id;
         const actionVal = req.params.action_value;
         const permissions = req.user?.db_user.permissions ?? [];
@@ -86,9 +87,9 @@ constellationRouter.get("/submissions/status/:action_id/:action_value", [
  */
 constellationRouter.post("/", async (req: Request, res: Response) => {
 
-    const db = knex(DB_CONFIG_CONSTELLATION);
+
     try {
-        
+        db = await helper.getOracleClient(db, DB_CONFIG_CONSTELLATION);
         var dateFrom = req.body.params.dateFrom;
         var dateTo = req.body.params.dateTo;
         let status_request = req.body.params.status;
@@ -170,8 +171,6 @@ constellationRouter.post("/", async (req: Request, res: Response) => {
             status: 400,
             message: 'Request could not be processed'
         });
-    } finally {
-        db.destroy();
     }
 });
 
@@ -182,9 +181,9 @@ constellationRouter.post("/", async (req: Request, res: Response) => {
  * @return json
  */
 constellationRouter.get("/validateRecord/:constellationHealth_id",[param("constellationHealth_id").isInt().notEmpty()], async (req: Request, res: Response) => {
-    const db = knex(DB_CONFIG_CONSTELLATION);
+
     try {
-        
+        db = await helper.getOracleClient(db, DB_CONFIG_CONSTELLATION);
         var constellationHealth_id = Number(req.params.constellationHealth_id);
         var constellationHealth = Object();
         var flagExists= true;
@@ -213,8 +212,6 @@ constellationRouter.get("/validateRecord/:constellationHealth_id",[param("conste
             status: 400,
             message: 'Request could not be processed'
         });
-    } finally {
-        db.destroy();
     }
 });
 
@@ -225,9 +222,10 @@ constellationRouter.get("/validateRecord/:constellationHealth_id",[param("conste
  * @return json
  */
 constellationRouter.get("/show/:constellationHealth_id", checkPermissions("constellation_view"), [param("constellationHealth_id").isInt().notEmpty()], async (req: Request, res: Response) => {
-    const db = knex(DB_CONFIG_CONSTELLATION);
+
     try {
-        var constellationHealth_id = Number(req.params.constellationHealth_id);
+        var constellationHealth_id = Number(req.params.constellationHealth_id); 
+        db = await helper.getOracleClient(db, DB_CONFIG_CONSTELLATION);
         var constellationHealth = Object();
         var constellationFamily = Object();
 
@@ -382,8 +380,6 @@ constellationRouter.get("/show/:constellationHealth_id", checkPermissions("const
             status: 400,
             message: 'Request could not be processed'
         });
-    } finally {
-        db.destroy();
     }
 });
 
@@ -393,9 +389,10 @@ constellationRouter.get("/show/:constellationHealth_id", checkPermissions("const
  * @return json
  */
 constellationRouter.post("/store", async (req: Request, res: Response) => {
-    const db = knex(DB_CONFIG_CONSTELLATION);
+
     try {
-        let data = Object();
+        let data = Object(); 
+        db = await helper.getOracleClient(db, DB_CONFIG_CONSTELLATION);
         const constellationHealth = Object();
         let demographicsQuery = Object();
         let languagesQuery = Object();
@@ -457,6 +454,7 @@ constellationRouter.post("/store", async (req: Request, res: Response) => {
         constellationHealth.health_care_card = data.health_care_card;
         constellationHealth.province = data.province;
 
+        db = await helper.getOracleClient(db, DB_CONFIG_CONSTELLATION);
         languagesQuery = await db(`${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH_LANGUAGE`).where({ VALUE: data.language_prefer_to_receive_services }).select();
         const language = languagesQuery.length == 1 ? languagesQuery[0] : undefined;
 
@@ -480,7 +478,7 @@ constellationRouter.post("/store", async (req: Request, res: Response) => {
         }
 
         constellationHealth.include_family_members = data.include_family_members;
-
+        db = await helper.getOracleClient(db, DB_CONFIG_CONSTELLATION);
         constellationSaved = await db(`${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH`).insert(constellationHealth).into(`${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH`).returning('ID');
         const idConstellation = constellationSaved.find((obj: any) => {return obj.id;})
 
@@ -500,7 +498,7 @@ constellationRouter.post("/store", async (req: Request, res: Response) => {
             SUBMISSION_ID: idConstellation.id
         };
 
-        let loggedAction = helper.insertLog(logFields);
+        let loggedAction = await helper.insertLog(logFields);
 
         if(!loggedAction){
             console.log('The action could not be logged: '+logFields.TABLE_NAME+' '+logFields.TITLE);
@@ -513,6 +511,7 @@ constellationRouter.post("/store", async (req: Request, res: Response) => {
 
             let familyMembers = await dataFamilyMembers(idConstellation.id, jsonFm);
             let familyMembersSaved = false;
+            db = await helper.getOracleClient(db, DB_CONFIG_CONSTELLATION);
 
             for (const familyMember of familyMembers) {
                 await db(`${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH_FAMILY_MEMBERS`).insert(familyMember).into(`${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH_FAMILY_MEMBERS`)
@@ -543,8 +542,6 @@ constellationRouter.post("/store", async (req: Request, res: Response) => {
             status: 404,
             message: 'Request could not be processed ' + e
         });
-    } finally {
-        db.destroy()
     }
 
 });
@@ -556,9 +553,10 @@ constellationRouter.post("/store", async (req: Request, res: Response) => {
  * @return json
  */
 constellationRouter.post("/export/", async (req: Request, res: Response) => {
-    const db = knex(DB_CONFIG_CONSTELLATION);
+
     try {
-        var requests = req.body.params.requests;
+        var requests = req.body.params.requests; 
+        db = await helper.getOracleClient(db, DB_CONFIG_CONSTELLATION);
         let status_request = req.body.params.status;
         var dateFrom = req.body.params.dateFrom;
         var dateTo = req.body.params.dateTo;
@@ -727,7 +725,7 @@ constellationRouter.post("/export/", async (req: Request, res: Response) => {
             });
         });
 
-        let loggedAction = helper.insertLog(logFields);
+        let loggedAction = await helper.insertLog(logFields);
 
         if(!loggedAction){
             res.send( {
@@ -744,8 +742,6 @@ constellationRouter.post("/export/", async (req: Request, res: Response) => {
             status: 400,
             message: 'Request could not be processed'
         });
-    } finally {
-        db.destroy();
     }    
 });
 
@@ -758,9 +754,10 @@ constellationRouter.post("/export/", async (req: Request, res: Response) => {
  */
 
 constellationRouter.patch("/changeStatus", async (req: Request, res: Response) => {
-    const db = knex(DB_CONFIG_CONSTELLATION);
+
     try {
-        var constellation_id = req.body.params.requests;
+        var constellation_id = req.body.params.requests; 
+        db = await helper.getOracleClient(db, DB_CONFIG_CONSTELLATION);
         var status_id = req.body.params.requestStatus;
         var updateStatus = await db(`${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH`).update({status: status_id}).whereIn("ID", constellation_id);
         var statusData = await db(`${SCHEMA_CONSTELLATION}.CONSTELLATION_STATUS`).where('ID', status_id).first();
@@ -782,7 +779,7 @@ constellationRouter.patch("/changeStatus", async (req: Request, res: Response) =
                     });
                 });
 
-                let loggedAction = helper.insertLog(logFields);
+                let loggedAction = await helper.insertLog(logFields);
 
                 if(!loggedAction){
                     res.send( {
@@ -801,15 +798,13 @@ constellationRouter.patch("/changeStatus", async (req: Request, res: Response) =
             status: 400,
             message: 'Request could not be processed'
         });
-    } finally {
-        db.destroy();
     }
 });
 
 constellationRouter.post("/duplicates", async (req: Request, res: Response) => {
-    const db = knex(DB_CONFIG_CONSTELLATION);
-    try {
 
+    try {
+db = await helper.getOracleClient(db, DB_CONFIG_CONSTELLATION);
         var constellationOriginal = Object();
         var constellationDuplicate = Object();
         var constellation = Array();
@@ -886,8 +881,6 @@ constellationRouter.post("/duplicates", async (req: Request, res: Response) => {
             status: 400,
             message: 'Request could not be processed'
         });
-    } finally {
-        db.destroy();
     }
 
 });
@@ -900,9 +893,9 @@ constellationRouter.post("/duplicates", async (req: Request, res: Response) => {
  * @return json
  */
 constellationRouter.get("/duplicates/details/:duplicate_id",[param("duplicate_id").isInt().notEmpty()], async (req: Request, res: Response) => {
-    const db = knex(DB_CONFIG_CONSTELLATION);
-    try {
 
+    try {
+db = await helper.getOracleClient(db, DB_CONFIG_CONSTELLATION);
         let duplicate_id = Number(req.params.duplicate_id);
         var constellation = Object();
         var constellationDuplicate = Object();
@@ -1064,8 +1057,6 @@ constellationRouter.get("/duplicates/details/:duplicate_id",[param("duplicate_id
             status: 400,
             message: 'Request could not be processed'
         });
-    } finally {
-        db.destroy();
     }
 });
 
@@ -1076,9 +1067,10 @@ constellationRouter.get("/duplicates/details/:duplicate_id",[param("duplicate_id
  * @return json
  */
 constellationRouter.get("/duplicates/validateWarning/:duplicate_id",[param("duplicate_id").isInt().notEmpty()], async (req: Request, res: Response) => {
-    const db = knex(DB_CONFIG_CONSTELLATION);
+
     try {
-        var duplicate_id = Number(req.params.duplicate_id);
+        var duplicate_id = Number(req.params.duplicate_id); 
+        db = await helper.getOracleClient(db, DB_CONFIG_CONSTELLATION);
         var warning = Object();
         var flagExists = true;
         var message = "";
@@ -1104,8 +1096,6 @@ constellationRouter.get("/duplicates/validateWarning/:duplicate_id",[param("dupl
             status: 400,
             message: 'Request could not be processed'
         });
-    } finally {
-        db.destroy();
     }
 });
 
@@ -1117,9 +1107,9 @@ constellationRouter.get("/duplicates/validateWarning/:duplicate_id",[param("dupl
  * @return json
  */
 constellationRouter.patch("/duplicates/primary", async (req: Request, res: Response) => {
-    const db = knex(DB_CONFIG_CONSTELLATION);
-    try {
 
+    try {
+        db = await helper.getOracleClient(db, DB_CONFIG_CONSTELLATION);
         var warning = Number(req.body.params.warning);
         var request = Number(req.body.params.request);
         var type = req.body.params.type;
@@ -1182,7 +1172,7 @@ constellationRouter.patch("/duplicates/primary", async (req: Request, res: Respo
                 ACTION_DATA: fieldList
         });
 
-        let loggedAction = helper.insertLog(logFields);
+        let loggedAction = await helper.insertLog(logFields);
 
         if(!loggedAction){
             res.send( {
@@ -1202,8 +1192,6 @@ constellationRouter.patch("/duplicates/primary", async (req: Request, res: Respo
             status: 400,
             message: 'Request could not be processed'
         });
-    } finally {
-        db.destroy();
     }
 });
 
@@ -1216,8 +1204,7 @@ constellationRouter.patch("/duplicates/primary", async (req: Request, res: Respo
  */
 async function dataFamilyMembers(idConstellationHealth:number, arrayMembers:any){
 
-    const db = knex(DB_CONFIG_CONSTELLATION);
-
+    db = await helper.getOracleClient(db, DB_CONFIG_CONSTELLATION);
     var familyMembersInsert = Array();
     var languages = Object();
     var demographics = Object();
@@ -1283,7 +1270,7 @@ async function dataFamilyMembers(idConstellationHealth:number, arrayMembers:any)
 }
 
 async function getAllStatus(){
-  const db = knex(DB_CONFIG_CONSTELLATION);
+db = await helper.getOracleClient(db, DB_CONFIG_CONSTELLATION);
   var constellationStatus = Array();
   constellationStatus = await db(`${SCHEMA_CONSTELLATION}.CONSTELLATION_STATUS`).select().then((rows: any) => {
     let arrayResult = Array();
@@ -1302,7 +1289,7 @@ async function getAllStatus(){
  * @return {array}
  */
 async function getMultipleIdsByModel(model: string, names: any) {
-    const db = knex(DB_CONFIG_CONSTELLATION);
+    db = await helper.getOracleClient(db, DB_CONFIG_CONSTELLATION);
     var others = "";
     var data: any[] = [];
     var catalog = Object();
