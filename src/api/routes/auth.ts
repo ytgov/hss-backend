@@ -7,32 +7,32 @@ import axios from 'axios';
 import knex from "knex";
 import { SCHEMA_GENERAL, REDIS_CONFIG } from "../config";
 import { helper } from "../utils";
-// const redis = require('redis');
-// const RedisStore = require("connect-redis").default
+const redis = require('redis');
+const RedisStore = require("connect-redis").default
 var RateLimit = require('express-rate-limit');
 const {auth} = require('express-openid-connect')
 const userRepo = new UserPermissionRepository();
 
 
 //Configure redis client
-// const redisClient = redis.createClient({ 
-//     url: REDIS_CONFIG.url
-// });
+const redisClient = redis.createClient({ 
+    url: REDIS_CONFIG.url
+});
 
-// redisClient.connect().catch(console.error)
+redisClient.connect().catch(console.error)
 
-// redisClient.on('error', function(err: string) {
-//     console.log('Could not establish a connection with redis. ' + err);
-// });
-// redisClient.on('connect', function(err: string) {
-//     console.log('Connected to redis successfully');
-// });
+redisClient.on('error', function(err: string) {
+    console.log('Could not establish a connection with redis. ' + err);
+});
+redisClient.on('connect', function(err: string) {
+    console.log('Connected to redis successfully');
+});
 
-// // Initialize store.
-// let redisStore = new RedisStore({
-//     client: redisClient,
-//     prefix: "hss-backend-redis:",
-// })
+// Initialize store.
+let redisStore = new RedisStore({
+    client: redisClient,
+    prefix: "hss-backend-redis:",
+})
 
 
 export function configureAuthentication(app: Express) {
@@ -41,14 +41,14 @@ export function configureAuthentication(app: Express) {
         max: 5000
     }));
 
-    // app.use(
-    //     session({
-    //         store: redisStore,
-    //         secret: REDIS_CONFIG.secret,
-    //         resave: false,
-    //         saveUninitialized: false,
-    //     })
-    // )
+    app.use(
+        session({
+            store: redisStore,
+            secret: REDIS_CONFIG.secret,
+            resave: false,
+            saveUninitialized: false,
+        })
+    )
 
     app.use(auth({
         authRequired: false,
