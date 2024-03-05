@@ -498,7 +498,7 @@ constellationRouter.post("/store", async (req: Request, res: Response) => {
             SUBMISSION_ID: idConstellation.id
         };
 
-        let loggedAction = helper.insertLog(logFields);
+        let loggedAction = await helper.insertLog(logFields);
 
         if(!loggedAction){
             console.log('The action could not be logged: '+logFields.TABLE_NAME+' '+logFields.TITLE);
@@ -725,7 +725,7 @@ constellationRouter.post("/export/", async (req: Request, res: Response) => {
             });
         });
 
-        let loggedAction = helper.insertLog(logFields);
+        let loggedAction = await helper.insertLog(logFields);
 
         if(!loggedAction){
             res.send( {
@@ -779,7 +779,7 @@ constellationRouter.patch("/changeStatus", async (req: Request, res: Response) =
                     });
                 });
 
-                let loggedAction = helper.insertLog(logFields);
+                let loggedAction = await helper.insertLog(logFields);
 
                 if(!loggedAction){
                     res.send( {
@@ -1172,7 +1172,7 @@ constellationRouter.patch("/duplicates/primary", async (req: Request, res: Respo
                 ACTION_DATA: fieldList
         });
 
-        let loggedAction = helper.insertLog(logFields);
+        let loggedAction = await helper.insertLog(logFields);
 
         if(!loggedAction){
             res.send( {

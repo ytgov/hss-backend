@@ -495,7 +495,7 @@ hipmaRouter.post("/store", async (req: Request, res: Response) => {
             SUBMISSION_ID: hipma_id.id
         };
 
-        let loggedAction = helper.insertLog(logFields);
+        let loggedAction = await helper.insertLog(logFields);
 
         if(!loggedAction){
             console.log('The action could not be logged: '+logFields.TABLE_NAME+' '+logFields.TITLE);
@@ -584,7 +584,7 @@ hipmaRouter.patch("/changeStatus", async (req: Request, res: Response) => {
                     });
                 });
 
-                let loggedAction = helper.insertLog(logFields);
+                let loggedAction = await helper.insertLog(logFields);
 
                 if(!loggedAction){
                     res.send( {
@@ -782,7 +782,7 @@ hipmaRouter.post("/export", async (req: Request, res: Response) => {
                 });
             });
 
-            let loggedAction = helper.insertLog(logFields);
+            let loggedAction = await helper.insertLog(logFields);
 
             if(!loggedAction){
                 res.send( {
@@ -1153,7 +1153,7 @@ hipmaRouter.patch("/duplicates/primary", async (req: Request, res: Response) => 
                 ACTION_DATA: fieldList
         });
 
-        let loggedAction = helper.insertLog(logFields);
+        let loggedAction = await helper.insertLog(logFields);
 
         if(!loggedAction){
             res.send( {

@@ -127,8 +127,6 @@ dentalRouter.post("/", async (req: Request, res: Response) => {
             status: 400,
             message: 'Request could not be processed'
         });
-    } finally {
-        await db.destroy();
     }
 });
 
@@ -164,7 +162,7 @@ dentalRouter.patch("/changeStatus", async (req: Request, res: Response) => {
                     });
                 });
 
-                let loggedAction = helper.insertLog(logFields);
+                let loggedAction = await helper.insertLog(logFields);
 
                 if(!loggedAction){
                     res.send( {
@@ -183,8 +181,6 @@ dentalRouter.patch("/changeStatus", async (req: Request, res: Response) => {
             status: 400,
             message: 'Request could not be processed'
         });
-    } finally {
-        await db.destroy();
     }
 });
 
@@ -224,8 +220,6 @@ dentalRouter.get("/validateRecord/:dentalService_id",[param("dentalService_id").
             status: 400,
             message: 'Request could not be processed'
         });
-    } finally {
-        await db.destroy();
     }
 });
 
@@ -460,8 +454,6 @@ dentalRouter.get("/show/:dentalService_id", checkPermissions("dental_view"), [pa
             status: 400,
             message: 'Request could not be processed'
         });
-    } finally {
-        await db.destroy();
     }
 });
 
@@ -629,7 +621,7 @@ dentalRouter.post("/export/", async (req: Request, res: Response) => {
             });
         });
 
-        let loggedAction = helper.insertLog(logFields);
+        let loggedAction = await helper.insertLog(logFields);
 
         if(!loggedAction){
             res.send( {
@@ -646,8 +638,6 @@ dentalRouter.post("/export/", async (req: Request, res: Response) => {
             status: 400,
             message: 'Request could not be processed'
         });
-    } finally {
-        await db.destroy();
     }
 });
 
@@ -762,8 +752,6 @@ dentalRouter.post("/duplicates", async (req: Request, res: Response) => {
             status: 400,
             message: 'Request could not be processed'
         });
-    } finally {
-        await db.destroy();
     }
 
 });
@@ -930,8 +918,6 @@ dentalRouter.get("/duplicates/details/:duplicate_id",[param("duplicate_id").isIn
             status: 400,
             message: 'Request could not be processed'
         });
-    } finally {
-        await db.destroy();
     }
 });
 
@@ -970,8 +956,6 @@ dentalRouter.get("/duplicates/validateWarning/:duplicate_id",[param("duplicate_i
             status: 400,
             message: 'Request could not be processed'
         });
-    } finally {
-        await db.destroy();
     }
 });
 
@@ -1043,7 +1027,7 @@ dentalRouter.patch("/duplicates/primary", async (req: Request, res: Response) =>
                 ACTION_DATA: fieldList
         });
 
-        let loggedAction = helper.insertLog(logFields);
+        let loggedAction = await helper.insertLog(logFields);
 
         if(!loggedAction){
             res.send( {
@@ -1064,8 +1048,6 @@ dentalRouter.patch("/duplicates/primary", async (req: Request, res: Response) =>
             status: 400,
             message: 'Request could not be processed'
         });
-    } finally {
-        await db.destroy();
     }
 });
 
@@ -1107,8 +1089,6 @@ dentalRouter.get("/downloadFile/:dentalFile_id",[param("dentalFile_id").isInt().
             status: 400,
             message: 'Request could not be processed'
         });
-    } finally {
-        await db.destroy();
     }
 });
 
@@ -1346,7 +1326,7 @@ dentalRouter.post("/store", async (req: Request, res: Response) => {
             SUBMISSION_ID: dentalId.id
         };
 
-        let loggedAction = helper.insertLog(logFields);
+        let loggedAction = await helper.insertLog(logFields);
 
         if(!loggedAction){
             console.log('The action could not be logged: '+logFields.TABLE_NAME+' '+logFields.TITLE);
@@ -1361,8 +1341,6 @@ dentalRouter.post("/store", async (req: Request, res: Response) => {
             status: 404,
             message: 'Request could not be processed ' + e
         });
-    } finally {
-        await db.destroy();
     }
 
 });
@@ -1420,8 +1398,6 @@ dentalRouter.post("/storeInternalFields", async (req: Request, res: Response) =>
             status: 400,
             message: 'Request could not be processed'
         });
-    } finally {
-        await db.destroy();
     }
 });
 
@@ -1455,8 +1431,6 @@ dentalRouter.post("/storeComments", async (req: Request, res: Response) => {
             status: 400,
             message: 'Request could not be processed'
         });
-    } finally {
-        await db.destroy();
     }
 });
 
@@ -1739,7 +1713,7 @@ dentalRouter.patch("/update", async (req: Request, res: Response) => {
             ACTION_DATA: fieldList
         };
 
-        let loggedAction = helper.insertLog(logFields);
+        let loggedAction = await helper.insertLog(logFields);
 
         if(!loggedAction){
             res.send( {
@@ -1754,8 +1728,6 @@ dentalRouter.patch("/update", async (req: Request, res: Response) => {
             status: 400,
             message: 'Request could not be processed ' + e
         });
-    } finally {
-        await db.destroy();
     }
 });
 

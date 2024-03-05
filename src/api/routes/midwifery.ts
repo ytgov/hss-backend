@@ -510,7 +510,7 @@ midwiferyRouter.post("/store", async (req: Request, res: Response) => {
         midwiferyCommunityLocations = await db(`${SCHEMA_MIDWIFERY}.MIDWIFERY_COMMUNITY_LOCATIONS`).where({ DESCRIPTION: data.community_located }).select().then((data:any) => {
             return data[0];
         });
-        db = await helper.getOracleClient(db, DB_CONFIG_DENTAL);
+        db = await helper.getOracleClient(db, DB_CONFIG_MIDWIFERY);
 
         if(midwiferyCommunityLocations) {
             midwifery.COMMUNITY_LOCATED = midwiferyCommunityLocations.id;
@@ -547,7 +547,7 @@ midwiferyRouter.post("/store", async (req: Request, res: Response) => {
         }else{
             midwifery.WHERE_TO_GIVE_BIRTH = null;
         }
-        db = await helper.getOracleClient(db, DB_CONFIG_DENTAL);
+        db = await helper.getOracleClient(db, DB_CONFIG_MIDWIFERY);
 
         const groupValue = await getMultipleIdsByModel("MidwiferyGroupsCommunities", data.do_you_identify_with_one_or_more_of_these_groups_and_communities);
         midwifery.DO_YOU_IDENTIFY_WITH_ONE_OR_MORE_OF_THESE_GROUPS_AND_COMMUNITIE = groupValue ? db.raw(`UTL_RAW.CAST_TO_RAW(?)`,groupValue) : null;
@@ -567,7 +567,7 @@ midwiferyRouter.post("/store", async (req: Request, res: Response) => {
         midwifery.FAMILY_PHYSICIAN = await getMidwiferyOptions("family_physician", data.family_physician);
         midwifery.MAJOR_MEDICAL_CONDITIONS = await getMidwiferyOptions("major_medical_conditions", data.major_medical_conditions);
 
-        db = await helper.getOracleClient(db, DB_CONFIG_DENTAL);
+        db = await helper.getOracleClient(db, DB_CONFIG_MIDWIFERY);
 
         if(!_.isNull(data.due_date) && !_.isEmpty(data.due_date)) {
             data.due_date = new Date(data.due_date);
@@ -874,7 +874,7 @@ midwiferyRouter.post("/export", async (req: Request, res: Response) => {
                 });
             });
 
-            let loggedAction = helper.insertLog(logFields);
+            let loggedAction = await helper.insertLog(logFields);
 
             if(!loggedAction){
                 res.send( {
@@ -928,7 +928,7 @@ midwiferyRouter.patch("/changeStatus", async (req: Request, res: Response) => {
                     });
                 });
 
-                let loggedAction = helper.insertLog(logFields);
+                let loggedAction = await helper.insertLog(logFields);
 
                 if(!loggedAction){
                     res.send( {
@@ -1362,7 +1362,7 @@ midwiferyRouter.patch("/duplicates/primary", async (req: Request, res: Response)
                 ACTION_DATA: fieldList
         });
 
-        let loggedAction = helper.insertLog(logFields);
+        let loggedAction = await helper.insertLog(logFields);
 
         if(!loggedAction){
             res.send( {
