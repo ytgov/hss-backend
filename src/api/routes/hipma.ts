@@ -88,7 +88,6 @@ hipmaRouter.get("/submissions/status/:action_id/:action_value", [
  * @return json
  */
 hipmaRouter.post("/", async (req: Request, res: Response) => {
-
     try {
         var dateFrom = req.body.params.dateFrom;
         var dateTo = req.body.params.dateTo;
@@ -647,9 +646,7 @@ hipmaRouter.get("/downloadFile/:hipmaFile_id",[param("hipmaFile_id").isInt().not
  * @return file
  */
 hipmaRouter.post("/export", async (req: Request, res: Response) => {
-
     try {
-
         var requests = req.body.params.requests;
         var dateFrom = req.body.params.dateFrom;
         var dateTo = req.body.params.dateTo;
@@ -1091,9 +1088,7 @@ hipmaRouter.get("/duplicates/details/:duplicate_id",[param("duplicate_id").isInt
  * @return json
  */
 hipmaRouter.patch("/duplicates/primary", async (req: Request, res: Response) => {
-
     try {
-
         var warning = Number(req.body.params.warning);
         var request = Number(req.body.params.request);
         var type = req.body.params.type;

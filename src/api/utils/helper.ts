@@ -16,15 +16,15 @@ export async function getOracleClient(knexClient: any | undefined, configOptions
                 knexClient = undefined;
             } else {
                 // Re-throw other errors
-                console.error('The connection was closed due to an error:', error);
                 knexClient = undefined;
             }
-	}
+	    }
     }
 
     // If knexClient is undefined, create a new client
     if (!knexClient) {
         knexClient = knex(configOptions);
+        console.log('The connection has been closed due to an error, a new connection is opened.');
     }
 
     return knexClient;

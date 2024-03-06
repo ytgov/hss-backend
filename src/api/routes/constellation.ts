@@ -553,7 +553,6 @@ constellationRouter.post("/store", async (req: Request, res: Response) => {
  * @return json
  */
 constellationRouter.post("/export/", async (req: Request, res: Response) => {
-
     try {
         var requests = req.body.params.requests; 
         db = await helper.getOracleClient(db, DB_CONFIG_CONSTELLATION);
@@ -754,7 +753,6 @@ constellationRouter.post("/export/", async (req: Request, res: Response) => {
  */
 
 constellationRouter.patch("/changeStatus", async (req: Request, res: Response) => {
-
     try {
         var constellation_id = req.body.params.requests; 
         db = await helper.getOracleClient(db, DB_CONFIG_CONSTELLATION);
@@ -802,9 +800,8 @@ constellationRouter.patch("/changeStatus", async (req: Request, res: Response) =
 });
 
 constellationRouter.post("/duplicates", async (req: Request, res: Response) => {
-
     try {
-db = await helper.getOracleClient(db, DB_CONFIG_CONSTELLATION);
+        db = await helper.getOracleClient(db, DB_CONFIG_CONSTELLATION);
         var constellationOriginal = Object();
         var constellationDuplicate = Object();
         var constellation = Array();
@@ -893,9 +890,8 @@ db = await helper.getOracleClient(db, DB_CONFIG_CONSTELLATION);
  * @return json
  */
 constellationRouter.get("/duplicates/details/:duplicate_id",[param("duplicate_id").isInt().notEmpty()], async (req: Request, res: Response) => {
-
     try {
-db = await helper.getOracleClient(db, DB_CONFIG_CONSTELLATION);
+        db = await helper.getOracleClient(db, DB_CONFIG_CONSTELLATION);
         let duplicate_id = Number(req.params.duplicate_id);
         var constellation = Object();
         var constellationDuplicate = Object();
@@ -1067,7 +1063,6 @@ db = await helper.getOracleClient(db, DB_CONFIG_CONSTELLATION);
  * @return json
  */
 constellationRouter.get("/duplicates/validateWarning/:duplicate_id",[param("duplicate_id").isInt().notEmpty()], async (req: Request, res: Response) => {
-
     try {
         var duplicate_id = Number(req.params.duplicate_id); 
         db = await helper.getOracleClient(db, DB_CONFIG_CONSTELLATION);
@@ -1107,7 +1102,6 @@ constellationRouter.get("/duplicates/validateWarning/:duplicate_id",[param("dupl
  * @return json
  */
 constellationRouter.patch("/duplicates/primary", async (req: Request, res: Response) => {
-
     try {
         db = await helper.getOracleClient(db, DB_CONFIG_CONSTELLATION);
         var warning = Number(req.body.params.warning);

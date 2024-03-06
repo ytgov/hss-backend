@@ -97,7 +97,7 @@ dentalRouter.post("/", async (req: Request, res: Response) => {
         var dateTo = req.body.params.dateTo;
         var dateYear = req.body.params.dateYear;
         let status_request = req.body.params.status;
-
+        db = await helper.getOracleClient(db, DB_CONFIG_DENTAL);
         let query = db(`${SCHEMA_DENTAL}.DENTAL_SERVICE_SUBMISSIONS`)
             .orderBy('ID', 'ASC');
 

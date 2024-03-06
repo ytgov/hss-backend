@@ -251,7 +251,6 @@ midwiferyRouter.get("/validateRecord/:midwifery_id",[param("midwifery_id").isInt
  * @return json
  */
 midwiferyRouter.get("/show/:midwifery_id",[param("midwifery_id").isInt().notEmpty()], async (req: Request, res: Response) => {
-
     try {
         var midwiferyStatus = Array();
         let midwifery_id = Number(req.params.midwifery_id);
@@ -902,7 +901,6 @@ midwiferyRouter.post("/export", async (req: Request, res: Response) => {
  * @return json
  */
 midwiferyRouter.patch("/changeStatus", async (req: Request, res: Response) => {
-
     try {
         var midwifery_id = req.body.params.requests;
         var status_id = req.body.params.requestStatus;
@@ -951,7 +949,6 @@ midwiferyRouter.patch("/changeStatus", async (req: Request, res: Response) => {
 });
 
 midwiferyRouter.post("/duplicates", async (req: Request, res: Response) => {
-
     try {
         var midwiferyOriginal = Object();
         var midwiferyDuplicate = Object();
