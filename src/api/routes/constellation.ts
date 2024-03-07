@@ -560,6 +560,7 @@ constellationRouter.post("/export/", async (req: Request, res: Response) => {
         var dateFrom = req.body.params.dateFrom;
         var dateTo = req.body.params.dateTo;
         var idSubmission: any[] = [];
+        let userId = req.user?.db_user.user.id || null;
 
         let query  = db(`${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH`)
             .leftJoin(`${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH_LANGUAGE`, 'CONSTELLATION_HEALTH.LANGUAGE_PREFER_TO_RECEIVE_SERVICES', 'CONSTELLATION_HEALTH_LANGUAGE.ID')
@@ -711,18 +712,23 @@ constellationRouter.post("/export/", async (req: Request, res: Response) => {
             });
         }
 
-        var logFields = Array();
+        var querySql = Object();
 
-        _.forEach(idSubmission, function(value: any) {
-            logFields.push({
-                ACTION_TYPE: 5,
-                TITLE: "Export submission",
-                SCHEMA_NAME: SCHEMA_CONSTELLATION,
-                TABLE_NAME: "CONSTELLATION_HEALTH",
-                SUBMISSION_ID: value,
-                USER_ID: req.user?.db_user.user.id
-            });
-        });
+        if(!_.isEmpty(query)) {
+            querySql =  db.raw("utl_raw.cast_to_raw(?) ", query.toString());
+        }else{
+            querySql = null;
+        }
+
+        var logFields = {
+            ACTION_TYPE: 5,
+            TITLE: "Export submission",
+            SCHEMA_NAME: SCHEMA_CONSTELLATION,
+            TABLE_NAME: "CONSTELLATION_HEALTH",
+            SUBMISSION_ID: null,
+            ACTION_DATA: querySql,
+            USER_ID: userId
+        };
 
         let loggedAction = await helper.insertLog(logFields);
 

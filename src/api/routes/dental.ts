@@ -473,6 +473,7 @@ dentalRouter.post("/export/", async (req: Request, res: Response) => {
         const idSubmission: number[] = [];
         var dentalInternalFields = Object();
         db = await helper.getOracleClient(db, DB_CONFIG_DENTAL);
+        let userId = req.user?.db_user.user.id || null;
 
         let query  = db(`${SCHEMA_DENTAL}.DENTAL_SERVICE_SUBMISSIONS_DETAILS`)
                     .where('DENTAL_SERVICE_SUBMISSIONS_DETAILS.STATUS', '<>', 4);
@@ -607,19 +608,23 @@ dentalRouter.post("/export/", async (req: Request, res: Response) => {
             }
         });
 
+        var querySql = Object();
 
-        var logFields = Array();
+        if(!_.isEmpty(query)) {
+            querySql =  db.raw("utl_raw.cast_to_raw(?) ", query.toString());
+        }else{
+            querySql = null;
+        }
 
-        _.forEach(idSubmission, function(value: any) {
-            logFields.push({
-                ACTION_TYPE: 5,
-                TITLE: "Export submission",
-                SCHEMA_NAME: SCHEMA_DENTAL,
-                TABLE_NAME: "DENTAL_SERVICE",
-                SUBMISSION_ID: value,
-                USER_ID: req.user?.db_user.user.id
-            });
-        });
+        var logFields = {
+            ACTION_TYPE: 5,
+            TITLE: "Export submission",
+            SCHEMA_NAME: SCHEMA_DENTAL,
+            TABLE_NAME: "DENTAL_SERVICE",
+            SUBMISSION_ID: null,
+            ACTION_DATA: querySql,
+            USER_ID: userId
+        };
 
         let loggedAction = await helper.insertLog(logFields);
 

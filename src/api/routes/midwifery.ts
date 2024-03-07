@@ -620,6 +620,8 @@ midwiferyRouter.post("/export", async (req: Request, res: Response) => {
         var midwiferyOptions = Object();
         db = await helper.getOracleClient(db, DB_CONFIG_MIDWIFERY);
         let responseSent = false;
+        let userId = req.user?.db_user.user.id || null;
+
         let query = db(`${SCHEMA_MIDWIFERY}.MIDWIFERY_SERVICES`)
         .join(`${SCHEMA_MIDWIFERY}.MIDWIFERY_STATUS`, 'MIDWIFERY_SERVICES.STATUS', '=', 'MIDWIFERY_STATUS.ID')
         .leftJoin(`${SCHEMA_MIDWIFERY}.MIDWIFERY_BIRTH_LOCATIONS`, 'MIDWIFERY_SERVICES.WHERE_TO_GIVE_BIRTH', 'MIDWIFERY_BIRTH_LOCATIONS.ID')
@@ -860,30 +862,34 @@ midwiferyRouter.post("/export", async (req: Request, res: Response) => {
         let random = (Math.random() + 1).toString(36).substring(7);
         let fileName = 'midwifery_'+random+'_requests_'+todayDate+".xlsx";
 
-        var logFields = Array();
+        var querySql = Object();
 
-        if(requests instanceof Array){
-            _.forEach(requests, function(value: any) {
-                logFields.push({
-                    ACTION_TYPE: 5,
-                    TITLE: "Export submission",
-                    SCHEMA_NAME: SCHEMA_MIDWIFERY,
-                    TABLE_NAME: "MIDWIFERY_SERVICES",
-                    SUBMISSION_ID: value,
-                    USER_ID: req.user?.db_user.user.id
-                });
-            });
-
-            let loggedAction = await helper.insertLog(logFields);
-
-            if(!loggedAction){
-                responseSent = true;
-                res.send( {
-                    status: 400,
-                    message: 'The action could not be logged'
-                });
-            }
+        if(!_.isEmpty(query)) {
+            querySql =  db.raw("utl_raw.cast_to_raw(?) ", query.toString());
+        }else{
+            querySql = null;
         }
+
+        var logFields = {
+            ACTION_TYPE: 5,
+            TITLE: "Export submission",
+            SCHEMA_NAME: SCHEMA_MIDWIFERY,
+            TABLE_NAME: "MIDWIFERY_SERVICES",
+            SUBMISSION_ID: null,
+            ACTION_DATA: querySql,
+            USER_ID: userId
+        };
+
+        let loggedAction = await helper.insertLog(logFields);
+
+        if(!loggedAction){
+            responseSent = true;
+            res.send( {
+                status: 400,
+                message: 'The action could not be logged'
+            });
+        }
+
         if (!responseSent) {
             res.json({ status:200, data:midwifery, fileName:fileName });
         }else{
