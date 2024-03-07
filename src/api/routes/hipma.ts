@@ -766,12 +766,21 @@ hipmaRouter.post("/export", async (req: Request, res: Response) => {
         let random = (Math.random() + 1).toString(36).substring(7);
         let fileName = 'hipma_'+random+'_requests_'+todayDate+".xlsx";
 
-        var querySql = Object();
+        var bufferQuery = Object();
+        let stringQuery = query.toString();
+
+        // Verify the length of the serialized JSON
+        const maxLengthInBytes = 1 * (1024 * 1024); // 1MB to  bytes
+
+        if (Buffer.byteLength(stringQuery, 'utf8') > maxLengthInBytes) {
+            console.log('The object exceeds 1MB. It will be truncated.');
+            stringQuery = stringQuery.substring(0, maxLengthInBytes);
+        }
 
         if(!_.isEmpty(query)) {
-            querySql =  db.raw("utl_raw.cast_to_raw(?) ", query.toString());
+            bufferQuery = Buffer.from(stringQuery);
         }else{
-            querySql = null;
+            bufferQuery = null;
         }
 
         var logFields = {
@@ -780,17 +789,14 @@ hipmaRouter.post("/export", async (req: Request, res: Response) => {
             SCHEMA_NAME: SCHEMA_HIPMA,
             TABLE_NAME: "HEALTH_INFORMATION",
             SUBMISSION_ID: null,
-            ACTION_DATA: querySql,
+            ACTION_DATA: bufferQuery,
             USER_ID: userId
         };
 
         let loggedAction = await helper.insertLog(logFields);
 
         if(!loggedAction){
-            res.send( {
-                status: 400,
-                message: 'The action could not be logged'
-            });
+            console.log("Hipma Export could not be logged");
         }
 
         res.json({ data:hipma, fileName:fileName });

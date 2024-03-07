@@ -619,7 +619,6 @@ midwiferyRouter.post("/export", async (req: Request, res: Response) => {
         let status_request = req.body.params.status;
         var midwiferyOptions = Object();
         db = await helper.getOracleClient(db, DB_CONFIG_MIDWIFERY);
-        let responseSent = false;
         let userId = req.user?.db_user.user.id || null;
 
         let query = db(`${SCHEMA_MIDWIFERY}.MIDWIFERY_SERVICES`)
@@ -862,12 +861,21 @@ midwiferyRouter.post("/export", async (req: Request, res: Response) => {
         let random = (Math.random() + 1).toString(36).substring(7);
         let fileName = 'midwifery_'+random+'_requests_'+todayDate+".xlsx";
 
-        var querySql = Object();
+        var bufferQuery = Object();
+        let stringQuery = query.toString();
+
+        // Verify the length of the serialized JSON
+        const maxLengthInBytes = 1 * (1024 * 1024); // 1MB to  bytes
+
+        if (Buffer.byteLength(stringQuery, 'utf8') > maxLengthInBytes) {
+            console.log('The object exceeds 1MB. It will be truncated.');
+            stringQuery = stringQuery.substring(0, maxLengthInBytes);
+        }
 
         if(!_.isEmpty(query)) {
-            querySql =  db.raw("utl_raw.cast_to_raw(?) ", query.toString());
+            bufferQuery = Buffer.from(stringQuery);
         }else{
-            querySql = null;
+            bufferQuery = null;
         }
 
         var logFields = {
@@ -876,25 +884,17 @@ midwiferyRouter.post("/export", async (req: Request, res: Response) => {
             SCHEMA_NAME: SCHEMA_MIDWIFERY,
             TABLE_NAME: "MIDWIFERY_SERVICES",
             SUBMISSION_ID: null,
-            ACTION_DATA: querySql,
+            ACTION_DATA: bufferQuery,
             USER_ID: userId
         };
 
         let loggedAction = await helper.insertLog(logFields);
 
         if(!loggedAction){
-            responseSent = true;
-            res.send( {
-                status: 400,
-                message: 'The action could not be logged'
-            });
+            console.log("Midwifery Export could not be logged");
         }
 
-        if (!responseSent) {
-            res.json({ status:200, data:midwifery, fileName:fileName });
-        }else{
-            console.log( 'Request could not be processed');
-        }
+        res.json({ status:200, data:midwifery, fileName:fileName });
 
     } catch(e) {
         console.log(e);  // debug if needed
