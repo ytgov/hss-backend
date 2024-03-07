@@ -619,7 +619,7 @@ midwiferyRouter.post("/export", async (req: Request, res: Response) => {
         let status_request = req.body.params.status;
         var midwiferyOptions = Object();
         db = await helper.getOracleClient(db, DB_CONFIG_MIDWIFERY);
-
+        let responseSent = false;
         let query = db(`${SCHEMA_MIDWIFERY}.MIDWIFERY_SERVICES`)
         .join(`${SCHEMA_MIDWIFERY}.MIDWIFERY_STATUS`, 'MIDWIFERY_SERVICES.STATUS', '=', 'MIDWIFERY_STATUS.ID')
         .leftJoin(`${SCHEMA_MIDWIFERY}.MIDWIFERY_BIRTH_LOCATIONS`, 'MIDWIFERY_SERVICES.WHERE_TO_GIVE_BIRTH', 'MIDWIFERY_BIRTH_LOCATIONS.ID')
@@ -877,14 +877,18 @@ midwiferyRouter.post("/export", async (req: Request, res: Response) => {
             let loggedAction = await helper.insertLog(logFields);
 
             if(!loggedAction){
+                responseSent = true;
                 res.send( {
                     status: 400,
                     message: 'The action could not be logged'
                 });
             }
         }
-
-        res.json({ status:200, data:midwifery, fileName:fileName });
+        if (!responseSent) {
+            res.json({ status:200, data:midwifery, fileName:fileName });
+        }else{
+            console.log( 'Request could not be processed');
+        }
 
     } catch(e) {
         console.log(e);  // debug if needed
