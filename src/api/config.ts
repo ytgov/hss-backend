@@ -79,7 +79,7 @@ export const DB_CONFIG_CONSTELLATION = {
     min: 1,
     max: 30,
     propagateCreateError: false,
-    idleTimeoutMillis: 30000,
+    idleTimeoutMillis: 120000,
     reapIntervalMillis: 10000
   },
   postProcessResponse: postProcessToLowerCase,
@@ -105,7 +105,7 @@ export const DB_CONFIG_MIDWIFERY = {
     min: 1,
     max: 30,
     propagateCreateError: false,
-    idleTimeoutMillis: 30000,
+    idleTimeoutMillis: 120000,
     reapIntervalMillis: 10000
   },
   postProcessResponse: postProcessToLowerCase
@@ -130,7 +130,7 @@ export const DB_CONFIG_HIPMA = {
     min: 1,
     max: 30,
     propagateCreateError: false,
-    idleTimeoutMillis: 30000,
+    idleTimeoutMillis: 120000,
     reapIntervalMillis: 10000
   },
   postProcessResponse: postProcessToLowerCase
@@ -155,7 +155,7 @@ export const DB_CONFIG_GENERAL = {
     min: 3,
     max: 30,
     propagateCreateError: false,
-    idleTimeoutMillis: 30000,
+    idleTimeoutMillis: 120000,
     reapIntervalMillis: 10000
   },
   postProcessResponse: postProcessToLowerCase
@@ -180,7 +180,7 @@ export const DB_CONFIG_DENTAL = {
     min: 3,
     max: 30,
     propagateCreateError: false,
-    idleTimeoutMillis: 30000,
+    idleTimeoutMillis: 120000,
     reapIntervalMillis: 10000
   },
   postProcessResponse: postProcessToLowerCase

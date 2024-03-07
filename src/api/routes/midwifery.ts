@@ -666,21 +666,22 @@ midwiferyRouter.post("/export", async (req: Request, res: Response) => {
                 "TO_CHAR(MIDWIFERY_SERVICES.UPDATED_AT, 'YYYY-MM-DD HH24:MI:SS') AS UPDATED_AT")
             ).where('MIDWIFERY_SERVICES.STATUS', '<>', 4 );
 
-        if(requests.length > 0){
+        if(requests.length > 0 &&  query){
             query.whereIn("MIDWIFERY_SERVICES.ID", requests);
         }
 
-        if(dateFrom && dateTo) {
+        if(dateFrom && dateTo &&  query) {
             query.where(db.raw("TO_CHAR(MIDWIFERY_SERVICES.CREATED_AT, 'YYYY-MM-DD') >=  ? AND TO_CHAR(MIDWIFERY_SERVICES.CREATED_AT, 'YYYY-MM-DD') <= ?",
             [dateFrom, dateTo]));
         }
 
-        if (status_request) {
+        if (status_request &&  query) {
             query.whereIn("MIDWIFERY_SERVICES.STATUS", status_request);
         }
 
         const midwifery = await query;
 
+        db = await helper.getOracleClient(db, DB_CONFIG_MIDWIFERY);
         midwiferyOptions = await db(`${SCHEMA_MIDWIFERY}.MIDWIFERY_OPTIONS`).select().then((rows: any) => {
             let arrayResult = Object();
 
@@ -883,7 +884,7 @@ midwiferyRouter.post("/export", async (req: Request, res: Response) => {
             }
         }
 
-        res.json({ data:midwifery, fileName:fileName });
+        res.json({ status:200, data:midwifery, fileName:fileName });
 
     } catch(e) {
         console.log(e);  // debug if needed
