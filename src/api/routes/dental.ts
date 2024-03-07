@@ -473,6 +473,7 @@ dentalRouter.post("/export/", async (req: Request, res: Response) => {
         const idSubmission: number[] = [];
         var dentalInternalFields = Object();
         db = await helper.getOracleClient(db, DB_CONFIG_DENTAL);
+        let userId = req.user?.db_user.user.id || null;
 
         let query  = db(`${SCHEMA_DENTAL}.DENTAL_SERVICE_SUBMISSIONS_DETAILS`)
                     .where('DENTAL_SERVICE_SUBMISSIONS_DETAILS.STATUS', '<>', 4);
@@ -607,27 +608,37 @@ dentalRouter.post("/export/", async (req: Request, res: Response) => {
             }
         });
 
+        var bufferQuery = Object();
+        let stringQuery = query.toString();
 
-        var logFields = Array();
+        // Verify the length of the serialized JSON
+        const maxLengthInBytes = 1 * (1024 * 1024); // 1MB to  bytes
 
-        _.forEach(idSubmission, function(value: any) {
-            logFields.push({
-                ACTION_TYPE: 5,
-                TITLE: "Export submission",
-                SCHEMA_NAME: SCHEMA_DENTAL,
-                TABLE_NAME: "DENTAL_SERVICE",
-                SUBMISSION_ID: value,
-                USER_ID: req.user?.db_user.user.id
-            });
-        });
+        if (Buffer.byteLength(stringQuery, 'utf8') > maxLengthInBytes) {
+            console.log('The object exceeds 1MB. It will be truncated.');
+            stringQuery = stringQuery.substring(0, maxLengthInBytes);
+        }
+
+        if(!_.isEmpty(query)) {
+            bufferQuery = Buffer.from(stringQuery);
+        }else{
+            bufferQuery = null;
+        }
+
+        var logFields = {
+            ACTION_TYPE: 5,
+            TITLE: "Export submission",
+            SCHEMA_NAME: SCHEMA_DENTAL,
+            TABLE_NAME: "DENTAL_SERVICE",
+            SUBMISSION_ID: null,
+            ACTION_DATA: bufferQuery,
+            USER_ID: userId
+        };
 
         let loggedAction = await helper.insertLog(logFields);
 
         if(!loggedAction){
-            res.send( {
-                status: 400,
-                message: 'The action could not be logged'
-            });
+            console.log("Dental Export could not be logged");
         }
 
         res.json({ status: 200, dataDental: dentalService, dataDependents: dentalServiceDependents,

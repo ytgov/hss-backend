@@ -619,7 +619,8 @@ midwiferyRouter.post("/export", async (req: Request, res: Response) => {
         let status_request = req.body.params.status;
         var midwiferyOptions = Object();
         db = await helper.getOracleClient(db, DB_CONFIG_MIDWIFERY);
-        let responseSent = false;
+        let userId = req.user?.db_user.user.id || null;
+
         let query = db(`${SCHEMA_MIDWIFERY}.MIDWIFERY_SERVICES`)
         .join(`${SCHEMA_MIDWIFERY}.MIDWIFERY_STATUS`, 'MIDWIFERY_SERVICES.STATUS', '=', 'MIDWIFERY_STATUS.ID')
         .leftJoin(`${SCHEMA_MIDWIFERY}.MIDWIFERY_BIRTH_LOCATIONS`, 'MIDWIFERY_SERVICES.WHERE_TO_GIVE_BIRTH', 'MIDWIFERY_BIRTH_LOCATIONS.ID')
@@ -860,35 +861,40 @@ midwiferyRouter.post("/export", async (req: Request, res: Response) => {
         let random = (Math.random() + 1).toString(36).substring(7);
         let fileName = 'midwifery_'+random+'_requests_'+todayDate+".xlsx";
 
-        var logFields = Array();
+        var bufferQuery = Object();
+        let stringQuery = query.toString();
 
-        if(requests instanceof Array){
-            _.forEach(requests, function(value: any) {
-                logFields.push({
-                    ACTION_TYPE: 5,
-                    TITLE: "Export submission",
-                    SCHEMA_NAME: SCHEMA_MIDWIFERY,
-                    TABLE_NAME: "MIDWIFERY_SERVICES",
-                    SUBMISSION_ID: value,
-                    USER_ID: req.user?.db_user.user.id
-                });
-            });
+        // Verify the length of the serialized JSON
+        const maxLengthInBytes = 1 * (1024 * 1024); // 1MB to  bytes
 
-            let loggedAction = await helper.insertLog(logFields);
-
-            if(!loggedAction){
-                responseSent = true;
-                res.send( {
-                    status: 400,
-                    message: 'The action could not be logged'
-                });
-            }
+        if (Buffer.byteLength(stringQuery, 'utf8') > maxLengthInBytes) {
+            console.log('The object exceeds 1MB. It will be truncated.');
+            stringQuery = stringQuery.substring(0, maxLengthInBytes);
         }
-        if (!responseSent) {
-            res.json({ status:200, data:midwifery, fileName:fileName });
+
+        if(!_.isEmpty(query)) {
+            bufferQuery = Buffer.from(stringQuery);
         }else{
-            console.log( 'Request could not be processed');
+            bufferQuery = null;
         }
+
+        var logFields = {
+            ACTION_TYPE: 5,
+            TITLE: "Export submission",
+            SCHEMA_NAME: SCHEMA_MIDWIFERY,
+            TABLE_NAME: "MIDWIFERY_SERVICES",
+            SUBMISSION_ID: null,
+            ACTION_DATA: bufferQuery,
+            USER_ID: userId
+        };
+
+        let loggedAction = await helper.insertLog(logFields);
+
+        if(!loggedAction){
+            console.log("Midwifery Export could not be logged");
+        }
+
+        res.json({ status:200, data:midwifery, fileName:fileName });
 
     } catch(e) {
         console.log(e);  // debug if needed

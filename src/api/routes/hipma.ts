@@ -651,6 +651,7 @@ hipmaRouter.post("/export", async (req: Request, res: Response) => {
         var dateFrom = req.body.params.dateFrom;
         var dateTo = req.body.params.dateTo;
         db = await helper.getOracleClient(db, DB_CONFIG_HIPMA);
+        let userId = req.user?.db_user.user.id || null;
 
         let query = db(`${SCHEMA_HIPMA}.HEALTH_INFORMATION`)
                 .leftJoin(`${SCHEMA_HIPMA}.HIPMA_REQUEST_TYPE`, 'HEALTH_INFORMATION.WHAT_TYPE_OF_REQUEST_DO_YOU_WANT_TO_MAKE_', '=', 'HIPMA_REQUEST_TYPE.ID')
@@ -765,28 +766,37 @@ hipmaRouter.post("/export", async (req: Request, res: Response) => {
         let random = (Math.random() + 1).toString(36).substring(7);
         let fileName = 'hipma_'+random+'_requests_'+todayDate+".xlsx";
 
-        var logFields = Array();
+        var bufferQuery = Object();
+        let stringQuery = query.toString();
 
-        if(requests instanceof Array){
-            _.forEach(requests, function(value: any) {
-                logFields.push({
-                    ACTION_TYPE: 5,
-                    TITLE: "Export submission",
-                    SCHEMA_NAME: SCHEMA_HIPMA,
-                    TABLE_NAME: "HEALTH_INFORMATION",
-                    SUBMISSION_ID: value,
-                    USER_ID: req.user?.db_user.user.id
-                });
-            });
+        // Verify the length of the serialized JSON
+        const maxLengthInBytes = 1 * (1024 * 1024); // 1MB to  bytes
 
-            let loggedAction = await helper.insertLog(logFields);
+        if (Buffer.byteLength(stringQuery, 'utf8') > maxLengthInBytes) {
+            console.log('The object exceeds 1MB. It will be truncated.');
+            stringQuery = stringQuery.substring(0, maxLengthInBytes);
+        }
 
-            if(!loggedAction){
-                res.send( {
-                    status: 400,
-                    message: 'The action could not be logged'
-                });
-            }
+        if(!_.isEmpty(query)) {
+            bufferQuery = Buffer.from(stringQuery);
+        }else{
+            bufferQuery = null;
+        }
+
+        var logFields = {
+            ACTION_TYPE: 5,
+            TITLE: "Export submission",
+            SCHEMA_NAME: SCHEMA_HIPMA,
+            TABLE_NAME: "HEALTH_INFORMATION",
+            SUBMISSION_ID: null,
+            ACTION_DATA: bufferQuery,
+            USER_ID: userId
+        };
+
+        let loggedAction = await helper.insertLog(logFields);
+
+        if(!loggedAction){
+            console.log("Hipma Export could not be logged");
         }
 
         res.json({ data:hipma, fileName:fileName });
