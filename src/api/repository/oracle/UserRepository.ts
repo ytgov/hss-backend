@@ -34,7 +34,7 @@ export class UserRepository extends BaseRepository<UserDTO> {
             } as UserRolesOptionsDTO);
         });
 
-        return allRoles;
+        return allRoles; 
     }
 
 }
