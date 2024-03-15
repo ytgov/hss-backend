@@ -1275,8 +1275,7 @@ dentalRouter.post("/store", async (req: Request, res: Response) => {
         }
 
         if(!_.isEmpty(data.dependent_list)){
-            let arrayDependents = getDependents(dentalId.id, data.dependent_list);
-
+            let arrayDependents = await getDependents(dentalId.id, data.dependent_list);
             let dependentsSaved = false;
 
             if(!_.isEmpty(arrayDependents)){
