@@ -94,6 +94,12 @@
 							</tr>
 
 							<tr>
+								<td>City or community</td>
+								<td>{{ constellation.community_located }}</td>
+								<td>{{ constellationDuplicated.community_located }}</td>
+							</tr>
+
+							<tr>
 								<td>How would you prefer to be contacted?</td>
 								<td>
 									{{ constellation.prefer_to_be_contacted }}

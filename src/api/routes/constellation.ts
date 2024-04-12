@@ -86,8 +86,6 @@ constellationRouter.get("/submissions/status/:action_id/:action_value", [
  * @return json
  */
 constellationRouter.post("/", async (req: Request, res: Response) => {
-
-
     try {
         db = await helper.getOracleClient(db, DB_CONFIG_CONSTELLATION);
         var dateFrom = req.body.params.dateFrom;
@@ -230,6 +228,7 @@ constellationRouter.get("/show/:constellationHealth_id", checkPermissions("const
         var constellationFamily = Object();
 
         constellationHealth = await db(`${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH`)
+            .leftJoin(`${SCHEMA_CONSTELLATION}.COMMUNITY_LOCATED`, 'CONSTELLATION_HEALTH.COMMUNITY_LOCATED',  db.raw("TO_CHAR('COMMUNITY_LOCATED.ID')"))      
             .leftJoin(`${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH_LANGUAGE`, 'CONSTELLATION_HEALTH.LANGUAGE_PREFER_TO_RECEIVE_SERVICES', 'CONSTELLATION_HEALTH_LANGUAGE.ID')
             .leftJoin(`${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH_DEMOGRAPHICS`, 'CONSTELLATION_HEALTH.DEMOGRAPHICS_GROUPS', 'CONSTELLATION_HEALTH_DEMOGRAPHICS.ID')
             .where('CONSTELLATION_HEALTH.ID', constellationHealth_id)
@@ -250,6 +249,7 @@ constellationRouter.get("/show/:constellationHealth_id", checkPermissions("const
                     `${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH.PROVINCE`,
                     `${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH.YHCIP`,
                     `${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH.POSTAL_CODE`,
+                    db.raw('CASE WHEN mcl.DESCRIPTION IS NULL THEN ms.COMMUNITY_LOCATED ELSE mcl.DESCRIPTION END AS COMMUNITY_LOCATED'),
                     `${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH.PREFER_TO_BE_CONTACTED`,
                     `${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH.PHONE_NUMBER`,
                     `${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH.EMAIL_ADDRESS`,
@@ -442,6 +442,7 @@ constellationRouter.post("/store", async (req: Request, res: Response) => {
 
         constellationHealth.yhcip = data.yhcip;
         constellationHealth.postal_code = data.postal_code;
+        constellationHealth.community_located = data.community_located;
         constellationHealth.phone_number = data.phone_number;
         constellationHealth.email_address = data.email_address;
         constellationHealth.current_family_physician = data.current_family_physician;
@@ -562,7 +563,8 @@ constellationRouter.post("/export/", async (req: Request, res: Response) => {
         var idSubmission: any[] = [];
         let userId = req.user?.db_user.user.id || null;
 
-        let query  = db(`${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH`)
+        let query = db(`${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH`)
+            .leftJoin(`${SCHEMA_CONSTELLATION}.COMMUNITY_LOCATED`, 'CONSTELLATION_HEALTH.COMMUNITY_LOCATED',  db.raw("TO_CHAR('COMMUNITY_LOCATED.ID')"))      
             .leftJoin(`${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH_LANGUAGE`, 'CONSTELLATION_HEALTH.LANGUAGE_PREFER_TO_RECEIVE_SERVICES', 'CONSTELLATION_HEALTH_LANGUAGE.ID')
             .leftJoin(`${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH_DEMOGRAPHICS`, 'CONSTELLATION_HEALTH.DEMOGRAPHICS_GROUPS', 'CONSTELLATION_HEALTH_DEMOGRAPHICS.ID')
             .select(`${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH.FIRST_NAME`,
@@ -574,7 +576,8 @@ constellationRouter.post("/export/", async (req: Request, res: Response) => {
                     `${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH.HAVE_YHCIP`,
                     `${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH.HEALTH_CARE_CARD`,
                     `${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH.YHCIP`,
-                    `${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH.POSTAL_CODE`,
+                     `${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH.POSTAL_CODE`,
+                    db.raw('CASE WHEN mcl.DESCRIPTION IS NULL THEN ms.COMMUNITY_LOCATED ELSE mcl.DESCRIPTION END AS COMMUNITY_LOCATED'),
                     `${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH.PREFER_TO_BE_CONTACTED`,
                     `${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH.PHONE_NUMBER`,
                     `${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH.EMAIL_ADDRESS`,
