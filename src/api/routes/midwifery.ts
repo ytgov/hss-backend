@@ -110,7 +110,7 @@ midwiferyRouter.post("/", async (req: Request, res: Response) => {
                 'MIDWIFERY_STATUS.DESCRIPTION AS STATUS_DESCRIPTION',
                 'MIDWIFERY_PREFERRED_CONTACT_TYPES.DESCRIPTION AS PREFERRED_CONTACT',
                 db.raw("TO_CHAR(MIDWIFERY_SERVICES.CREATED_AT, 'YYYY-MM-DD HH24:MI:SS') AS CREATED_AT,"+
-                        "TO_CHAR(MIDWIFERY_SERVICES.DUE_DATE, 'YYYY-MM-DD') AS DUE_DATE")
+                        "CASE  WHEN DUE_DATE IS NULL THEN ''  ELSE TO_CHAR(DUE_DATE, 'YYYY, FMMonth, FMDD')  || CASE  WHEN DUE_DATE IS NULL THEN '' WHEN TO_CHAR(DUE_DATE, 'DD') IN ('01', '21', '31') THEN 'st' WHEN TO_CHAR(DUE_DATE, 'DD') IN ('02', '22') THEN 'nd' WHEN TO_CHAR(DUE_DATE, 'DD') IN ('03', '23') THEN 'rd'  ELSE 'th'  END  END AS DUE_DATE ")
         )
         .where('MIDWIFERY_SERVICES.STATUS', '<>', 4 )
         .orderBy('MIDWIFERY_SERVICES.ID', 'ASC');
@@ -299,8 +299,8 @@ midwiferyRouter.get("/show/:midwifery_id",[param("midwifery_id").isInt().notEmpt
                     'MIDWIFERY_PREFERRED_CONTACT_TYPES.DESCRIPTION as preferred_contact',
                     'MIDWIFERY_BIRTH_LOCATIONS.DESCRIPTION AS BIRTH_LOCATIONS',
                     db.raw("TO_CHAR(MIDWIFERY_SERVICES.DATE_OF_BIRTH, 'YYYY-MM-DD') AS DATE_OF_BIRTH, "+
-                    "TO_CHAR(MIDWIFERY_SERVICES.WHEN_WAS_THE_FIRST_DAY_OF_YOUR_LAST_PERIOD_, 'YYYY-MM-DD') AS WHEN_WAS_THE_FIRST_DAY_OF_YOUR_LAST_PERIOD_,"+
-                    "TO_CHAR(MIDWIFERY_SERVICES.DUE_DATE, 'YYYY-MM-DD') AS DUE_DATE")
+                    " CASE  WHEN WHEN_WAS_THE_FIRST_DAY_OF_YOUR_LAST_PERIOD_ IS NULL THEN ''  ELSE TO_CHAR(WHEN_WAS_THE_FIRST_DAY_OF_YOUR_LAST_PERIOD_, 'YYYY, FMMonth, FMDD')  || CASE  WHEN WHEN_WAS_THE_FIRST_DAY_OF_YOUR_LAST_PERIOD_ IS NULL THEN '' WHEN TO_CHAR(WHEN_WAS_THE_FIRST_DAY_OF_YOUR_LAST_PERIOD_, 'DD') IN ('01', '21', '31') THEN 'st' WHEN TO_CHAR(WHEN_WAS_THE_FIRST_DAY_OF_YOUR_LAST_PERIOD_, 'DD') IN ('02', '22') THEN 'nd' WHEN TO_CHAR(WHEN_WAS_THE_FIRST_DAY_OF_YOUR_LAST_PERIOD_, 'DD') IN ('03', '23') THEN 'rd'  ELSE 'th'  END  END  AS WHEN_WAS_THE_FIRST_DAY_OF_YOUR_LAST_PERIOD_,"+
+                    " CASE  WHEN DUE_DATE IS NULL THEN ''  ELSE TO_CHAR(DUE_DATE, 'YYYY, FMMonth, FMDD')  || CASE  WHEN DUE_DATE IS NULL THEN '' WHEN TO_CHAR(DUE_DATE, 'DD') IN ('01', '21', '31') THEN 'st' WHEN TO_CHAR(DUE_DATE, 'DD') IN ('02', '22') THEN 'nd' WHEN TO_CHAR(DUE_DATE, 'DD') IN ('03', '23') THEN 'rd'  ELSE 'th'  END  END AS DUE_DATE ")
             )
             .where("MIDWIFERY_SERVICES.ID", midwifery_id)
             .first();
@@ -503,7 +503,7 @@ midwiferyRouter.post("/store", async (req: Request, res: Response) => {
         if(!_.isNull(data.when_was_the_first_day_of_your_last_period_) &&  !_.isEmpty(data.when_was_the_first_day_of_your_last_period_)) {
             data.when_was_the_first_day_of_your_last_period_ = new Date(data.when_was_the_first_day_of_your_last_period_);
             let period: string =   data.when_was_the_first_day_of_your_last_period_.toISOString().split('T')[0];
-            midwifery.WHEN_WAS_THE_FIRST_DAY_OF_YOUR_LAST_PERIOD_  = db.raw("TO_DATE('"+period+"','YYYY-MM-DD') ");
+             midwifery.WHEN_WAS_THE_FIRST_DAY_OF_YOUR_LAST_PERIOD_  = db.raw("TO_DATE('"+period+"','YYYY-MM-DD') ");
         }
 
         midwiferyCommunityLocations = await db(`${SCHEMA_MIDWIFERY}.MIDWIFERY_COMMUNITY_LOCATIONS`).where({ DESCRIPTION: data.community_located }).select().then((data:any) => {
@@ -571,7 +571,7 @@ midwiferyRouter.post("/store", async (req: Request, res: Response) => {
         if(!_.isNull(data.due_date) && !_.isEmpty(data.due_date)) {
             data.due_date = new Date(data.due_date);
             let dueDate: string =   data.due_date.toISOString().split('T')[0];
-            midwifery.DUE_DATE  = db.raw("TO_DATE('"+dueDate+"','YYYY-MM-DD') ");
+             midwifery.DUE_DATE  = db.raw("TO_DATE('"+dueDate+"','YYYY-MM-DD') ");
         }
 
         midwifery.HOW_MANY_VAGINAL_BIRTHS = data.how_many_vaginal_births;
@@ -661,8 +661,8 @@ midwiferyRouter.post("/export", async (req: Request, res: Response) => {
                 'MIDWIFERY_BIRTH_LOCATIONS.DESCRIPTION AS BIRTH_LOCATIONS',
                 'MIDWIFERY_PREFERRED_CONTACT_TYPES.DESCRIPTION AS PREFERRED_CONTACT',
             db.raw("TO_CHAR(MIDWIFERY_SERVICES.DATE_OF_BIRTH, 'YYYY-MM-DD') AS DATE_OF_BIRTH, "+
-                "TO_CHAR(MIDWIFERY_SERVICES.WHEN_WAS_THE_FIRST_DAY_OF_YOUR_LAST_PERIOD_, 'YYYY-MM-DD') AS WHEN_WAS_THE_FIRST_DAY_OF_YOUR_LAST_PERIOD_,"+
-                "TO_CHAR(MIDWIFERY_SERVICES.DUE_DATE, 'YYYY-MM-DD') AS DUE_DATE,"+
+                " CASE  WHEN WHEN_WAS_THE_FIRST_DAY_OF_YOUR_LAST_PERIOD_ IS NULL THEN ''  ELSE TO_CHAR(WHEN_WAS_THE_FIRST_DAY_OF_YOUR_LAST_PERIOD_, 'YYYY, FMMonth, FMDD')  || CASE  WHEN WHEN_WAS_THE_FIRST_DAY_OF_YOUR_LAST_PERIOD_ IS NULL THEN '' WHEN TO_CHAR(WHEN_WAS_THE_FIRST_DAY_OF_YOUR_LAST_PERIOD_, 'DD') IN ('01', '21', '31') THEN 'st' WHEN TO_CHAR(WHEN_WAS_THE_FIRST_DAY_OF_YOUR_LAST_PERIOD_, 'DD') IN ('02', '22') THEN 'nd' WHEN TO_CHAR(WHEN_WAS_THE_FIRST_DAY_OF_YOUR_LAST_PERIOD_, 'DD') IN ('03', '23') THEN 'rd'  ELSE 'th'  END  END AS WHEN_WAS_THE_FIRST_DAY_OF_YOUR_LAST_PERIOD_,"+
+                " CASE  WHEN DUE_DATE IS NULL THEN ''  ELSE TO_CHAR(DUE_DATE, 'YYYY, FMMonth, FMDD')  || CASE  WHEN DUE_DATE IS NULL THEN '' WHEN TO_CHAR(DUE_DATE, 'DD') IN ('01', '21', '31') THEN 'st' WHEN TO_CHAR(DUE_DATE, 'DD') IN ('02', '22') THEN 'nd' WHEN TO_CHAR(DUE_DATE, 'DD') IN ('03', '23') THEN 'rd'  ELSE 'th'  END  END AS DUE_DATE ,"+
                 "TO_CHAR(MIDWIFERY_SERVICES.CREATED_AT, 'YYYY-MM-DD HH24:MI:SS') AS CREATED_AT,"+
                 "TO_CHAR(MIDWIFERY_SERVICES.UPDATED_AT, 'YYYY-MM-DD HH24:MI:SS') AS UPDATED_AT")
             ).where('MIDWIFERY_SERVICES.STATUS', '<>', 4 );
@@ -1128,8 +1128,8 @@ midwiferyRouter.get("/duplicates/details/:duplicate_id",[param("duplicate_id").i
                 'MIDWIFERY_BIRTH_LOCATIONS.DESCRIPTION AS BIRTH_LOCATIONS',
                 'MIDWIFERY_PREFERRED_CONTACT_TYPES.DESCRIPTION AS PREFERRED_CONTACT',
                 db.raw("TO_CHAR(MIDWIFERY_SERVICES.DATE_OF_BIRTH, 'YYYY-MM-DD') AS DATE_OF_BIRTH, "+
-                    "TO_CHAR(MIDWIFERY_SERVICES.WHEN_WAS_THE_FIRST_DAY_OF_YOUR_LAST_PERIOD_, 'YYYY-MM-DD') AS WHEN_WAS_THE_FIRST_DAY_OF_YOUR_LAST_PERIOD_,"+
-                    "TO_CHAR(MIDWIFERY_SERVICES.DUE_DATE, 'YYYY-MM-DD') AS DUE_DATE")
+                    " CASE  WHEN WHEN_WAS_THE_FIRST_DAY_OF_YOUR_LAST_PERIOD_ IS NULL THEN ''  ELSE TO_CHAR(WHEN_WAS_THE_FIRST_DAY_OF_YOUR_LAST_PERIOD_, 'YYYY, FMMonth, FMDD')  || CASE  WHEN WHEN_WAS_THE_FIRST_DAY_OF_YOUR_LAST_PERIOD_ IS NULL THEN '' WHEN TO_CHAR(WHEN_WAS_THE_FIRST_DAY_OF_YOUR_LAST_PERIOD_, 'DD') IN ('01', '21', '31') THEN 'st' WHEN TO_CHAR(WHEN_WAS_THE_FIRST_DAY_OF_YOUR_LAST_PERIOD_, 'DD') IN ('02', '22') THEN 'nd' WHEN TO_CHAR(WHEN_WAS_THE_FIRST_DAY_OF_YOUR_LAST_PERIOD_, 'DD') IN ('03', '23') THEN 'rd'  ELSE 'th'  END  END AS WHEN_WAS_THE_FIRST_DAY_OF_YOUR_LAST_PERIOD_,"+
+                    " CASE  WHEN DUE_DATE IS NULL THEN ''  ELSE TO_CHAR(DUE_DATE, 'YYYY, FMMonth, FMDD')  || CASE  WHEN DUE_DATE IS NULL THEN '' WHEN TO_CHAR(DUE_DATE, 'DD') IN ('01', '21', '31') THEN 'st' WHEN TO_CHAR(DUE_DATE, 'DD') IN ('02', '22') THEN 'nd' WHEN TO_CHAR(DUE_DATE, 'DD') IN ('03', '23') THEN 'rd'  ELSE 'th'  END  END AS DUE_DATE ")
         )
         .whereIn("MIDWIFERY_SERVICES.ID", [duplicateEntry.original, duplicateEntry.duplicated])
         .whereNot('MIDWIFERY_SERVICES.STATUS', '4');

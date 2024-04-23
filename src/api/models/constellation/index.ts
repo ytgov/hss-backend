@@ -57,6 +57,7 @@ export interface ConstellationHealthDTO extends BaseTableDTO {
     province: string;
     yhcip: string;
     postal_code: string;
+    community_located: string;
     prefer_to_be_contacted: string;
     phone_number: string;
     email_address: string;
