@@ -384,7 +384,7 @@ constellationRouter.get("/show/:constellationHealth_id", checkPermissions("const
 });
 
 /**
- * Store midwifery data
+ * Store constellation data
  *
  * @return json
  */
