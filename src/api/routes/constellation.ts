@@ -228,7 +228,7 @@ constellationRouter.get("/show/:constellationHealth_id", checkPermissions("const
         var constellationFamily = Object();
 
         constellationHealth = await db(`${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH`)
-            .leftJoin(`${SCHEMA_CONSTELLATION}.COMMUNITY_LOCATED`, 'CONSTELLATION_HEALTH.COMMUNITY_LOCATED',  db.raw("TO_CHAR('COMMUNITY_LOCATED.ID')"))      
+            .leftJoin(`${SCHEMA_CONSTELLATION}.COMMUNITY_LOCATED`, 'GENERAL.COMMUNITY_LOCATIONS',  db.raw("TO_CHAR('COMMUNITY_LOCATIONS.ID')"))      
             .leftJoin(`${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH_LANGUAGE`, 'CONSTELLATION_HEALTH.LANGUAGE_PREFER_TO_RECEIVE_SERVICES', 'CONSTELLATION_HEALTH_LANGUAGE.ID')
             .leftJoin(`${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH_DEMOGRAPHICS`, 'CONSTELLATION_HEALTH.DEMOGRAPHICS_GROUPS', 'CONSTELLATION_HEALTH_DEMOGRAPHICS.ID')
             .where('CONSTELLATION_HEALTH.ID', constellationHealth_id)
@@ -564,7 +564,7 @@ constellationRouter.post("/export/", async (req: Request, res: Response) => {
         let userId = req.user?.db_user.user.id || null;
 
         let query = db(`${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH`)
-            .leftJoin(`${SCHEMA_CONSTELLATION}.COMMUNITY_LOCATED`, 'CONSTELLATION_HEALTH.COMMUNITY_LOCATED',  db.raw("TO_CHAR('COMMUNITY_LOCATED.ID')"))      
+            .leftJoin(`${SCHEMA_CONSTELLATION}.COMMUNITY_LOCATED`, 'GENERAL.COMMUNITY_LOCATIONS',  db.raw("TO_CHAR('COMMUNITY_LOCATIONS.ID')"))      
             .leftJoin(`${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH_LANGUAGE`, 'CONSTELLATION_HEALTH.LANGUAGE_PREFER_TO_RECEIVE_SERVICES', 'CONSTELLATION_HEALTH_LANGUAGE.ID')
             .leftJoin(`${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH_DEMOGRAPHICS`, 'CONSTELLATION_HEALTH.DEMOGRAPHICS_GROUPS', 'CONSTELLATION_HEALTH_DEMOGRAPHICS.ID')
             .select(`${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH.FIRST_NAME`,
@@ -1271,7 +1271,7 @@ async function dataFamilyMembers(idConstellationHealth:number, arrayMembers:any)
             delete dataMember.personal_info_text_family_member;
             delete dataMember.other_language_family_member;
             delete dataMember.demographics_text_family_member;
-
+            delete dataMember.warning_yhic_fm;
             familyMembersInsert.push(dataMember);
         }
     }
