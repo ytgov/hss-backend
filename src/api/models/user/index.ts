@@ -29,6 +29,6 @@ export interface PermissionDTO extends UserBaseDTO {
 }
 
 export interface UserPermissionDTO extends UserBaseDTO {
-    user: UserDTO;
-    permissions: Array<PermissionDTO>;
+    user: UserDTO | null;
+    permissions: Array<PermissionDTO> | null;
 }
