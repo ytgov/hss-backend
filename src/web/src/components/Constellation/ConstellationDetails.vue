@@ -145,6 +145,11 @@
                                 <td>{{ itemsConstellation.postal_code }}</td>
                             </tr>
 
+                            <tr v-if="itemsConstellation.community_located">
+                                <td>City or community	</td>
+                                <td>{{ itemsConstellation.community_located }}</td>
+                            </tr>
+
                             <tr v-if="itemsConstellation.prefer_to_be_contacted">
                                 <td>How would you prefer to be contacted?</td>
                                 <td>

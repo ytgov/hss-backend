@@ -77,7 +77,7 @@ export const DB_CONFIG_CONSTELLATION = {
   },
   pool: {
     min: 1,
-    max: 30,
+    max: 100,
     propagateCreateError: false,
     idleTimeoutMillis: 120000,
     reapIntervalMillis: 10000
@@ -103,7 +103,7 @@ export const DB_CONFIG_MIDWIFERY = {
   },
   pool: {
     min: 1,
-    max: 30,
+    max: 100,
     propagateCreateError: false,
     idleTimeoutMillis: 120000,
     reapIntervalMillis: 10000
@@ -128,7 +128,7 @@ export const DB_CONFIG_HIPMA = {
   },
   pool: {
     min: 1,
-    max: 30,
+    max: 100,
     propagateCreateError: false,
     idleTimeoutMillis: 120000,
     reapIntervalMillis: 10000
@@ -153,7 +153,7 @@ export const DB_CONFIG_GENERAL = {
   },
   pool: {
     min: 3,
-    max: 30,
+    max: 100,
     propagateCreateError: false,
     idleTimeoutMillis: 120000,
     reapIntervalMillis: 10000
@@ -178,7 +178,7 @@ export const DB_CONFIG_DENTAL = {
   },
   pool: {
     min: 3,
-    max: 30,
+    max: 100,
     propagateCreateError: false,
     idleTimeoutMillis: 120000,
     reapIntervalMillis: 10000

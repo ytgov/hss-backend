@@ -308,6 +308,7 @@ export default {
                             "Health care card number",
                             "YHCIP",
                             "Postal code",
+                            "City or community",
                             "Prefer to be contacted",
                             "Phone Number",
                             "Email",

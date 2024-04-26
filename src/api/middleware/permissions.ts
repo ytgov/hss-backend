@@ -17,9 +17,11 @@ export function checkPermissions(...permission: string[]) {
         if (req.oidc.isAuthenticated()) {
             const user = await userRepo.getUserByEmail(req.oidc?.user.email ?? "");
             if (Object.keys(user).length > 0) {
-                validate = permission.every((x) => {
-                    return user.permissions.find((p) => p.permission_name === x) !== undefined;
-                });   
+                if (user && user.permissions) {
+                    validate = permission.every((x) => {
+                        return (user.permissions ?? []).find((p) => p.permission_name === x) !== undefined;
+                    });
+                }
                 if (validate) {
                     next();
                 }
