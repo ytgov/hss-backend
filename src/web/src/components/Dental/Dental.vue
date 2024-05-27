@@ -160,9 +160,12 @@
 			:items="items"
 			:headers="headers"
 			:options.sync="options"
-			:loading="loading"
+			:loading="loadingTable"
 			:search="search"
 			@input="enterSelect"
+
+			:server-items-length="totalItems"
+			@update:options="getDataFromApi"
 		>
 			<template v-slot:[`item.showurl`]="{ item }">
 				<v-icon @click="showDetails(item.showurl)">mdi-eye</v-icon>
@@ -180,7 +183,7 @@
 	name: "DentalServiceIndex",
 	props: ['type'],
 	data: () => ({
-		loading: false,
+		loadingTable: false,
 		bulkSelected: [],
 		items: [],
 		statusSelected: [1],
@@ -198,7 +201,10 @@
 		itemsSelected: [],
 		search: "",
 		applyDisabled: true,
-		options: {},
+		options: {
+			page: 1,
+			itemsPerPage: 10
+		},
 		flagAlert: false,
 		statusChangeMessage: "Status changed successfully.",
 		nonexistentMessage: "The submission you are consulting is closed or non existant, please choose a valid submission.",
@@ -233,10 +239,11 @@
 		{ text: "Status", value: "status_description", sortable: true },
 		{ text: "", value: "showurl", sortable: false },
 		],
-		page: 1,
-		pageCount: 0,
-		iteamsPerPage: 10,
+		//page: 1,
+		//pageCount: 0,
+		//iteamsPerPage: 10,
 		alignments: "center",
+		totalItems: 0,
 	}),
 	components: {
 		Notifications
@@ -305,13 +312,16 @@
 		},
 		getDataFromApi() {
 			this.loading = true;
+
 			axios
 			.post(DENTAL_URL, {
 				params: {
 					dateFrom: this.date,
 					dateTo: this.dateEnd,
 					dateYear: this.dateYear,
-					status: this.statusSelected
+					status: this.statusSelected,
+					page: this.options.page,
+					pageSize: this.options.itemsPerPage,
 				}
 			})
 			.then((resp) => {
@@ -320,6 +330,7 @@
 				this.statusFilter = resp.data.dataStatus.filter((element) => element.value != 4);
 				this.loading = false;
 				this.dateDisabled = false;
+				this.totalItems = resp.data.total;
 			})
 			.catch((err) => console.error(err))
 			.finally(() => {
