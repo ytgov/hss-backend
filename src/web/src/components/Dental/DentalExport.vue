@@ -139,10 +139,13 @@
 		:items="items"
 		:headers="headers"
 		:options.sync="options"
-		:loading="loading"
+		:loading="loadingTable"
 		checkbox-color="black"
 		:value="selected"
 		@toggle-select-all="selectAll"
+
+		:server-items-length="totalItems"
+		@update:options="getDataFromApi"
 	>
 	</v-data-table>
 	</div>
@@ -157,7 +160,12 @@ export default {
 	data: () => ({
 	loading: false,
 		items: [],
-		options: {},
+		initialPage: 1,
+		initialItemsPerPage: 10,
+		options: {
+			page: 1,
+			itemsPerPage: 10
+		},
 		flagAlert: false,
 		menu: false,
 		date: null,
@@ -171,6 +179,8 @@ export default {
 		loader: null,
 		loadingExport: false,
 		loadingReset: false,
+		loadingTable: false,
+		totalItems: 0,
 	}),
 	computed: {
 		headers() {
@@ -238,12 +248,6 @@ export default {
 	components: {
 	},
 	watch: {
-		options: {
-			handler() {
-				this.getDataFromApi();
-			},
-			deep: true,
-		},
 		loader () {
 			const l = this.loader;
 			this[l] = !this[l];
@@ -265,39 +269,50 @@ export default {
 				this.date = null;
 				this.dateEnd = null;
 				this.selected = [];
+				this.options.page = this.initialPage;
+				this.options.itemsPerPage = this.initialItemsPerPage;
 				this.getDataFromApi();
 			}
 		},
 		updateDate(){
 			if(this.date !== null && this.dateEnd !== null) {
 				this.selected = [];
+				this.options.page = this.initialPage;
+				this.options.itemsPerPage = this.initialItemsPerPage;
 				this.getDataFromApi();
 			}
 		},
 		changeSelect(){
 			this.selected = [];
+			this.options.page = this.initialPage;
+			this.options.itemsPerPage = this.initialItemsPerPage;
 			this.getDataFromApi();
 		},
 		getDataFromApi() {
-			this.loading = true;
+			this.loadingTable = true;
+			this.items = [];
+
 			axios
 			.post(DENTAL_URL, {
 				params: {
 					dateFrom: this.date,
 					dateTo: this.dateEnd,
 					dateYear: this.dateYear,
-					status: this.selectedStatus
+					status: this.selectedStatus,
+					page: this.options.page,
+					pageSize: this.options.itemsPerPage,
 				}
 			})
 			.then((resp) => {
 				this.items = resp.data.data;
 				this.itemsStatus = resp.data.dataStatus.filter((element) => element.value != 4);
-				this.loading = false;
+				this.loadingTable = false;
+				this.totalItems = resp.data.total;
 
 			})
 			.catch((err) => console.error(err))
 			.finally(() => {
-			this.loading = false;
+				this.loadingTable = false;
 			});
 		},
 		selectAll() {
@@ -313,6 +328,8 @@ export default {
 			this.dateYear = null;
 			this.selectedYear = null;
 			this.selected = [];
+			this.options.page = this.initialPage;
+			this.options.itemsPerPage = this.initialItemsPerPage;
 			this.getDataFromApi();
 		},
 		exportFile () {

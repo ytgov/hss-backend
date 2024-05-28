@@ -129,6 +129,9 @@
 			checkbox-color="black"
 			:value="selected"
 			@toggle-select-all="selectAll"
+
+			:server-items-length="totalItems"
+			@update:options="getDataFromApi"
 		>
 		</v-data-table>
 	</div>
@@ -145,7 +148,10 @@ export default {
 	data: () => ({
 		loading: false,
 		items: [],
-		options: {},
+		options: {
+			page: 1,
+			itemsPerPage: 10
+		},
 		flagAlert: false,
 		menu: false,
 		date: null,
@@ -169,17 +175,11 @@ export default {
 			{ text: "Status", value: "status_description", sortable: true},
 			{ text: "Created", value: "created_at", sortable: true},
 		],
-		page: 1,
-		pageCount: 0,
-		iteamsPerPage: 10,
+		initialPage: 1,
+        initialItemsPerPage: 10,
+        totalItems: 0,
 	}),
 	watch: {
-		options: {
-			handler() {
-				this.getDataFromApi();
-			},
-			deep: true,
-		},
 		loader () {
 			const l = this.loader;
 			this[l] = !this[l];
@@ -196,11 +196,15 @@ export default {
 		updateDate(){
 			if(this.date !== null && this.dateEnd !== null){
 				this.selected = [];
+				this.options.page = this.initialPage;
+				this.options.itemsPerPage = this.initialItemsPerPage;
 				this.getDataFromApi();
 			}
 		},
 		changeSelect(){
 			this.selected = [];
+			this.options.page = this.initialPage;
+            this.options.itemsPerPage = this.initialItemsPerPage;
 			this.getDataFromApi();
 		},
 		getDataFromApi() {
@@ -210,13 +214,16 @@ export default {
 				params: {
 					dateFrom: this.date,
 					dateTo: this.dateEnd,
-					status: this.selectedStatus
+					status: this.selectedStatus,
+					page: this.options.page,
+					pageSize: this.options.itemsPerPage,
 				}
 			})
 			.then((resp) => {
 				this.items = resp.data.data;
 				this.itemsStatus = resp.data.dataStatus.filter((element) => element.value != 4);
 				this.loading = false;
+				this.totalItems = resp.data.total;
 			})
 			.catch((err) => console.error(err))
 			.finally(() => {
@@ -234,6 +241,8 @@ export default {
 			this.dateEnd = null;
 			this.selectedStatus = null;
 			this.selected = [];
+			this.options.page = this.initialPage;
+            this.options.itemsPerPage = this.initialItemsPerPage;
 			this.getDataFromApi();
 		},
 		exportFile () {

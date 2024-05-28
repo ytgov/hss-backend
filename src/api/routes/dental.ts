@@ -93,8 +93,8 @@ dentalRouter.get("/submissions/status/:action_id/:action_value", [
 dentalRouter.post("/", async (req: Request, res: Response) => {
     try {
 
-        const page = parseInt(req.body.params.page);
-        const pageSize = parseInt(req.body.params.pageSize);
+        const page = parseInt(req.body.params.page as string) || 1;
+        const pageSize = parseInt(req.body.params.pageSize as string) || 10;
         const offset = (page - 1) * pageSize;
 
         var dateFrom = req.body.params.dateFrom;
@@ -120,13 +120,13 @@ dentalRouter.post("/", async (req: Request, res: Response) => {
             query.whereIn("STATUS", status_request);
         }
 
-        query.offset(offset)
-        query.limit(pageSize);
+        const countQuery = query.clone();
+        query = query.offset(offset).limit(pageSize);
 
         const dentalService = await query;
 
-        var countQuery = await db(`${SCHEMA_DENTAL}.DENTAL_SERVICE_SUBMISSIONS`).count('* as count').first();
-        const countSubmissions = countQuery ? countQuery.count : 0;
+        const countResult = await countQuery.count('* as count').first();
+        const countSubmissions = countResult ? countResult.count : 0;
 
         var dentalStatus = await getAllStatus();
         res.send({data: dentalService, dataStatus: dentalStatus, total: countSubmissions});

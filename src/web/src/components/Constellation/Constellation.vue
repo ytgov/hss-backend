@@ -152,6 +152,9 @@
             :loading="loading"
             :search="search"
             @input="enterSelect"
+
+            :server-items-length="totalItems"
+			@update:options="getDataFromApi"
         >
             <template v-slot:[`item.showUrl`]="{ item }">
                 <v-icon @click="showDetails(item.showUrl)">mdi-eye</v-icon>
@@ -186,7 +189,10 @@ export default {
         alertType: null,
         search: "",
         applyDisabled: true,
-        options: {},
+        options: {
+			page: 1,
+			itemsPerPage: 10
+		},
         flagAlert: false,
         statusChangeMessage: "Status changed successfully.",
 		nonexistentMessage: "The submission you are consulting is closed or non existant, please choose a valid submission.",
@@ -214,21 +220,15 @@ export default {
         { text: "Status", value: "status", sortable: true },
         { text: "", value: "showUrl", sortable: false },
         ],
-        page: 1,
-        pageCount: 0,
-        iteamsPerPage: 10,
+        initialPage: 1,
+        initialItemsPerPage: 10,
         alignments: "center",
+        totalItems: 0,
     }),
     components: {
         Notifications
     },
     watch: {
-        options: {
-            handler() {
-                this.getDataFromApi();
-            },
-            deep: true,
-        },
         search: {
             handler() {
                 this.getDataFromApi();
@@ -253,11 +253,15 @@ export default {
     methods: {
         changeStatusSelect(){
             this.selected = [];
+            this.options.page = this.initialPage;
+            this.options.itemsPerPage = this.initialItemsPerPage;
             this.getDataFromApi();
         },
         updateDate(){
             if(this.date !== null && this.dateEnd !== null){
                 this.selected = [];
+                this.options.page = this.initialPage;
+				this.options.itemsPerPage = this.initialItemsPerPage;
                 this.getDataFromApi();
             }
         },
@@ -275,12 +279,16 @@ export default {
         },
         getDataFromApi() {
             this.loading = true;
+            this.items = [];
+
             axios
             .post(CONSTELLATION_URL, {
                 params: {
                     dateFrom: this.date,
                     dateTo: this.dateEnd,
-                    status: this.statusSelected
+                    status: this.statusSelected,
+                    page: this.options.page,
+					pageSize: this.options.itemsPerPage,
                 }
             })
             .then((resp) => {
@@ -288,6 +296,7 @@ export default {
                 this.bulkActions = resp.data.dataStatus;
                 this.statusFilter = resp.data.dataStatus.filter((element) => element.value != 4);
                 this.loading = false;
+                this.totalItems = resp.data.total;
             })
             .catch((err) => console.error(err))
             .finally(() => {

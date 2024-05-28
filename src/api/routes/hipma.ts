@@ -92,6 +92,11 @@ hipmaRouter.post("/", async (req: Request, res: Response) => {
         var dateFrom = req.body.params.dateFrom;
         var dateTo = req.body.params.dateTo;
         db = await helper.getOracleClient(db, DB_CONFIG_HIPMA);
+
+        const page = parseInt(req.body.params.page as string) || 1;
+        const pageSize = parseInt(req.body.params.pageSize as string) || 10;
+        const offset = (page - 1) * pageSize;
+
         let query = db(`${SCHEMA_HIPMA}.HEALTH_INFORMATION`)
             .leftJoin(`${SCHEMA_HIPMA}.HIPMA_REQUEST_TYPE`, 'HEALTH_INFORMATION.WHAT_TYPE_OF_REQUEST_DO_YOU_WANT_TO_MAKE_', '=', 'HIPMA_REQUEST_TYPE.ID')
             .leftJoin(`${SCHEMA_HIPMA}.HIPMA_REQUEST_ACCESS_PERSONAL_HEALTH_INFORMATION`, 'HEALTH_INFORMATION.ARE_YOU_REQUESTING_ACCESS_TO_YOUR_OWN_PERSONAL_HEALTH_INFORMATI', '=', 'HIPMA_REQUEST_ACCESS_PERSONAL_HEALTH_INFORMATION.ID')
@@ -113,13 +118,31 @@ hipmaRouter.post("/", async (req: Request, res: Response) => {
                 [dateFrom, dateTo]));
         }
 
+        query = query.offset(offset).limit(pageSize);
+
+        let countQuery = db(`${SCHEMA_HIPMA}.HEALTH_INFORMATION`)
+            .leftJoin(`${SCHEMA_HIPMA}.HIPMA_REQUEST_TYPE`, 'HEALTH_INFORMATION.WHAT_TYPE_OF_REQUEST_DO_YOU_WANT_TO_MAKE_', '=', 'HIPMA_REQUEST_TYPE.ID')
+            .leftJoin(`${SCHEMA_HIPMA}.HIPMA_REQUEST_ACCESS_PERSONAL_HEALTH_INFORMATION`, 'HEALTH_INFORMATION.ARE_YOU_REQUESTING_ACCESS_TO_YOUR_OWN_PERSONAL_HEALTH_INFORMATI', '=', 'HIPMA_REQUEST_ACCESS_PERSONAL_HEALTH_INFORMATION.ID')
+            .leftJoin(`${SCHEMA_HIPMA}.HIPMA_COPY_HEALTH_INFORMATION`, 'HEALTH_INFORMATION.GET_A_COPY_OF_YOUR_HEALTH_INFORMATION_', '=', 'HIPMA_COPY_HEALTH_INFORMATION.ID')
+            .leftJoin(`${SCHEMA_HIPMA}.HIPMA_SITUATIONS`, 'HEALTH_INFORMATION.SELECT_THE_SITUATION_THAT_APPLIES_', '=', 'HIPMA_SITUATIONS.ID')
+            .count('* as count')
+            .where('HEALTH_INFORMATION.STATUS', '=', 1);
+
+        if(dateFrom && dateTo) {
+            countQuery.where(db.raw("TO_CHAR(HEALTH_INFORMATION.CREATED_AT, 'YYYY-MM-DD') >=  ? AND TO_CHAR(HEALTH_INFORMATION.CREATED_AT, 'YYYY-MM-DD') <= ?",
+                [dateFrom, dateTo]));
+        }
+
         const hipma = await query;
+
+        const countResult = await countQuery.first();
+        const countSubmissions = countResult ? countResult.count : 0;
 
         hipma.forEach(function (value: any) {
             value.showUrl = "hipma/show/"+value.id;
         });
 
-        res.send({data: hipma});
+        res.send({data: hipma, total: countSubmissions});
 
     } catch(e) {
         console.log(e);  // debug if needed

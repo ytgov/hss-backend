@@ -92,6 +92,10 @@ constellationRouter.post("/", async (req: Request, res: Response) => {
         var dateTo = req.body.params.dateTo;
         let status_request = req.body.params.status;
 
+        const page = parseInt(req.body.params.page as string) || 1;
+        const pageSize = parseInt(req.body.params.pageSize as string) || 10;
+        const offset = (page - 1) * pageSize;
+
         let query = db(`${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH`)
             .join(`${SCHEMA_CONSTELLATION}.CONSTELLATION_STATUS`, 'CONSTELLATION_HEALTH.STATUS', '=', 'CONSTELLATION_STATUS.ID')
             .select('CONSTELLATION_HEALTH.YOUR_LEGAL_NAME',
@@ -115,7 +119,28 @@ constellationRouter.post("/", async (req: Request, res: Response) => {
             query.whereIn("CONSTELLATION_HEALTH.STATUS", status_request);
         }
 
+        query = query.offset(offset).limit(pageSize);
+
+        const countQuery = db(`${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH`)
+            .join(`${SCHEMA_CONSTELLATION}.CONSTELLATION_STATUS`, 'CONSTELLATION_HEALTH.STATUS', '=', 'CONSTELLATION_STATUS.ID')
+            .count('* as count')
+            .where('CONSTELLATION_HEALTH.STATUS', '<>', 4);
+
+        if (dateFrom && dateTo) {
+            countQuery.where(db.raw(
+                "TO_CHAR(CONSTELLATION_HEALTH.CREATED_AT, 'YYYY-MM-DD') >= ? AND TO_CHAR(CONSTELLATION_HEALTH.CREATED_AT, 'YYYY-MM-DD') <= ?",
+                [dateFrom, dateTo]
+            ));
+        }
+
+        if (status_request) {
+            countQuery.whereIn("CONSTELLATION_HEALTH.STATUS", status_request);
+        }
+
         const constellationHealth = await query;
+
+        const countResult = await countQuery.first();
+        const countSubmissions = countResult ? countResult.count : 0;
 
         var diagnosis = Object();
         diagnosis = await db(`${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH_DIAGNOSIS_HISTORY`).select().then((rows: any) => {
@@ -162,7 +187,7 @@ constellationRouter.post("/", async (req: Request, res: Response) => {
         });
 
         var constellationStatus = await getAllStatus();
-        res.send({data: constellationHealth, dataStatus: constellationStatus});
+        res.send({data: constellationHealth, dataStatus: constellationStatus, total: countSubmissions});
     } catch(e) {
         console.log(e);  // debug if needed
         res.send( {

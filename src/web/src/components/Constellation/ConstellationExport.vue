@@ -129,6 +129,9 @@
         checkbox-color="black"
         :value="selected"
         @toggle-select-all="selectAll"
+
+        :server-items-length="totalItems"
+        @update:options="getDataFromApi"
     >
     </v-data-table>
     </div>
@@ -154,7 +157,14 @@ export default {
             selectedStatus: null,
             loader: null,
             loadingExport: false,
-            loadingReset: false, 
+            loadingReset: false,
+            options: {
+                page: 1,
+                itemsPerPage: 10
+            },
+            initialPage: 1,
+            initialItemsPerPage: 10,
+            totalItems: 0,
     }),
     computed: {
         headers() {
@@ -212,12 +222,6 @@ export default {
     components: {
     },
     watch: {
-        options: {
-            handler() {
-                this.getDataFromApi();
-            },
-            deep: true,
-        },
         loader () {
             const l = this.loader;
             this[l] = !this[l];
@@ -234,27 +238,36 @@ export default {
         updateDate(){
             if(this.date !== null && this.dateEnd !== null) {
                 this.selected = [];
+                this.options.page = this.initialPage;
+				this.options.itemsPerPage = this.initialItemsPerPage;
                 this.getDataFromApi();
             }
         },
         changeSelect(){
             this.selected = [];
+            this.options.page = this.initialPage;
+            this.options.itemsPerPage = this.initialItemsPerPage;
             this.getDataFromApi();
         },
         getDataFromApi() {
             this.loading = true;
+            this.items = [];
+
             axios
             .post(CONSTELLATION_URL, {
                 params: {
                     dateFrom: this.date,
                     dateTo: this.dateEnd,
-                    status: this.selectedStatus
+                    status: this.selectedStatus,
+                    page: this.options.page,
+					pageSize: this.options.itemsPerPage,
                 }
             })
             .then((resp) => {
                 this.items = resp.data.data;
                 this.itemsStatus = resp.data.dataStatus.filter((element) => element.value != 4);
                 this.loading = false;
+                this.totalItems = resp.data.total;
 
             })
             .catch((err) => console.error(err))

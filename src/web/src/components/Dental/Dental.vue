@@ -239,22 +239,15 @@
 		{ text: "Status", value: "status_description", sortable: true },
 		{ text: "", value: "showurl", sortable: false },
 		],
-		//page: 1,
-		//pageCount: 0,
-		//iteamsPerPage: 10,
 		alignments: "center",
 		totalItems: 0,
+		initialPage: 1,
+		initialItemsPerPage: 10,
 	}),
 	components: {
 		Notifications
 	},
 	watch: {
-		options: {
-			handler() {
-				this.getDataFromApi();
-			},
-			deep: true,
-		},
 		search: {
 			handler() {
 				this.getDataFromApi();
@@ -283,20 +276,28 @@
 				this.date = null;
 				this.dateEnd = null;
 				this.selected = [];
+				this.options.page = this.initialPage;
+				this.options.itemsPerPage = this.initialItemsPerPage;
 				this.getDataFromApi();
 			}
 		},
 		changeStatusSelect(){
 			this.selected = [];
+			this.options.page = this.initialPage;
+			this.options.itemsPerPage = this.initialItemsPerPage;
 			this.getDataFromApi();
 		},
 		updateDate(){
 			if(this.date !== null && this.dateEnd !== null){
 				this.selected = [];
+				this.options.page = this.initialPage;
+				this.options.itemsPerPage = this.initialItemsPerPage;
 				this.getDataFromApi();
 			}
 		},
 		removeFilters() {
+			this.options.page = this.initialPage;
+			this.options.itemsPerPage = this.initialItemsPerPage;
 			return this.date || this.dateEnd || this.statusSelected || this.dateYear || this.selectedYear;
 		},
 		resetInputs() {
@@ -311,7 +312,8 @@
 			this.getDataFromApi();
 		},
 		getDataFromApi() {
-			this.loading = true;
+			this.loadingTable = true;
+			this.items = [];
 
 			axios
 			.post(DENTAL_URL, {
@@ -328,13 +330,13 @@
 				this.items = resp.data.data;
 				this.bulkActions = resp.data.dataStatus;
 				this.statusFilter = resp.data.dataStatus.filter((element) => element.value != 4);
-				this.loading = false;
+				this.loadingTable = false;
 				this.dateDisabled = false;
 				this.totalItems = resp.data.total;
 			})
 			.catch((err) => console.error(err))
 			.finally(() => {
-				this.loading = false;
+				this.loadingTable = false;
 			});
 		},
 		showDetails(route) {

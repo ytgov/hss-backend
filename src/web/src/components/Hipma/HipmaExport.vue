@@ -113,6 +113,9 @@
 			checkbox-color="black"
 			:value="selected"
 			@toggle-select-all="selectAll"
+
+			:server-items-length="totalItems"
+			@update:options="getDataFromApi"
 		>
 
 		</v-data-table>
@@ -131,7 +134,10 @@ export default {
 		loading: false,
 		items: [],
 		itemsUnfiltered: [],
-		options: {},
+		options: {
+			page: 1,
+			itemsPerPage: 10
+		},
 		flagAlert: false,
 		menu: false,
 		date: null,
@@ -148,17 +154,11 @@ export default {
 			{ text: "Applicant", value: "applicant_full_name", sortable: true},
 			{ text: "Created", value: "created_at", sortable: true},
 		],
-		page: 1,
-		pageCount: 0,
-		iteamsPerPage: 10,
+		initialPage: 1,
+        initialItemsPerPage: 10,
+        totalItems: 0,
 	}),
 	watch: {
-		options: {
-			handler() {
-				this.getDataFromApi();
-			},
-			deep: true,
-		},
 		loader () {
 			const l = this.loader;
 			this[l] = !this[l];
@@ -180,18 +180,22 @@ export default {
 		},
 		getDataFromApi() {
 		this.loading = true;
+		this.items = [];
 
 			axios
 			.post(HIPMA_URL, {
 				params: {
 					dateFrom: this.date,
 					dateTo: this.dateEnd,
+					page: this.options.page,
+					pageSize: this.options.itemsPerPage,
 				}
 			})
 			.then((resp) => {
 				this.items = resp.data.data;
 				this.itemsUnfiltered = resp.data.data;
 				this.loading = false;
+				this.totalItems = resp.data.total;
 			})
 			.catch((err) => console.error(err))
 			.finally(() => {
@@ -209,6 +213,8 @@ export default {
 			this.date = null;
 			this.dateEnd = null;
 			this.selected = [];
+			this.options.page = this.initialPage;
+            this.options.itemsPerPage = this.initialItemsPerPage;
 			this.getDataFromApi();
 		},
 		exportFile () {
