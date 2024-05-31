@@ -155,6 +155,9 @@
 
             :server-items-length="totalItems"
 			@update:options="getDataFromApi"
+            :footer-props="{
+                'items-per-page-options': itemsPerPage
+            }"
         >
             <template v-slot:[`item.showUrl`]="{ item }">
                 <v-icon @click="showDetails(item.showUrl)">mdi-eye</v-icon>
@@ -224,6 +227,7 @@ export default {
         initialItemsPerPage: 10,
         alignments: "center",
         totalItems: 0,
+        itemsPerPage: [10, 15, 50, 100, -1]
     }),
     components: {
         Notifications
@@ -280,6 +284,7 @@ export default {
         getDataFromApi() {
             this.loading = true;
             this.items = [];
+            const { page, itemsPerPage, sortBy, sortDesc } = this.options;
 
             axios
             .post(CONSTELLATION_URL, {
@@ -287,12 +292,12 @@ export default {
                     dateFrom: this.date,
                     dateTo: this.dateEnd,
                     status: this.statusSelected,
-                    page: this.options.page,
-					pageSize: this.options.itemsPerPage,
+                    page: page,
+					pageSize: itemsPerPage,
                 }
             })
             .then((resp) => {
-                this.items = resp.data.data;
+                this.items = this.sortItems(resp.data.data, sortBy, sortDesc);
                 this.bulkActions = resp.data.dataStatus;
                 this.statusFilter = resp.data.dataStatus.filter((element) => element.value != 4);
                 this.loading = false;
@@ -338,6 +343,21 @@ export default {
                         this.loading = false;
                     });
                 }
+            }
+        },
+        sortItems(items, sortBy, sortDesc) {
+            if (sortBy.length) {
+                let sorted = items.sort((a, b) => {
+                    const sortKey = sortBy[0];
+                    const sortOrder = sortDesc[0] ? -1 : 1;
+                    if (a[sortKey] < b[sortKey]) return -1 * sortOrder;
+                    if (a[sortKey] > b[sortKey]) return 1 * sortOrder;
+                    return 0;
+                });
+
+                return sorted;
+            }else{
+                return items;
             }
         },
     },

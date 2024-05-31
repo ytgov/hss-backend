@@ -3,7 +3,16 @@
 	<v-row class="mb-5" no-gutters>
 		<span class="title-service">Dental Service Requests</span>
 	</v-row>
-
+	<div class="text-center loading" v-show="loadingExport">
+		<v-progress-circular
+			:size="125"
+			:width="10"
+			color="primary"
+			indeterminate
+		>
+			Generating...
+		</v-progress-circular>
+    </div>
     <v-row class="row-filter">
 		<v-col
 			cols="10"
@@ -146,6 +155,9 @@
 
 		:server-items-length="totalItems"
 		@update:options="getDataFromApi"
+		:footer-props="{
+			'items-per-page-options': itemsPerPage
+		}"
 	>
 	</v-data-table>
 	</div>
@@ -181,6 +193,8 @@ export default {
 		loadingReset: false,
 		loadingTable: false,
 		totalItems: 0,
+		itemsPerPage: [10, 15, 50, 100, -1],
+		exportMaxSize: 250,
 	}),
 	computed: {
 		headers() {
@@ -291,6 +305,7 @@ export default {
 		getDataFromApi() {
 			this.loadingTable = true;
 			this.items = [];
+			const { page, itemsPerPage, sortBy, sortDesc } = this.options;
 
 			axios
 			.post(DENTAL_URL, {
@@ -299,12 +314,12 @@ export default {
 					dateTo: this.dateEnd,
 					dateYear: this.dateYear,
 					status: this.selectedStatus,
-					page: this.options.page,
-					pageSize: this.options.itemsPerPage,
+					page: page,
+					pageSize: itemsPerPage,
 				}
 			})
 			.then((resp) => {
-				this.items = resp.data.data;
+				this.items = this.sortItems(resp.data.data, sortBy, sortDesc);
 				this.itemsStatus = resp.data.dataStatus.filter((element) => element.value != 4);
 				this.loadingTable = false;
 				this.totalItems = resp.data.total;
@@ -332,96 +347,143 @@ export default {
 			this.options.itemsPerPage = this.initialItemsPerPage;
 			this.getDataFromApi();
 		},
+		sortItems(items, sortBy, sortDesc) {
+            if (sortBy.length) {
+                let sorted = items.sort((a, b) => {
+                    const sortKey = sortBy[0];
+                    const sortOrder = sortDesc[0] ? -1 : 1;
+                    if (a[sortKey] < b[sortKey]) return -1 * sortOrder;
+                    if (a[sortKey] > b[sortKey]) return 1 * sortOrder;
+                    return 0;
+                });
+
+                return sorted;
+            }else{
+                return items;
+            }
+        },
 		exportFile () {
-			var idArray = [];
-			this.selected.forEach((e) => {
-				idArray.push(e.id);
-			});
+			this.loadingExport = true;
 
-			axios
-			.post(DENTAL_EXPORT_FILE_URL, {
-				params: {
-					requests: idArray,
-					status: this.selectedStatus,
-					dateFrom: this.date,
-					dateTo: this.dateEnd,
-					dateYear: this.dateYear
+            const totalBatches = Math.ceil(this.selected.length / this.exportMaxSize);
+            let dentalData = [];
+			let dependantsData = [];
+
+            const fetchBatchData = async (start, end) => {
+				const idArray = this.selected.slice(start, end).map(e => e.id);
+
+				try {
+					const response = await axios.post(DENTAL_EXPORT_FILE_URL, {
+						params: {
+							requests: idArray,
+							status: this.selectedStatus,
+							dateFrom: this.date,
+							dateTo: this.dateEnd,
+							dateYear: this.dateYear
+						}
+					});
+					return response.data;
+				} catch (error) {
+					console.error(error);
+					throw error;
 				}
-			}).then((resp) => {
-				const ws = utils.json_to_sheet(resp.data.dataDental);
-				const wb = utils.book_new();
-				utils.book_append_sheet(wb, ws, "Dental Service Requests");
+			};
 
-				utils.sheet_add_aoa(
-				ws,
-				[
-					[
-					"FIRST NAME",
-					"MIDDLE NAME",
-					"LAST NAME",
-					"DATE OF BIRTH",
-					"HEALTH CARD NUMBER",
-					"MAILING ADDRESS",
-					"CITY OR TOWN",
-					"POSTAL CODE",
-					"PHONE",
-					"EMAIL",
-					"OTHER COVERAGE",
-					"ELIGIBLE PHARMACARE",
-					"EMAIL INSTEAD",
-					"HAVE CHILDREN",
-					"ASK DEMOGRAPHIC",
-					"IDENTIFY GROUPS",
-					"GENDER",
-					"EDUCATION",
-					"OFTEN BRUSH",
-					"STATE TEETH",
-					"OFTEN FLOSS",
-					"STATE GUMS",
-					"LAST SAW DENTIST",
-					"REASON FOR DENTIST",
-					"BUY SUPPLIES",
-					"PAY FOR VISIT",
-					"BARRIERS",
-					"PROBLEMS",
-					"SERVICES NEEDED",
-					"CREATED AT",
-					"PROOF OF INCOME ATTACHMENT",
-					"PROGRAM YEAR",
-					"INCOME AMOUNT",
-					"DATE OF ENROLLMENT",
-					"POLICY NUMBER",
-					"INTERNAL FIELD CREATED AT"
-					],
-				],
-				{ origin: "A1" }
-				);
-				const ws2 = utils.json_to_sheet(resp.data.dataDependents);
-				utils.book_append_sheet(wb, ws2, "Dental Service Dependents");
-				utils.sheet_add_aoa(
-				ws2,
-				[
-					[
-					"APPLICANT NAME",
-					"FIRST NAME",
-					"LAST NAME",
-					"DATE OF BIRTH",
-					"HEALTHCARE",
-					"APPLY",
-					],
-				],
-				{ origin: "A1" }
-				);
+			const processBatches = async () => {
+                const batchPromises = [];
 
-				writeFileXLSX(wb, "DentalService_Requests.xlsx");
+                for (let batch = 0; batch < totalBatches; batch++) {
+                    const start = batch * this.exportMaxSize;
+                    const end = start + this.exportMaxSize;
+                    batchPromises.push(fetchBatchData(start, end));
+                }
 
-				this.loading = false;
-			})
-			.catch((err) => console.error(err))
-			.finally(() => {
-				this.loading = false;
-			});
+                try {
+                    const results = await Promise.all(batchPromises);
+
+                    results.forEach((data) => {
+                        dentalData = dentalData.concat(data.dataDental);
+						dependantsData = dependantsData.concat(data.dataDependents);
+                    });
+
+                    this.generateExcel(dentalData, dependantsData);
+                } catch (error) {
+                    console.error('Error processing Dental Service Export batches:', error);
+                } finally {
+                    this.loadingExport = false;
+                }
+            };
+
+            processBatches();
 		},
+		generateExcel(dentalData, dependantsData) {
+            const ws = utils.json_to_sheet(dentalData);
+			const wb = utils.book_new();
+			utils.book_append_sheet(wb, ws, "Dental Service Requests");
+
+			utils.sheet_add_aoa(
+			ws,
+			[
+				[
+				"FIRST NAME",
+				"MIDDLE NAME",
+				"LAST NAME",
+				"DATE OF BIRTH",
+				"HEALTH CARD NUMBER",
+				"MAILING ADDRESS",
+				"CITY OR TOWN",
+				"POSTAL CODE",
+				"PHONE",
+				"EMAIL",
+				"OTHER COVERAGE",
+				"ELIGIBLE PHARMACARE",
+				"EMAIL INSTEAD",
+				"HAVE CHILDREN",
+				"ASK DEMOGRAPHIC",
+				"IDENTIFY GROUPS",
+				"GENDER",
+				"EDUCATION",
+				"OFTEN BRUSH",
+				"STATE TEETH",
+				"OFTEN FLOSS",
+				"STATE GUMS",
+				"LAST SAW DENTIST",
+				"REASON FOR DENTIST",
+				"BUY SUPPLIES",
+				"PAY FOR VISIT",
+				"BARRIERS",
+				"PROBLEMS",
+				"SERVICES NEEDED",
+				"CREATED AT",
+				"PROOF OF INCOME ATTACHMENT",
+				"PROGRAM YEAR",
+				"INCOME AMOUNT",
+				"DATE OF ENROLLMENT",
+				"POLICY NUMBER",
+				"INTERNAL FIELD CREATED AT"
+				],
+			],
+			{ origin: "A1" }
+			);
+			const ws2 = utils.json_to_sheet(dependantsData);
+			utils.book_append_sheet(wb, ws2, "Dental Service Dependents");
+			utils.sheet_add_aoa(
+			ws2,
+			[
+				[
+				"APPLICANT NAME",
+				"FIRST NAME",
+				"LAST NAME",
+				"DATE OF BIRTH",
+				"HEALTHCARE",
+				"APPLY",
+				],
+			],
+			{ origin: "A1" }
+			);
+
+			writeFileXLSX(wb, "DentalService_Requests.xlsx");
+        }
 	},
 };
 </script>

@@ -119,32 +119,23 @@ midwiferyRouter.post("/", async (req: Request, res: Response) => {
         .where('MIDWIFERY_SERVICES.STATUS', '<>', 4 )
         .orderBy('MIDWIFERY_SERVICES.ID', 'ASC');
 
-        let countQuery = db(`${SCHEMA_MIDWIFERY}.MIDWIFERY_SERVICES`)
-        .join(`${SCHEMA_MIDWIFERY}.MIDWIFERY_STATUS`, 'MIDWIFERY_SERVICES.STATUS', '=', 'MIDWIFERY_STATUS.ID')
-        .leftJoin(`${SCHEMA_MIDWIFERY}.MIDWIFERY_BIRTH_LOCATIONS`, 'MIDWIFERY_SERVICES.WHERE_TO_GIVE_BIRTH', '=', 'MIDWIFERY_BIRTH_LOCATIONS.ID')
-        .leftJoin(`${SCHEMA_MIDWIFERY}.MIDWIFERY_PREFERRED_CONTACT_TYPES`, 'MIDWIFERY_SERVICES.PREFER_TO_BE_CONTACTED', '=', 'MIDWIFERY_PREFERRED_CONTACT_TYPES.ID')
-        .count('* as count')
-        .where('MIDWIFERY_SERVICES.STATUS', '<>', 4 );
-
         if(dateFrom && dateTo) {
             query.where(db.raw("TO_CHAR(MIDWIFERY_SERVICES.CREATED_AT, 'YYYY-MM-DD') >=  ? AND TO_CHAR(MIDWIFERY_SERVICES.CREATED_AT, 'YYYY-MM-DD') <= ?",
-                [dateFrom, dateTo]));
-
-            countQuery.where(db.raw("TO_CHAR(MIDWIFERY_SERVICES.CREATED_AT, 'YYYY-MM-DD') >=  ? AND TO_CHAR(MIDWIFERY_SERVICES.CREATED_AT, 'YYYY-MM-DD') <= ?",
                 [dateFrom, dateTo]));
         }
 
         if (status_request) {
             query.whereIn("MIDWIFERY_SERVICES.STATUS", status_request);
-
-            countQuery.whereIn("MIDWIFERY_SERVICES.STATUS", status_request);
         }
 
-        query = query.offset(offset).limit(pageSize);
+        const countQuery = query.clone().clearSelect().clearOrder().count('* as count').first();
+
+        if(pageSize !== -1){
+            query = query.offset(offset).limit(pageSize);
+        }
 
         const midwifery = await query;
-
-        const countResult = await countQuery.first();
+        const countResult = await countQuery;
         const countSubmissions = countResult ? countResult.count : 0;
 
         midwiferyStatus = await db(`${SCHEMA_MIDWIFERY}.MIDWIFERY_STATUS`).select().whereNot('DESCRIPTION', 'Closed')

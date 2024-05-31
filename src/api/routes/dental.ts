@@ -96,6 +96,8 @@ dentalRouter.post("/", async (req: Request, res: Response) => {
         const page = parseInt(req.body.params.page as string) || 1;
         const pageSize = parseInt(req.body.params.pageSize as string) || 10;
         const offset = (page - 1) * pageSize;
+        const sortBy = req.body.params.sortBy;
+        const sortOrder = req.body.params.sortOrder;
 
         var dateFrom = req.body.params.dateFrom;
         var dateTo = req.body.params.dateTo;
@@ -103,7 +105,6 @@ dentalRouter.post("/", async (req: Request, res: Response) => {
         let status_request = req.body.params.status;
         db = await helper.getOracleClient(db, DB_CONFIG_DENTAL);
         let query = db(`${SCHEMA_DENTAL}.DENTAL_SERVICE_SUBMISSIONS`)
-            .orderBy('ID', 'ASC');
 
         if(dateYear) {
             query.where(db.raw("EXTRACT(YEAR FROM TO_DATE(CREATED_AT, 'YYYY-MM-DD HH24:MI:SS')) = ?",
@@ -121,7 +122,16 @@ dentalRouter.post("/", async (req: Request, res: Response) => {
         }
 
         const countQuery = query.clone();
-        query = query.offset(offset).limit(pageSize);
+
+        if (sortBy) {
+            query = query.orderBy(sortBy.toUpperCase(), sortOrder);
+        } else {
+            query = query.orderBy('ID', 'ASC');
+        }
+
+        if(pageSize !== -1){
+            query = query.offset(offset).limit(pageSize);
+        }
 
         const dentalService = await query;
 

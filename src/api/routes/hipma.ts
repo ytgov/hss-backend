@@ -118,7 +118,9 @@ hipmaRouter.post("/", async (req: Request, res: Response) => {
                 [dateFrom, dateTo]));
         }
 
-        query = query.offset(offset).limit(pageSize);
+        if(pageSize !== -1){
+            query = query.offset(offset).limit(pageSize);
+        }
 
         let countQuery = db(`${SCHEMA_HIPMA}.HEALTH_INFORMATION`)
             .leftJoin(`${SCHEMA_HIPMA}.HIPMA_REQUEST_TYPE`, 'HEALTH_INFORMATION.WHAT_TYPE_OF_REQUEST_DO_YOU_WANT_TO_MAKE_', '=', 'HIPMA_REQUEST_TYPE.ID')

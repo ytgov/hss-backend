@@ -4,7 +4,16 @@
 		<v-row class="mb-5" no-gutters>
 			<span class="title-service">Midwifery Export</span>
 		</v-row>
-
+		<div class="text-center loading" v-show="loadingExport">
+			<v-progress-circular
+				:size="125"
+				:width="10"
+				color="primary"
+				indeterminate
+			>
+				Generating...
+			</v-progress-circular>
+		</div>
 		<v-row class="row-filter">
 			<v-col
 				cols="10"
@@ -132,6 +141,9 @@
 
 			:server-items-length="totalItems"
 			@update:options="getDataFromApi"
+			:footer-props="{
+                'items-per-page-options': itemsPerPage
+            }"
 		>
 		</v-data-table>
 	</div>
@@ -178,6 +190,8 @@ export default {
 		initialPage: 1,
         initialItemsPerPage: 10,
         totalItems: 0,
+		itemsPerPage: [10, 15, 50, 100, -1],
+		exportMaxSize: 250,
 	}),
 	watch: {
 		loader () {
@@ -209,18 +223,21 @@ export default {
 		},
 		getDataFromApi() {
 			this.loading = true;
+			this.items = [];
+			const { page, itemsPerPage, sortBy, sortDesc } = this.options;
+
 			axios
 			.post(MIDWIFERY_URL, {
 				params: {
 					dateFrom: this.date,
 					dateTo: this.dateEnd,
 					status: this.selectedStatus,
-					page: this.options.page,
-					pageSize: this.options.itemsPerPage,
+					page: page,
+					pageSize: itemsPerPage,
 				}
 			})
 			.then((resp) => {
-				this.items = resp.data.data;
+				this.items = this.sortItems(resp.data.data, sortBy, sortDesc);
 				this.itemsStatus = resp.data.dataStatus.filter((element) => element.value != 4);
 				this.loading = false;
 				this.totalItems = resp.data.total;
@@ -245,79 +262,120 @@ export default {
             this.options.itemsPerPage = this.initialItemsPerPage;
 			this.getDataFromApi();
 		},
+		sortItems(items, sortBy, sortDesc) {
+            if (sortBy.length) {
+                let sorted = items.sort((a, b) => {
+                    const sortKey = sortBy[0];
+                    const sortOrder = sortDesc[0] ? -1 : 1;
+                    if (a[sortKey] < b[sortKey]) return -1 * sortOrder;
+                    if (a[sortKey] > b[sortKey]) return 1 * sortOrder;
+                    return 0;
+                });
+
+                return sorted;
+            }else{
+                return items;
+            }
+        },
 		exportFile () {
-			this.loader = 'loadingExport';
-			let requests = [];
-			let checked = this.selected;
-			if(checked.length > 0){
-				checked.forEach(function (value) {
-					requests.push(value.id);
-				});
-			}
 
-			axios
-			.post(MIDWIFERY_EXPORT_FILE_URL, {
-				params: {
-					requests: requests,
-					dateFrom: this.date,
-					dateTo: this.dateEnd,
-					status: this.selectedStatus
+			this.loadingExport = true;
+
+            const totalBatches = Math.ceil(this.selected.length / this.exportMaxSize);
+            let midwiferyData = [];
+			let fileName = "";
+
+            const fetchBatchData = async (start, end) => {
+				const idArray = this.selected.slice(start, end).map(e => e.id);
+
+				try {
+					const response = await axios.post(MIDWIFERY_EXPORT_FILE_URL, {
+						params: {
+							requests: idArray,
+							dateFrom: this.date,
+							dateTo: this.dateEnd,
+							status: this.selectedStatus
+						}
+					});
+					return response.data;
+				} catch (error) {
+					console.error(error);
+					throw error;
 				}
-			})
-			.then((resp) => {
+			};
 
-				const ws = utils.json_to_sheet(resp.data.data);
-				const wb = utils.book_new();
-				utils.book_append_sheet(wb, ws, "Midwifery Requests");
+			const processBatches = async () => {
+                const batchPromises = [];
 
-				utils.sheet_add_aoa(ws, [[
-					"Confirmation number",
-					"First name",
-					"Last name",
-					"Preferred name",
-					"Pronouns",
-					"Yukon health insurance",
-					"Need interpretation",
-					"Preferred phone",
-					"Preferred email",
-					"Is okay to leave message",
-					"Date confirmed",
-					"Is this your first pregnancy?",
-					"How many vaginal births",
-					"How many c-section births",
-					"Complications with previous",
-					"Provide details",
-					"Midwife before",
-					"Medical Concerns with Pregnancy",
-					"Provide details2",
-					"Have you had primary healthcare?",
-					"Menstrual cycle length",
-					"Family physician",
-					"Physician's name",
-					"Major medical conditions",
-					"Provide details3",
-					"Do you identify with one or more of these groups and communities",
-					"How did you find out about the midwifery clinic",
-					"Birth location",
-					"Preferred contact",
-					"Date of birth",
-					"When was the first day of your last period",
-					"Due date",
-					"Created at",
-					"Updated at",
-					"Community located",
-					"Preferred language"
-				]], { origin: "A1" });
+                for (let batch = 0; batch < totalBatches; batch++) {
+                    const start = batch * this.exportMaxSize;
+                    const end = start + this.exportMaxSize;
+                    batchPromises.push(fetchBatchData(start, end));
+                }
 
-				writeFileXLSX(wb, resp.data.fileName);
+                try {
+                    const results = await Promise.all(batchPromises);
+                    results.forEach((data) => {
+                        midwiferyData = midwiferyData.concat(data.data);
+						fileName = data.fileName;
+                    });
 
-				this.loading = false;
-			})
-			.catch((err) => console.error(err))
-			.finally(() => {
-				this.loading = false;
-			});
+                    this.generateExcel(midwiferyData, fileName);
+                } catch (error) {
+                    console.error('Error processing Midwifery Export batches:', error);
+                } finally {
+                    this.loadingExport = false;
+                }
+            };
+
+            processBatches();
 		},
+		generateExcel(midwiferyData, fileName) {
+            const ws = utils.json_to_sheet(midwiferyData);
+			const wb = utils.book_new();
+			utils.book_append_sheet(wb, ws, "Midwifery Requests");
+
+			utils.sheet_add_aoa(ws, [[
+				"Confirmation number",
+				"First name",
+				"Last name",
+				"Preferred name",
+				"Pronouns",
+				"Yukon health insurance",
+				"Need interpretation",
+				"Preferred phone",
+				"Preferred email",
+				"Is okay to leave message",
+				"Date confirmed",
+				"Is this your first pregnancy?",
+				"How many vaginal births",
+				"How many c-section births",
+				"Complications with previous",
+				"Provide details",
+				"Midwife before",
+				"Medical Concerns with Pregnancy",
+				"Provide details2",
+				"Have you had primary healthcare?",
+				"Menstrual cycle length",
+				"Family physician",
+				"Physician's name",
+				"Major medical conditions",
+				"Provide details3",
+				"Do you identify with one or more of these groups and communities",
+				"How did you find out about the midwifery clinic",
+				"Birth location",
+				"Preferred contact",
+				"Date of birth",
+				"When was the first day of your last period",
+				"Due date",
+				"Created at",
+				"Updated at",
+				"Community located",
+				"Preferred language"
+			]], { origin: "A1" });
+
+			writeFileXLSX(wb, fileName);
+        }
 	},
 };
 </script>

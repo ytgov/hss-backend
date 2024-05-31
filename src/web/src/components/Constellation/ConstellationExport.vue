@@ -3,7 +3,16 @@
     <v-row class="mb-5" no-gutters>
         <span class="title-service">Constellation Health Requests</span>
     </v-row>
-
+    <div class="text-center loading" v-show="loadingExport">
+        <v-progress-circular
+			:size="125"
+			:width="10"
+			color="primary"
+			indeterminate
+		>
+			Generating...
+		</v-progress-circular>
+    </div>
     <v-row class="row-filter">
         <v-col
             cols="12"
@@ -100,7 +109,6 @@
             lg="2"
         >
             <v-btn
-                :loading="loadingExport"
                 :disabled="loadingExport"
                 color="#F3A901"
                 class="ma-2 white--text apply-btn"
@@ -132,6 +140,9 @@
 
         :server-items-length="totalItems"
         @update:options="getDataFromApi"
+        :footer-props="{
+            'items-per-page-options': itemsPerPage
+        }"
     >
     </v-data-table>
     </div>
@@ -146,7 +157,10 @@ export default {
     data: () => ({
         loading: false,
             items: [],
-            options: {},
+            options: {
+                page: 1,
+                itemsPerPage: 10
+            },
             flagAlert: false,
             menu: false,
             date: null,
@@ -158,13 +172,11 @@ export default {
             loader: null,
             loadingExport: false,
             loadingReset: false,
-            options: {
-                page: 1,
-                itemsPerPage: 10
-            },
             initialPage: 1,
             initialItemsPerPage: 10,
             totalItems: 0,
+            itemsPerPage: [10, 15, 50, 100, -1],
+            exportMaxSize: 250,
     }),
     computed: {
         headers() {
@@ -252,6 +264,7 @@ export default {
         getDataFromApi() {
             this.loading = true;
             this.items = [];
+            const { page, itemsPerPage, sortBy, sortDesc } = this.options;
 
             axios
             .post(CONSTELLATION_URL, {
@@ -259,12 +272,12 @@ export default {
                     dateFrom: this.date,
                     dateTo: this.dateEnd,
                     status: this.selectedStatus,
-                    page: this.options.page,
-					pageSize: this.options.itemsPerPage,
+                    page: page,
+					pageSize: itemsPerPage,
                 }
             })
             .then((resp) => {
-                this.items = resp.data.data;
+                this.items = this.sortItems(resp.data.data, sortBy, sortDesc);
                 this.itemsStatus = resp.data.dataStatus.filter((element) => element.value != 4);
                 this.loading = false;
                 this.totalItems = resp.data.total;
@@ -288,96 +301,144 @@ export default {
             this.selected = [];
             this.getDataFromApi();
         },
-        exportFile () {
-            var idArray = [];
-            this.selected.forEach((e) => {
-                idArray.push(e.constellation_health_id);
-            });
+        sortItems(items, sortBy, sortDesc) {
+            if (sortBy.length) {
+                let sorted = items.sort((a, b) => {
+                    const sortKey = sortBy[0];
+                    const sortOrder = sortDesc[0] ? -1 : 1;
+                    if (a[sortKey] < b[sortKey]) return -1 * sortOrder;
+                    if (a[sortKey] > b[sortKey]) return 1 * sortOrder;
+                    return 0;
+                });
 
-            axios
-            .post(CONSTELLATION_EXPORT_FILE_URL, {
-                params: {
-                    requests: idArray,
-                    status: this.actionSelected,
-                    dateFrom: this.date,
-                    dateTo: this.dateEnd
-                }
-            }).then((resp) => {
-                const ws = utils.json_to_sheet(resp.data.dataConstellation);
-                const wb = utils.book_new();
-                utils.book_append_sheet(wb, ws, "Constellation Requests");
-
-                utils.sheet_add_aoa(
-                    ws,
-                    [
-                        [
-                            "First name",
-                            "Last name",
-                            "Is this your legal name?",
-                            "Legal name",
-                            "Pronouns",
-                            "Date of birth",
-                            "Do you have a Yukon health care card?",
-                            "Health care card number",
-                            "YHCIP",
-                            "Postal code",
-                            "City or community",
-                            "Prefer to be contacted",
-                            "Phone Number",
-                            "Email",
-                            "Leave phone message",
-                            "Language prefer to receive services",
-                            "Interpretation support",
-                            "Family physician",
-                            "Current family physician",
-                            "Accessing health care",
-                            "Diagnosis or history",
-                            "Demographic groups",
-                            "Include family members",
-                            "created_at",
-                        ],
-                    ],
-                    { origin: "A1" }
-                );
-                const ws2 = utils.json_to_sheet(resp.data.dataFamilyMembers);
-                utils.book_append_sheet(wb, ws2, "Const. Health Family Members");
-                utils.sheet_add_aoa(
-                    ws2,
-                    [
-                        [
-                            "Client name",
-                            "First name family member",
-                            "Last name family member",
-                            "Legal name family member",
-                            "Pronouns family member",
-                            "Date of birth family member",
-                            "Do you have a Yukon health care card?",
-                            "Health care card number",
-                            "Which province or territory is this card from?",
-                            "YHCIP family member",
-                            "Relationship",
-                            "Language prefer to receive services",
-                            "Other language",
-                            "Interpretation support",
-                            "Family physician",
-                            "Current family physician",
-                            "Accessing health care family member",
-                            "Diagnosis or history family member",
-                            "Demographic groups family member",
-                        ],
-                    ],
-                    { origin: "A1" }
-                );
-
-                writeFileXLSX(wb, "Constellation_request.xlsx");
-
-                this.loading = false;
-            })
-            .catch((err) => console.error(err))
-            .finally(() => {
-                this.loading = false;
-            });
+                return sorted;
+            }else{
+                return items;
+            }
         },
+        exportFile () {
+            this.loadingExport = true;
+
+            const totalBatches = Math.ceil(this.selected.length / this.exportMaxSize);
+            let allConstellationData = [];
+            let allFamilyMembersData = [];
+
+            const fetchBatchData = async (start, end) => {
+                const idArray = this.selected.slice(start, end).map(e => e.constellation_health_id);
+
+                try {
+                    const response = await axios.post(CONSTELLATION_EXPORT_FILE_URL, {
+                        params: {
+                            requests: idArray,
+                            status: this.actionSelected,
+                            dateFrom: this.date,
+                            dateTo: this.dateEnd
+                        }
+                    });
+                    return response.data;
+                } catch (error) {
+                    console.error(error);
+                    throw error;
+                }
+            };
+
+            const processBatches = async () => {
+                const batchPromises = [];
+
+                for (let batch = 0; batch < totalBatches; batch++) {
+                    const start = batch * this.exportMaxSize;
+                    const end = start + this.exportMaxSize;
+                    batchPromises.push(fetchBatchData(start, end));
+                }
+
+                try {
+                    const results = await Promise.all(batchPromises);
+
+                    results.forEach((data) => {
+                        allConstellationData = allConstellationData.concat(data.dataConstellation);
+                        allFamilyMembersData = allFamilyMembersData.concat(data.dataFamilyMembers);
+                    });
+
+                    this.generateExcel(allConstellationData, allFamilyMembersData);
+                } catch (error) {
+                    console.error('Error processing Constellation Export batches:', error);
+                } finally {
+                    this.loadingExport = false;
+                }
+            };
+
+            processBatches();
+        },
+        generateExcel(allConstellationData, allFamilyMembersData) {
+            const ws = utils.json_to_sheet(allConstellationData);
+            const wb = utils.book_new();
+            utils.book_append_sheet(wb, ws, "Constellation Requests");
+
+            utils.sheet_add_aoa(
+                ws,
+                [
+                    [
+                        "First name",
+                        "Last name",
+                        "Is this your legal name?",
+                        "Legal name",
+                        "Pronouns",
+                        "Date of birth",
+                        "Do you have a Yukon health care card?",
+                        "Health care card number",
+                        "YHCIP",
+                        "Postal code",
+                        "City or community",
+                        "Prefer to be contacted",
+                        "Phone Number",
+                        "Email",
+                        "Leave phone message",
+                        "Language prefer to receive services",
+                        "Interpretation support",
+                        "Family physician",
+                        "Current family physician",
+                        "Accessing health care",
+                        "Diagnosis or history",
+                        "Demographic groups",
+                        "Include family members",
+                        "created_at",
+                    ],
+                ],
+                { origin: "A1" }
+            );
+
+            const ws2 = utils.json_to_sheet(allFamilyMembersData);
+            utils.book_append_sheet(wb, ws2, "Const. Health Family Members");
+            utils.sheet_add_aoa(
+                ws2,
+                [
+                    [
+                        "Client name",
+                        "First name family member",
+                        "Last name family member",
+                        "Legal name family member",
+                        "Pronouns family member",
+                        "Date of birth family member",
+                        "Do you have a Yukon health care card?",
+                        "Health care card number",
+                        "Which province or territory is this card from?",
+                        "YHCIP family member",
+                        "Relationship",
+                        "Language prefer to receive services",
+                        "Other language",
+                        "Interpretation support",
+                        "Family physician",
+                        "Current family physician",
+                        "Accessing health care family member",
+                        "Diagnosis or history family member",
+                        "Demographic groups family member",
+                    ],
+                ],
+                { origin: "A1" }
+            );
+
+            writeFileXLSX(wb, "Constellation_request.xlsx");
+        }
     },
 };
 </script>

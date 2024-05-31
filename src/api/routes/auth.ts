@@ -142,31 +142,62 @@ export function configureAuthentication(app: Express) {
         }
     });
 
-    app.get('/api/auth/logout', async (req: any, res) => {
-        try {
-            const claims = req.oidc.idTokenClaims;
-            if (claims) {
-                const url = `${claims.iss}v2/logout?client_id=${claims.aud}`;
+    app.get('/api/auth/logout', async (req: any, res: Response) => {
+        const claims = req.oidc.idTokenClaims;
+
+        if (claims) {
+            try {
+
+                const url = `${claims.iss}v2/logout?returnTo=${FRONTEND_URL}&client_id=${claims.aud}`;
+                console.log("URL ", url);
+
                 const result = await axios.get(url);
-                if (result.data === "OK") {
-                    req["appSession"] = undefined;
-                    req.session.destroy();
-                    res.status(200);
-                    res.send({
-                        data: {
-                            logout: true,
-                            redirect: AUTH_REDIRECT
-                        }
-                    })
+                if (result.status === 200) {
+
+                    //Delete session cookies
+                    req.appSession = undefined;
+                    res.clearCookie('connect.sid', { path: '/', httpOnly: true, secure: true });
+                    res.clearCookie('appSession', { path: '/', httpOnly: true, secure: true });
+
+                    if (req.session) {
+                        req.session.destroy((err: any) => {
+                            if (err) {
+                                console.error('Error destroying session:', err);
+                                return res.status(500).send({
+                                    error: {
+                                        message: 'Failed to destroy session',
+                                    }
+                                });
+                            }
+
+                            res.status(200).send({
+                                data: {
+                                    logout: true,
+                                    redirect: AUTH_REDIRECT,
+                                    logoutExternalUrl: url,
+                                },
+                            });
+                        });
+                    } else {
+                        res.status(200).send({
+                            data: {
+                                logout: true,
+                                redirect: AUTH_REDIRECT,
+                            },
+                        });
+                    }
                 }
+            } catch (error: any) {
+                console.log(error);
+                return res.status(error.response?.status || 500).send({
+                    error: {
+                        message: 'Logout failed',
+                    },
+                });
             }
-        } catch(e) {
-            console.log(e);  // debug if needed
-            res.send( {
-                status: 400,
-                message: 'Request could not be processed'
-            });
+
         }
+
     });
 }
 

@@ -4,7 +4,16 @@
 		<v-row class="mb-5" no-gutters>
 			<span class="title-service">Health Information Export</span>
 		</v-row>
-
+		<div class="text-center loading" v-show="loadingExport">
+			<v-progress-circular
+				:size="125"
+				:width="10"
+				color="primary"
+				indeterminate
+			>
+				Generating...
+			</v-progress-circular>
+		</div>
 		<v-row class="row-filter">
 			<v-col
 				cols="10"
@@ -116,6 +125,9 @@
 
 			:server-items-length="totalItems"
 			@update:options="getDataFromApi"
+			:footer-props="{
+                'items-per-page-options': itemsPerPage
+            }"
 		>
 
 		</v-data-table>
@@ -157,6 +169,8 @@ export default {
 		initialPage: 1,
         initialItemsPerPage: 10,
         totalItems: 0,
+		itemsPerPage: [10, 15, 50, 100, -1],
+		exportMaxSize: 250,
 	}),
 	watch: {
 		loader () {
@@ -181,18 +195,19 @@ export default {
 		getDataFromApi() {
 		this.loading = true;
 		this.items = [];
+		const { page, itemsPerPage, sortBy, sortDesc } = this.options;
 
 			axios
 			.post(HIPMA_URL, {
 				params: {
 					dateFrom: this.date,
 					dateTo: this.dateEnd,
-					page: this.options.page,
-					pageSize: this.options.itemsPerPage,
+					page: page,
+					pageSize: itemsPerPage,
 				}
 			})
 			.then((resp) => {
-				this.items = resp.data.data;
+				this.items = this.sortItems(resp.data.data, sortBy, sortDesc);
 				this.itemsUnfiltered = resp.data.data;
 				this.loading = false;
 				this.totalItems = resp.data.total;
@@ -217,74 +232,114 @@ export default {
             this.options.itemsPerPage = this.initialItemsPerPage;
 			this.getDataFromApi();
 		},
+		sortItems(items, sortBy, sortDesc) {
+            if (sortBy.length) {
+                let sorted = items.sort((a, b) => {
+                    const sortKey = sortBy[0];
+                    const sortOrder = sortDesc[0] ? -1 : 1;
+                    if (a[sortKey] < b[sortKey]) return -1 * sortOrder;
+                    if (a[sortKey] > b[sortKey]) return 1 * sortOrder;
+                    return 0;
+                });
+
+                return sorted;
+            }else{
+                return items;
+            }
+        },
 		exportFile () {
-			this.loader = 'loadingExport';
-			let requests = [];
-			let checked = this.selected;
+			this.loadingExport = true;
 
-			if(checked.length > 0){
-				checked.forEach(function (value) {
-					requests.push(value.id);
-				});
-			}
+            const totalBatches = Math.ceil(this.selected.length / this.exportMaxSize);
+            let hipmaData = [];
+			let fileName = "";
 
-			axios
-			.post(HIPMA_EXPORT_FILE_URL, {
-				params: {
-					requests: requests,
-					dateFrom: this.date,
-					dateTo: this.dateEnd
+            const fetchBatchData = async (start, end) => {
+				const idArray = this.selected.slice(start, end).map(e => e.id);
+
+				try {
+					const response = await axios.post(HIPMA_EXPORT_FILE_URL, {
+						params: {
+							requests: idArray,
+							dateFrom: this.date,
+							dateTo: this.dateEnd
+						}
+					});
+					return response.data;
+				} catch (error) {
+					console.error(error);
+					throw error;
 				}
-			})
-			.then((resp) => {
+			};
 
-				const ws = utils.json_to_sheet(resp.data.data);
-				const wb = utils.book_new();
-				utils.book_append_sheet(wb, ws, "Hipma Requests");
+			const processBatches = async () => {
+                const batchPromises = [];
 
-				utils.sheet_add_aoa(ws, [[
-					"Confirmation number",
-					"First name behalf",
-					"Last name behalf",
-					"Company or organization optional behalf",
-					"Address behalf",
-					"City or town behalf",
-					"Postal code behalf",
-					"Email address behalf",
-					"Phone number behalf",
-					"First name",
-					"Last name",
-					"Date of birth",
-					"Address",
-					"City or town",
-					"Postal code",
-					"Email address",
-					"Phone number",
-					"Name of health and social services program area optional ",
-					"Indicate the hss system s you would like a record of user activity",
-					"Provide details about your request ",
-					"Date from ",
-					"Date to ",
-					"Created at",
-					"Updated at",
-					"Request Type",
-					"Access Personal Health Information",
-					"Get a copy of your health information",
-					"Situations",
-					"Copy activity request",
-					"Need help identifying data range",
-					"Affirm information accurate"
-				]], { origin: "A1" });
+                for (let batch = 0; batch < totalBatches; batch++) {
+                    const start = batch * this.exportMaxSize;
+                    const end = start + this.exportMaxSize;
+                    batchPromises.push(fetchBatchData(start, end));
+                }
 
-				writeFileXLSX(wb, resp.data.fileName);
+                try {
+                    const results = await Promise.all(batchPromises);
 
-				this.loading = false;
-			})
-			.catch((err) => console.error(err))
-			.finally(() => {
-				this.loading = false;
-			});
+                    results.forEach((data) => {
+                        hipmaData = hipmaData.concat(data.data);
+						fileName = data.fileName;
+                    });
+
+                    this.generateExcel(hipmaData, fileName);
+                } catch (error) {
+                    console.error('Error processing Hipma Export batches:', error);
+                } finally {
+                    this.loadingExport = false;
+                }
+            };
+
+            processBatches();
 		},
+		generateExcel(hipmaData, fileName) {
+            const ws = utils.json_to_sheet(hipmaData);
+			const wb = utils.book_new();
+			utils.book_append_sheet(wb, ws, "Hipma Requests");
+
+			utils.sheet_add_aoa(ws, [[
+				"Confirmation number",
+				"First name behalf",
+				"Last name behalf",
+				"Company or organization optional behalf",
+				"Address behalf",
+				"City or town behalf",
+				"Postal code behalf",
+				"Email address behalf",
+				"Phone number behalf",
+				"First name",
+				"Last name",
+				"Date of birth",
+				"Address",
+				"City or town",
+				"Postal code",
+				"Email address",
+				"Phone number",
+				"Name of health and social services program area optional ",
+				"Indicate the hss system s you would like a record of user activity",
+				"Provide details about your request ",
+				"Date from ",
+				"Date to ",
+				"Created at",
+				"Updated at",
+				"Request Type",
+				"Access Personal Health Information",
+				"Get a copy of your health information",
+				"Situations",
+				"Copy activity request",
+				"Need help identifying data range",
+				"Affirm information accurate"
+			]], { origin: "A1" });
+
+			writeFileXLSX(wb, fileName);
+        }
 	},
 };
 </script>

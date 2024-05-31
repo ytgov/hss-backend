@@ -119,12 +119,10 @@ constellationRouter.post("/", async (req: Request, res: Response) => {
             query.whereIn("CONSTELLATION_HEALTH.STATUS", status_request);
         }
 
-        query = query.offset(offset).limit(pageSize);
-
         const countQuery = db(`${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH`)
-            .join(`${SCHEMA_CONSTELLATION}.CONSTELLATION_STATUS`, 'CONSTELLATION_HEALTH.STATUS', '=', 'CONSTELLATION_STATUS.ID')
-            .count('* as count')
-            .where('CONSTELLATION_HEALTH.STATUS', '<>', 4);
+        .join(`${SCHEMA_CONSTELLATION}.CONSTELLATION_STATUS`, 'CONSTELLATION_HEALTH.STATUS', '=', 'CONSTELLATION_STATUS.ID')
+        .count('* as count')
+        .where('CONSTELLATION_HEALTH.STATUS', '<>', 4);
 
         if (dateFrom && dateTo) {
             countQuery.where(db.raw(
@@ -135,6 +133,10 @@ constellationRouter.post("/", async (req: Request, res: Response) => {
 
         if (status_request) {
             countQuery.whereIn("CONSTELLATION_HEALTH.STATUS", status_request);
+        }
+
+        if(pageSize !== -1){
+            query = query.offset(offset).limit(pageSize);
         }
 
         const constellationHealth = await query;
@@ -620,7 +622,7 @@ constellationRouter.post("/export/", async (req: Request, res: Response) => {
                 )
             .where('CONSTELLATION_HEALTH.STATUS', '<>', 4 );
 
-        if(requests.length > 0){
+        if(requests && requests.length > 0){
             query.whereIn("CONSTELLATION_HEALTH.ID", requests);
         }
 

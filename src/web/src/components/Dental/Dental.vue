@@ -166,6 +166,9 @@
 
 			:server-items-length="totalItems"
 			@update:options="getDataFromApi"
+			:footer-props="{
+                'items-per-page-options': itemsPerPage
+            }"
 		>
 			<template v-slot:[`item.showurl`]="{ item }">
 				<v-icon @click="showDetails(item.showurl)">mdi-eye</v-icon>
@@ -243,6 +246,7 @@
 		totalItems: 0,
 		initialPage: 1,
 		initialItemsPerPage: 10,
+		itemsPerPage: [10, 15, 50, 100, -1]
 	}),
 	components: {
 		Notifications
@@ -314,6 +318,7 @@
 		getDataFromApi() {
 			this.loadingTable = true;
 			this.items = [];
+			const { page, itemsPerPage, sortBy, sortDesc } = this.options;
 
 			axios
 			.post(DENTAL_URL, {
@@ -322,8 +327,10 @@
 					dateTo: this.dateEnd,
 					dateYear: this.dateYear,
 					status: this.statusSelected,
-					page: this.options.page,
-					pageSize: this.options.itemsPerPage,
+					page: page,
+					pageSize: itemsPerPage,
+					sortBy: sortBy.length ? sortBy[0] : null,
+					sortOrder: sortBy.length ? (sortDesc[0] ? 'DESC' : 'ASC') : null
 				}
 			})
 			.then((resp) => {
@@ -377,6 +384,21 @@
 				}
 			}
 		},
+		sortItems(items, sortBy, sortDesc) {
+            if (sortBy.length) {
+                let sorted = items.sort((a, b) => {
+                    const sortKey = sortBy[0];
+                    const sortOrder = sortDesc[0] ? -1 : 1;
+                    if (a[sortKey] < b[sortKey]) return -1 * sortOrder;
+                    if (a[sortKey] > b[sortKey]) return 1 * sortOrder;
+                    return 0;
+                });
+
+                return sorted;
+            }else{
+                return items;
+            }
+        },
 	},
 	};
 </script>
