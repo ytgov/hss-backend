@@ -204,10 +204,12 @@ export default {
 					dateTo: this.dateEnd,
 					page: page,
 					pageSize: itemsPerPage,
+					sortBy: sortBy.length ? sortBy[0] : null,
+					sortOrder: sortBy.length ? (sortDesc[0] ? 'DESC' : 'ASC') : null
 				}
 			})
 			.then((resp) => {
-				this.items = this.sortItems(resp.data.data, sortBy, sortDesc);
+				this.items = resp.data.data;
 				this.itemsUnfiltered = resp.data.data;
 				this.loading = false;
 				this.totalItems = resp.data.total;

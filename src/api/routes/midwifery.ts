@@ -96,6 +96,8 @@ midwiferyRouter.post("/", async (req: Request, res: Response) => {
         const page = parseInt(req.body.params.page as string) || 1;
         const pageSize = parseInt(req.body.params.pageSize as string) || 10;
         const offset = (page - 1) * pageSize;
+        const sortBy = req.body.params.sortBy;
+        const sortOrder = req.body.params.sortOrder;
 
         let query = db(`${SCHEMA_MIDWIFERY}.MIDWIFERY_SERVICES`)
         .join(`${SCHEMA_MIDWIFERY}.MIDWIFERY_STATUS`, 'MIDWIFERY_SERVICES.STATUS', '=', 'MIDWIFERY_STATUS.ID')
@@ -116,8 +118,7 @@ midwiferyRouter.post("/", async (req: Request, res: Response) => {
                 db.raw("TO_CHAR(MIDWIFERY_SERVICES.CREATED_AT, 'YYYY-MM-DD HH24:MI:SS') AS CREATED_AT,"+
                         "CASE  WHEN DUE_DATE IS NULL THEN ''  ELSE TO_CHAR(DUE_DATE, 'YYYY, FMMonth, FMDD')  || CASE  WHEN DUE_DATE IS NULL THEN '' WHEN TO_CHAR(DUE_DATE, 'DD') IN ('01', '21', '31') THEN 'st' WHEN TO_CHAR(DUE_DATE, 'DD') IN ('02', '22') THEN 'nd' WHEN TO_CHAR(DUE_DATE, 'DD') IN ('03', '23') THEN 'rd'  ELSE 'th'  END  END AS DUE_DATE ")
         )
-        .where('MIDWIFERY_SERVICES.STATUS', '<>', 4 )
-        .orderBy('MIDWIFERY_SERVICES.ID', 'ASC');
+        .where('MIDWIFERY_SERVICES.STATUS', '<>', 4 );
 
         if(dateFrom && dateTo) {
             query.where(db.raw("TO_CHAR(MIDWIFERY_SERVICES.CREATED_AT, 'YYYY-MM-DD') >=  ? AND TO_CHAR(MIDWIFERY_SERVICES.CREATED_AT, 'YYYY-MM-DD') <= ?",
@@ -126,6 +127,12 @@ midwiferyRouter.post("/", async (req: Request, res: Response) => {
 
         if (status_request) {
             query.whereIn("MIDWIFERY_SERVICES.STATUS", status_request);
+        }
+
+        if (sortBy) {
+            query = query.orderBy(`MIDWIFERY_SERVICES.${sortBy.toUpperCase()}`, sortOrder);
+        } else {
+            query = query.orderBy('MIDWIFERY_SERVICES.ID', 'ASC');
         }
 
         const countQuery = query.clone().clearSelect().clearOrder().count('* as count').first();

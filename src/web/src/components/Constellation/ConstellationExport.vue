@@ -177,6 +177,8 @@ export default {
             totalItems: 0,
             itemsPerPage: [10, 15, 50, 100, -1],
             exportMaxSize: 250,
+            allItems: 0,
+            isAllData: false,
     }),
     computed: {
         headers() {
@@ -274,13 +276,16 @@ export default {
                     status: this.selectedStatus,
                     page: page,
 					pageSize: itemsPerPage,
+                    sortBy: sortBy.length ? sortBy[0] : null,
+					sortOrder: sortBy.length ? (sortDesc[0] ? 'DESC' : 'ASC') : null
                 }
             })
             .then((resp) => {
-                this.items = this.sortItems(resp.data.data, sortBy, sortDesc);
+                this.items = resp.data.data;
                 this.itemsStatus = resp.data.dataStatus.filter((element) => element.value != 4);
                 this.loading = false;
                 this.totalItems = resp.data.total;
+                this.allItems = resp.data.all;
 
             })
             .catch((err) => console.error(err))
@@ -288,7 +293,8 @@ export default {
                 this.loading = false;
             });
         },
-        selectAll() {
+        selectAll(isChecked) {
+            this.isAllData = isChecked.value;
             this.selected = this.selected.length === this.items.length
             ? []
             : this.items
@@ -319,12 +325,25 @@ export default {
         exportFile () {
             this.loadingExport = true;
 
-            const totalBatches = Math.ceil(this.selected.length / this.exportMaxSize);
+            let totalBatches = 0;
+
+            if(this.selected.length > 0 && !this.isAllData){
+                totalBatches = Math.ceil(this.selected.length / this.exportMaxSize);
+            }else if(this.selected.length == 0 && !this.isAllData){
+                totalBatches = Math.ceil(this.allItems / this.exportMaxSize);
+                this.isAllData = true;
+            }else if(this.selected.length > 0 && this.isAllData){
+                totalBatches = Math.ceil(this.totalItems / this.exportMaxSize);
+            }
+
             let allConstellationData = [];
             let allFamilyMembersData = [];
 
             const fetchBatchData = async (start, end) => {
-                const idArray = this.selected.slice(start, end).map(e => e.constellation_health_id);
+                let idArray = [];
+                if (!this.isAllData) {
+                    idArray = this.selected.slice(start, end).map(e => e.constellation_health_id);
+                }
 
                 try {
                     const response = await axios.post(CONSTELLATION_EXPORT_FILE_URL, {
@@ -332,7 +351,10 @@ export default {
                             requests: idArray,
                             status: this.actionSelected,
                             dateFrom: this.date,
-                            dateTo: this.dateEnd
+                            dateTo: this.dateEnd,
+                            offset: start,
+                            limit: this.exportMaxSize,
+                            isAllData: this.isAllData
                         }
                     });
                     return response.data;
@@ -364,6 +386,7 @@ export default {
                     console.error('Error processing Constellation Export batches:', error);
                 } finally {
                     this.loadingExport = false;
+                    this.isAllData = false;
                 }
             };
 

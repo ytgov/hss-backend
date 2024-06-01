@@ -262,10 +262,12 @@ export default {
                     status: this.statusSelected,
                     page: page,
 					pageSize: itemsPerPage,
+                    sortBy: sortBy.length ? sortBy[0] : null,
+					sortOrder: sortBy.length ? (sortDesc[0] ? 'DESC' : 'ASC') : null
                 }
             })
             .then((resp) => {
-                this.items = this.sortItems(resp.data.data, sortBy, sortDesc);
+                this.items = resp.data.data;
                 this.itemsUnfiltered = resp.data.data;
                 this.itemsBulk = resp.data.dataStatus;
                 this.statusFilter = resp.data.dataStatus.filter((element) => element.value != 4);

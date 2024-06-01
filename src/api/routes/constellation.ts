@@ -95,6 +95,8 @@ constellationRouter.post("/", async (req: Request, res: Response) => {
         const page = parseInt(req.body.params.page as string) || 1;
         const pageSize = parseInt(req.body.params.pageSize as string) || 10;
         const offset = (page - 1) * pageSize;
+        const sortBy = req.body.params.sortBy;
+        const sortOrder = req.body.params.sortOrder;
 
         let query = db(`${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH`)
             .join(`${SCHEMA_CONSTELLATION}.CONSTELLATION_STATUS`, 'CONSTELLATION_HEALTH.STATUS', '=', 'CONSTELLATION_STATUS.ID')
@@ -107,8 +109,9 @@ constellationRouter.post("/", async (req: Request, res: Response) => {
                     ),
                     'CONSTELLATION_STATUS.DESCRIPTION as STATUS',
                     'CONSTELLATION_HEALTH.ID as CONSTELLATION_HEALTH_ID')
-            .where('CONSTELLATION_HEALTH.STATUS', '<>', 4 )
-            .orderBy('CONSTELLATION_HEALTH.ID', 'ASC');
+            .where('CONSTELLATION_HEALTH.STATUS', '<>', 4 );
+
+        const countAllQuery = query.clone().clearSelect().clearOrder().count('* as count').first();
 
         if(dateFrom && dateTo) {
             query.where(db.raw("TO_CHAR(CONSTELLATION_HEALTH.CREATED_AT, 'YYYY-MM-DD') >=  ? AND TO_CHAR(CONSTELLATION_HEALTH.CREATED_AT, 'YYYY-MM-DD') <= ?",
@@ -119,29 +122,25 @@ constellationRouter.post("/", async (req: Request, res: Response) => {
             query.whereIn("CONSTELLATION_HEALTH.STATUS", status_request);
         }
 
-        const countQuery = db(`${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH`)
-        .join(`${SCHEMA_CONSTELLATION}.CONSTELLATION_STATUS`, 'CONSTELLATION_HEALTH.STATUS', '=', 'CONSTELLATION_STATUS.ID')
-        .count('* as count')
-        .where('CONSTELLATION_HEALTH.STATUS', '<>', 4);
-
-        if (dateFrom && dateTo) {
-            countQuery.where(db.raw(
-                "TO_CHAR(CONSTELLATION_HEALTH.CREATED_AT, 'YYYY-MM-DD') >= ? AND TO_CHAR(CONSTELLATION_HEALTH.CREATED_AT, 'YYYY-MM-DD') <= ?",
-                [dateFrom, dateTo]
-            ));
+        if (sortBy) {
+            query = query.orderBy(`CONSTELLATION_HEALTH.${sortBy.toUpperCase()}`, sortOrder);
+        } else {
+            query = query.orderBy('CONSTELLATION_HEALTH.ID', 'ASC');
         }
 
-        if (status_request) {
-            countQuery.whereIn("CONSTELLATION_HEALTH.STATUS", status_request);
-        }
+        const countQuery = query.clone().clearSelect().clearOrder().count('* as count').first();
 
         if(pageSize !== -1){
             query = query.offset(offset).limit(pageSize);
         }
 
-        const constellationHealth = await query;
+        const [constellationHealth, countResult, countResultAll] = await Promise.all([
+            query,
+            countQuery,
+            countAllQuery
+        ]);
 
-        const countResult = await countQuery.first();
+        const countAll = countResultAll ? countResultAll.count : 0;
         const countSubmissions = countResult ? countResult.count : 0;
 
         var diagnosis = Object();
@@ -189,7 +188,7 @@ constellationRouter.post("/", async (req: Request, res: Response) => {
         });
 
         var constellationStatus = await getAllStatus();
-        res.send({data: constellationHealth, dataStatus: constellationStatus, total: countSubmissions});
+        res.send({data: constellationHealth, dataStatus: constellationStatus, total: countSubmissions, all: countAll});
     } catch(e) {
         console.log(e);  // debug if needed
         res.send( {
@@ -590,6 +589,10 @@ constellationRouter.post("/export/", async (req: Request, res: Response) => {
         var idSubmission: any[] = [];
         let userId = req.user?.db_user.user.id || null;
 
+        const offset = req.body.params.offset;
+        const limit = req.body.params.limit;
+        const isAllData  = req.body.params.isAllData;
+
         let query = db(`${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH`)
             .leftJoin('GENERAL.COMMUNITY_LOCATIONS', 'CONSTELLATION_HEALTH.COMMUNITY_LOCATED',  db.raw("TO_CHAR('COMMUNITY_LOCATIONS.ID')"))      
             .leftJoin(`${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH_LANGUAGE`, 'CONSTELLATION_HEALTH.LANGUAGE_PREFER_TO_RECEIVE_SERVICES', 'CONSTELLATION_HEALTH_LANGUAGE.ID')
@@ -633,6 +636,10 @@ constellationRouter.post("/export/", async (req: Request, res: Response) => {
 
         if (status_request) {
             query.whereIn("CONSTELLATION_HEALTH.STATUS", status_request);
+        }
+
+        if (isAllData) {
+            query = query.offset(offset).limit(limit);
         }
         const constellationHealth = await query;
 
