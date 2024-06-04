@@ -97,6 +97,7 @@ constellationRouter.post("/", async (req: Request, res: Response) => {
         const offset = (page - 1) * pageSize;
         const sortBy = req.body.params.sortBy;
         const sortOrder = req.body.params.sortOrder;
+        const initialFetch = req.body.params.initialFetch;
 
         let query = db(`${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH`)
             .join(`${SCHEMA_CONSTELLATION}.CONSTELLATION_STATUS`, 'CONSTELLATION_HEALTH.STATUS', '=', 'CONSTELLATION_STATUS.ID')
@@ -130,8 +131,10 @@ constellationRouter.post("/", async (req: Request, res: Response) => {
 
         const countQuery = query.clone().clearSelect().clearOrder().count('* as count').first();
 
-        if(pageSize !== -1){
+        if(pageSize !== -1 && initialFetch == 0){
             query = query.offset(offset).limit(pageSize);
+        }else if(initialFetch == 1){
+            query = query.offset(offset).limit(100);
         }
 
         const [constellationHealth, countResult, countResultAll] = await Promise.all([

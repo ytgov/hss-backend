@@ -98,6 +98,7 @@ midwiferyRouter.post("/", async (req: Request, res: Response) => {
         const offset = (page - 1) * pageSize;
         const sortBy = req.body.params.sortBy;
         const sortOrder = req.body.params.sortOrder;
+        const initialFetch = req.body.params.initialFetch;
 
         let query = db(`${SCHEMA_MIDWIFERY}.MIDWIFERY_SERVICES`)
         .join(`${SCHEMA_MIDWIFERY}.MIDWIFERY_STATUS`, 'MIDWIFERY_SERVICES.STATUS', '=', 'MIDWIFERY_STATUS.ID')
@@ -120,6 +121,8 @@ midwiferyRouter.post("/", async (req: Request, res: Response) => {
         )
         .where('MIDWIFERY_SERVICES.STATUS', '<>', 4 );
 
+        const countAllQuery = query.clone().clearSelect().clearOrder().count('* as count').first();
+
         if(dateFrom && dateTo) {
             query.where(db.raw("TO_CHAR(MIDWIFERY_SERVICES.CREATED_AT, 'YYYY-MM-DD') >=  ? AND TO_CHAR(MIDWIFERY_SERVICES.CREATED_AT, 'YYYY-MM-DD') <= ?",
                 [dateFrom, dateTo]));
@@ -137,12 +140,18 @@ midwiferyRouter.post("/", async (req: Request, res: Response) => {
 
         const countQuery = query.clone().clearSelect().clearOrder().count('* as count').first();
 
-        if(pageSize !== -1){
+        if(pageSize !== -1 && initialFetch == 0){
             query = query.offset(offset).limit(pageSize);
+        }else if(initialFetch == 1){
+            query = query.offset(offset).limit(100);
         }
 
-        const midwifery = await query;
-        const countResult = await countQuery;
+        const [midwifery, countResult, countResultAll] = await Promise.all([
+            query,
+            countQuery,
+            countAllQuery
+        ]);
+        const countAll = countResultAll ? countResultAll.count : 0;
         const countSubmissions = countResult ? countResult.count : 0;
 
         midwiferyStatus = await db(`${SCHEMA_MIDWIFERY}.MIDWIFERY_STATUS`).select().whereNot('DESCRIPTION', 'Closed')
@@ -213,7 +222,7 @@ midwiferyRouter.post("/", async (req: Request, res: Response) => {
             value.showUrl = "midwifery/show/"+value.id;
         });
 
-        res.send({data: midwifery, dataStatus: midwiferyStatus, total: countSubmissions});
+        res.send({data: midwifery, dataStatus: midwiferyStatus, total: countSubmissions, all: countAll});
 
     } catch(e) {
         console.log(e);  // debug if needed

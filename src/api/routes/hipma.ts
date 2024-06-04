@@ -98,6 +98,7 @@ hipmaRouter.post("/", async (req: Request, res: Response) => {
         const offset = (page - 1) * pageSize;
         const sortBy = req.body.params.sortBy;
         const sortOrder = req.body.params.sortOrder;
+        const initialFetch = req.body.params.initialFetch;
 
         let query = db(`${SCHEMA_HIPMA}.HEALTH_INFORMATION`)
             .leftJoin(`${SCHEMA_HIPMA}.HIPMA_REQUEST_TYPE`, 'HEALTH_INFORMATION.WHAT_TYPE_OF_REQUEST_DO_YOU_WANT_TO_MAKE_', '=', 'HIPMA_REQUEST_TYPE.ID')
@@ -114,6 +115,8 @@ hipmaRouter.post("/", async (req: Request, res: Response) => {
             )
             .where('HEALTH_INFORMATION.STATUS', '=', 1);
 
+        const countAllQuery = query.clone().clearSelect().clearOrder().count('* as count').first();
+
         if(dateFrom && dateTo) {
             query.where(db.raw("TO_CHAR(HEALTH_INFORMATION.CREATED_AT, 'YYYY-MM-DD') >=  ? AND TO_CHAR(HEALTH_INFORMATION.CREATED_AT, 'YYYY-MM-DD') <= ?",
                 [dateFrom, dateTo]));
@@ -127,20 +130,26 @@ hipmaRouter.post("/", async (req: Request, res: Response) => {
 
         const countQuery = query.clone().clearSelect().clearOrder().count('* as count').first();
 
-        if(pageSize !== -1){
+        if(pageSize !== -1 && initialFetch == 0){
             query = query.offset(offset).limit(pageSize);
+        }else if(initialFetch == 1){
+            query = query.offset(offset).limit(100);
         }
 
-        const hipma = await query;
+        const [hipma, countResult, countResultAll] = await Promise.all([
+            query,
+            countQuery,
+            countAllQuery
+        ]);
 
-        const countResult = await countQuery;
         const countSubmissions = countResult ? countResult.count : 0;
+        const countAll = countResultAll ? countResultAll.count : 0;
 
         hipma.forEach(function (value: any) {
             value.showUrl = "hipma/show/"+value.id;
         });
 
-        res.send({data: hipma, total: countSubmissions});
+        res.send({data: hipma, total: countSubmissions, all: countAll});
 
     } catch(e) {
         console.log(e);  // debug if needed

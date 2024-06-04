@@ -146,7 +146,7 @@
             @toggle-select-all="selectAll"
 
             :server-items-length="totalItems"
-			@update:options="getDataFromApi"
+			@update:options="handlePagination"
             :footer-props="{
                 'items-per-page-options': itemsPerPage
             }"
@@ -175,6 +175,7 @@ export default {
         dateEnd: null,
         menuEnd: false,
         items: [],
+        fetchedItems: [],
         itemsUnfiltered: [],
         alertMessage: "",
         alertType: null,
@@ -209,6 +210,9 @@ export default {
         initialItemsPerPage: 10,
         totalItems: 0,
         itemsPerPage: [10, 15, 50, 100, -1],
+        allItems: 0,
+        isAllData: false,
+        initialFetch: 1,
     }),
     components: {
         Notifications
@@ -233,7 +237,6 @@ export default {
 			}
 		}
 
-        this.getDataFromApi();
     },
     methods: {
         changeStatusSelect(){
@@ -263,27 +266,47 @@ export default {
                     page: page,
 					pageSize: itemsPerPage,
                     sortBy: sortBy.length ? sortBy[0] : null,
-					sortOrder: sortBy.length ? (sortDesc[0] ? 'DESC' : 'ASC') : null
+					sortOrder: sortBy.length ? (sortDesc[0] ? 'DESC' : 'ASC') : null,
+                    initialFetch: this.initialFetch,
                 }
             })
             .then((resp) => {
-                this.items = resp.data.data;
+                this.fetchedItems = resp.data.data;
                 this.itemsUnfiltered = resp.data.data;
                 this.itemsBulk = resp.data.dataStatus;
                 this.statusFilter = resp.data.dataStatus.filter((element) => element.value != 4);
                 this.loading = false;
                 this.totalItems = resp.data.total;
+                this.allItems = resp.data.all;
+
+                if (this.initialFetch == 1) {
+                    this.items = this.fetchedItems.slice(0, itemsPerPage);
+                    this.initialFetch = 0;
+                } else {
+                    this.items = this.fetchedItems;
+                }
             })
             .catch((err) => console.error(err))
             .finally(() => {
                 this.loading = false;
             });
         },
+        handlePagination() {
+            const { page, itemsPerPage } = this.options;
+            const startIndex = (page - 1) * itemsPerPage;
+            const endIndex = startIndex + itemsPerPage;
+
+            if (this.fetchedItems.length >= endIndex) {
+                this.items = this.fetchedItems.slice(startIndex, endIndex);
+            } else {
+                this.getDataFromApi();
+            }
+        },
         showDetails (route) {
             this.$router.push({ path: route });
         },
-        selectAll() {
-                //event.value - boolen value if needed
+        selectAll(isChecked) {
+                this.isAllData = isChecked.value;
                 this.selected = this.selected.length === this.items.length
                 ? []
                 : this.items
@@ -303,6 +326,7 @@ export default {
             this.selected = [];
             this.options.page = this.initialPage;
             this.options.itemsPerPage = this.initialItemsPerPage;
+            this.initialFetch = 1;
             this.getDataFromApi();
         },
         changeStatus(){

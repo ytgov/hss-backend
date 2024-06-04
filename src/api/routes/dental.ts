@@ -98,6 +98,7 @@ dentalRouter.post("/", async (req: Request, res: Response) => {
         const offset = (page - 1) * pageSize;
         const sortBy = req.body.params.sortBy;
         const sortOrder = req.body.params.sortOrder;
+        const initialFetch = req.body.params.initialFetch;
 
         var dateFrom = req.body.params.dateFrom;
         var dateTo = req.body.params.dateTo;
@@ -105,6 +106,8 @@ dentalRouter.post("/", async (req: Request, res: Response) => {
         let status_request = req.body.params.status;
         db = await helper.getOracleClient(db, DB_CONFIG_DENTAL);
         let query = db(`${SCHEMA_DENTAL}.DENTAL_SERVICE_SUBMISSIONS`)
+
+        const countAllQuery = query.clone().clearSelect().clearOrder().count('* as count').first();
 
         if(dateYear) {
             query.where(db.raw("EXTRACT(YEAR FROM TO_DATE(CREATED_AT, 'YYYY-MM-DD HH24:MI:SS')) = ?",
@@ -129,17 +132,22 @@ dentalRouter.post("/", async (req: Request, res: Response) => {
             query = query.orderBy('ID', 'ASC');
         }
 
-        if(pageSize !== -1){
+        if(pageSize !== -1 && initialFetch == 0){
             query = query.offset(offset).limit(pageSize);
+        }else if(initialFetch == 1){
+            query = query.offset(offset).limit(100);
         }
 
         const dentalService = await query;
 
         const countResult = await countQuery.count('* as count').first();
+        const countResultAll = await countAllQuery;
+
         const countSubmissions = countResult ? countResult.count : 0;
+        const countAll = countResultAll ? countResultAll.count : 0;
 
         var dentalStatus = await getAllStatus();
-        res.send({data: dentalService, dataStatus: dentalStatus, total: countSubmissions});
+        res.send({data: dentalService, dataStatus: dentalStatus, total: countSubmissions, all: countAll});
 
     } catch(e) {
         console.log(e);  // debug if needed

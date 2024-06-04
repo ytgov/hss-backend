@@ -154,7 +154,7 @@
             @input="enterSelect"
 
             :server-items-length="totalItems"
-			@update:options="getDataFromApi"
+			@update:options="handlePagination"
             :footer-props="{
                 'items-per-page-options': itemsPerPage
             }"
@@ -178,6 +178,7 @@ export default {
         loading: false,
         bulkSelected: [],
         items: [],
+        fetchedItems: [],
         statusSelected: [1],
         date: null,
         menu: false,
@@ -227,7 +228,10 @@ export default {
         initialItemsPerPage: 10,
         alignments: "center",
         totalItems: 0,
-        itemsPerPage: [10, 15, 50, 100, -1]
+        itemsPerPage: [10, 15, 50, 100, -1],
+        allItems: 0,
+        isAllData: false,
+        initialFetch: 1,
     }),
     components: {
         Notifications
@@ -252,7 +256,6 @@ export default {
 			}
 		}
 
-        this.getDataFromApi();
     },
     methods: {
         changeStatusSelect(){
@@ -279,6 +282,7 @@ export default {
             this.bulkSelected = null;
             this.applyDisabled = true;
             this.selected = [];
+            this.initialFetch = 1;
             this.getDataFromApi();
         },
         getDataFromApi() {
@@ -295,20 +299,43 @@ export default {
                     page: page,
 					pageSize: itemsPerPage,
                     sortBy: sortBy.length ? sortBy[0] : null,
-					sortOrder: sortBy.length ? (sortDesc[0] ? 'DESC' : 'ASC') : null
+					sortOrder: sortBy.length ? (sortDesc[0] ? 'DESC' : 'ASC') : null,
+                    initialFetch: this.initialFetch,
                 }
             })
             .then((resp) => {
-                this.items = resp.data.data;
+                this.fetchedItems = resp.data.data;
                 this.bulkActions = resp.data.dataStatus;
                 this.statusFilter = resp.data.dataStatus.filter((element) => element.value != 4);
                 this.loading = false;
                 this.totalItems = resp.data.total;
+                this.allItems = resp.data.all;
+
+                if (this.initialFetch == 1) {
+                    this.items = this.fetchedItems.slice(0, itemsPerPage);
+                    this.initialFetch = 0;
+                } else {
+                    this.items = this.fetchedItems;
+                }
             })
             .catch((err) => console.error(err))
             .finally(() => {
                 this.loading = false;
             });
+        },
+        handlePagination() {
+            const { page, itemsPerPage } = this.options;
+            const startIndex = (page - 1) * itemsPerPage;
+            const endIndex = startIndex + itemsPerPage;
+
+            if (this.fetchedItems.length >= endIndex) {
+                this.items = this.fetchedItems.slice(startIndex, endIndex);
+            } else {
+                this.getDataFromApi();
+            }
+        },
+        selectAll(isChecked) {
+            this.isAllData = isChecked.value;
         },
         showDetails(route) {
             this.$router.push({ path: route });

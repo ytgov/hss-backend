@@ -124,7 +124,7 @@
 			@toggle-select-all="selectAll"
 
 			:server-items-length="totalItems"
-			@update:options="getDataFromApi"
+			@update:options="handlePagination"
 			:footer-props="{
                 'items-per-page-options': itemsPerPage
             }"
@@ -146,6 +146,7 @@ export default {
 		loading: false,
 		items: [],
 		itemsUnfiltered: [],
+		fetchedItems: [],
 		options: {
 			page: 1,
 			itemsPerPage: 10
@@ -171,6 +172,9 @@ export default {
         totalItems: 0,
 		itemsPerPage: [10, 15, 50, 100, -1],
 		exportMaxSize: 250,
+		allItems: 0,
+		isAllData: false,
+		initialFetch: 1,
 	}),
 	watch: {
 		loader () {
@@ -183,7 +187,6 @@ export default {
 		},
 	},
 	mounted() {
-		this.getDataFromApi();
 	},
 	methods: {
 		updateDate(){
@@ -205,22 +208,42 @@ export default {
 					page: page,
 					pageSize: itemsPerPage,
 					sortBy: sortBy.length ? sortBy[0] : null,
-					sortOrder: sortBy.length ? (sortDesc[0] ? 'DESC' : 'ASC') : null
+					sortOrder: sortBy.length ? (sortDesc[0] ? 'DESC' : 'ASC') : null,
+					initialFetch: this.initialFetch,
 				}
 			})
 			.then((resp) => {
-				this.items = resp.data.data;
+				this.fetchedItems = resp.data.data;
 				this.itemsUnfiltered = resp.data.data;
 				this.loading = false;
 				this.totalItems = resp.data.total;
+				this.allItems = resp.data.all;
+
+                if (this.initialFetch == 1) {
+                    this.items = this.fetchedItems.slice(0, itemsPerPage);
+                    this.initialFetch = 0;
+                } else {
+                    this.items = this.fetchedItems;
+                }
 			})
 			.catch((err) => console.error(err))
 			.finally(() => {
 				this.loading = false;
 			});
 		},
-		selectAll() {
-			//event.value - boolen value if needed
+		handlePagination() {
+            const { page, itemsPerPage } = this.options;
+            const startIndex = (page - 1) * itemsPerPage;
+            const endIndex = startIndex + itemsPerPage;
+
+            if (this.fetchedItems.length >= endIndex) {
+                this.items = this.fetchedItems.slice(startIndex, endIndex);
+            } else {
+                this.getDataFromApi();
+            }
+        },
+		selectAll(isChecked) {
+			this.isAllData = isChecked.value;
 			this.selected = this.selected.length === this.items.length
 			? []
 			: this.items
@@ -232,6 +255,7 @@ export default {
 			this.selected = [];
 			this.options.page = this.initialPage;
             this.options.itemsPerPage = this.initialItemsPerPage;
+			this.initialFetch = 1;
 			this.getDataFromApi();
 		},
 		sortItems(items, sortBy, sortDesc) {
@@ -252,19 +276,35 @@ export default {
 		exportFile () {
 			this.loadingExport = true;
 
-            const totalBatches = Math.ceil(this.selected.length / this.exportMaxSize);
+            let totalBatches = 0;
+
+            if(this.selected.length > 0 && !this.isAllData){
+                totalBatches = Math.ceil(this.selected.length / this.exportMaxSize);
+            }else if(this.selected.length == 0 && !this.isAllData){
+                totalBatches = Math.ceil(this.allItems / this.exportMaxSize);
+                this.isAllData = true;
+            }else if(this.selected.length > 0 && this.isAllData){
+                totalBatches = Math.ceil(this.totalItems / this.exportMaxSize);
+            }
+
             let hipmaData = [];
 			let fileName = "";
 
             const fetchBatchData = async (start, end) => {
-				const idArray = this.selected.slice(start, end).map(e => e.id);
+				let idArray = [];
+                if (!this.isAllData) {
+                    idArray = this.selected.slice(start, end).map(e => e.constellation_health_id);
+                }
 
 				try {
 					const response = await axios.post(HIPMA_EXPORT_FILE_URL, {
 						params: {
 							requests: idArray,
 							dateFrom: this.date,
-							dateTo: this.dateEnd
+							dateTo: this.dateEnd,
+							offset: start,
+                            limit: this.exportMaxSize,
+                            isAllData: this.isAllData,
 						}
 					});
 					return response.data;
