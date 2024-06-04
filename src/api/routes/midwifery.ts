@@ -133,7 +133,17 @@ midwiferyRouter.post("/", async (req: Request, res: Response) => {
         }
 
         if (sortBy) {
-            query = query.orderBy(`MIDWIFERY_SERVICES.${sortBy.toUpperCase()}`, sortOrder);
+            switch (sortBy) {
+                case "birth_locations":
+                    query = query.orderBy(`MIDWIFERY_SERVICES.WHERE_TO_GIVE_BIRTH`, sortOrder);
+                    break;
+                case "do_you_identify_with_one_or_more_of_these_groups_and_communitie":
+                    query = query.orderByRaw(`DBMS_LOB.SUBSTR(MIDWIFERY_SERVICES.${sortBy.toUpperCase()}, 4000) ${sortOrder}`);
+                    break;
+                default:
+                    query = query.orderBy(`MIDWIFERY_SERVICES.${sortBy.toUpperCase()}`, sortOrder);
+                    break;
+            }
         } else {
             query = query.orderBy('MIDWIFERY_SERVICES.ID', 'ASC');
         }

@@ -123,9 +123,11 @@ constellationRouter.post("/", async (req: Request, res: Response) => {
             query.whereIn("CONSTELLATION_HEALTH.STATUS", status_request);
         }
 
-        if (sortBy) {
+        if (sortBy && sortBy !== "diagnosis") {
             query = query.orderBy(`CONSTELLATION_HEALTH.${sortBy.toUpperCase()}`, sortOrder);
-        } else {
+        } else if (sortBy && sortBy == "diagnosis") {
+            query = query.orderByRaw(`DBMS_LOB.SUBSTR(CONSTELLATION_HEALTH.${sortBy.toUpperCase()}, 4000) ${sortOrder}`);
+        }else{
             query = query.orderBy('CONSTELLATION_HEALTH.ID', 'ASC');
         }
 

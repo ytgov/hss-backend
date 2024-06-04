@@ -123,7 +123,20 @@ hipmaRouter.post("/", async (req: Request, res: Response) => {
         }
 
         if (sortBy) {
-            query = query.orderBy(`HEALTH_INFORMATION.${sortBy.toUpperCase()}`, sortOrder);
+            switch (sortBy) {
+                case "hipma_request_type_desc":
+                    query = query.orderBy(`HEALTH_INFORMATION.WHAT_TYPE_OF_REQUEST_DO_YOU_WANT_TO_MAKE_`, sortOrder);
+                    break;
+                case "access_personal_health_information":
+                    query = query.orderBy(`HEALTH_INFORMATION.ARE_YOU_REQUESTING_ACCESS_TO_YOUR_OWN_PERSONAL_HEALTH_INFORMATI`, sortOrder);
+                    break;
+                case "applicant_full_name":
+                    query = query.orderBy(`HEALTH_INFORMATION.FIRST_NAME`, sortOrder);
+                    break;
+                default:
+                    query = query.orderBy(`HEALTH_INFORMATION.${sortBy.toUpperCase()}`, sortOrder);
+                    break;
+            }
         } else {
             query = query.orderBy('HEALTH_INFORMATION.CREATED_AT', 'ASC');
         }
