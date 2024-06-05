@@ -138,7 +138,6 @@ midwiferyRouter.post("/", async (req: Request, res: Response) => {
                     query = query.orderBy(`MIDWIFERY_SERVICES.WHERE_TO_GIVE_BIRTH`, sortOrder);
                     break;
                 case "do_you_identify_with_one_or_more_of_these_groups_and_communitie":
-                    query = query.orderByRaw(`DBMS_LOB.SUBSTR(MIDWIFERY_SERVICES.${sortBy.toUpperCase()}, 4000) ${sortOrder}`);
                     break;
                 default:
                     query = query.orderBy(`MIDWIFERY_SERVICES.${sortBy.toUpperCase()}`, sortOrder);
@@ -153,10 +152,10 @@ midwiferyRouter.post("/", async (req: Request, res: Response) => {
         if(pageSize !== -1 && initialFetch == 0){
             query = query.offset(offset).limit(pageSize);
         }else if(initialFetch == 1){
-            query = query.offset(offset).limit(100);
+            query = query.offset(offset).limit(250);
         }
 
-        const [midwifery, countResult, countResultAll] = await Promise.all([
+        var [midwifery, countResult, countResultAll] = await Promise.all([
             query,
             countQuery,
             countAllQuery
@@ -231,6 +230,14 @@ midwiferyRouter.post("/", async (req: Request, res: Response) => {
 
             value.showUrl = "midwifery/show/"+value.id;
         });
+
+        if (sortBy && sortBy === "do_you_identify_with_one_or_more_of_these_groups_and_communitie") {
+            midwifery = [...midwifery].sort((a, b) => {
+                if (a.do_you_identify_with_one_or_more_of_these_groups_and_communitie < b.do_you_identify_with_one_or_more_of_these_groups_and_communitie) return sortOrder === "ASC" ? -1 : 1;
+                if (a.do_you_identify_with_one_or_more_of_these_groups_and_communitie > b.do_you_identify_with_one_or_more_of_these_groups_and_communitie) return sortOrder === "ASC" ? 1 : -1;
+                return 0;
+            });
+        }
 
         res.send({data: midwifery, dataStatus: midwiferyStatus, total: countSubmissions, all: countAll});
 

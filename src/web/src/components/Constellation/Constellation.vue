@@ -328,7 +328,10 @@ export default {
             const startIndex = (page - 1) * itemsPerPage;
             const endIndex = startIndex + itemsPerPage;
 
-            if (sortBy.length || sortDesc.length) {
+            if ((sortBy.length || sortDesc.length) && sortBy[0] == 'diagnosis') {
+                this.initialFetch = 1;
+                this.getDataFromApi();
+            } else if(sortBy.length || sortDesc.length){
                 this.getDataFromApi();
             } else {
                 if (this.fetchedItems.length >= endIndex) {

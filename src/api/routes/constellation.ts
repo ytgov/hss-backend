@@ -125,8 +125,6 @@ constellationRouter.post("/", async (req: Request, res: Response) => {
 
         if (sortBy && sortBy !== "diagnosis") {
             query = query.orderBy(`CONSTELLATION_HEALTH.${sortBy.toUpperCase()}`, sortOrder);
-        } else if (sortBy && sortBy == "diagnosis") {
-            query = query.orderByRaw(`DBMS_LOB.SUBSTR(CONSTELLATION_HEALTH.${sortBy.toUpperCase()}, 4000) ${sortOrder}`);
         }else{
             query = query.orderBy('CONSTELLATION_HEALTH.ID', 'ASC');
         }
@@ -136,10 +134,10 @@ constellationRouter.post("/", async (req: Request, res: Response) => {
         if(pageSize !== -1 && initialFetch == 0){
             query = query.offset(offset).limit(pageSize);
         }else if(initialFetch == 1){
-            query = query.offset(offset).limit(100);
+            query = query.offset(offset).limit(250);
         }
 
-        const [constellationHealth, countResult, countResultAll] = await Promise.all([
+        var [constellationHealth, countResult, countResultAll] = await Promise.all([
             query,
             countQuery,
             countAllQuery
@@ -191,6 +189,14 @@ constellationRouter.post("/", async (req: Request, res: Response) => {
 
             value.showUrl = "constellation/show/"+value.constellation_health_id;
         });
+
+        if (sortBy && sortBy === "diagnosis") {
+            constellationHealth = [...constellationHealth].sort((a, b) => {
+                if (a.diagnosis < b.diagnosis) return sortOrder === "ASC" ? -1 : 1;
+                if (a.diagnosis > b.diagnosis) return sortOrder === "ASC" ? 1 : -1;
+                return 0;
+            });
+        }
 
         var constellationStatus = await getAllStatus();
         res.send({data: constellationHealth, dataStatus: constellationStatus, total: countSubmissions, all: countAll});
