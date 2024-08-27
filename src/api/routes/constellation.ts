@@ -97,7 +97,7 @@ constellationRouter.post("/", async (req: Request, res: Response) => {
             .select('CONSTELLATION_HEALTH.YOUR_LEGAL_NAME',
                     'CONSTELLATION_HEALTH.ID',
                     'CONSTELLATION_HEALTH.FAMILY_PHYSICIAN',
-                    db.raw(`CONSTELLATION_HEALTH.DIAGNOSIS AS DIAGNOSIS,
+                    db.raw(`GENERAL.process_blob_value(CONSTELLATION_HEALTH.DIAGNOSIS, 'CONSTELLATION_HEALTH.CONSTELLATION_HEALTH_DIAGNOSIS_HISTORY') AS DIAGNOSIS,
                         TO_CHAR(CONSTELLATION_HEALTH.DATE_OF_BIRTH, 'YYYY-MM-DD')  AS DATE_OF_BIRTH,
                         TO_CHAR(CONSTELLATION_HEALTH.CREATED_AT, 'YYYY-MM-DD HH24:MI:SS')  AS CREATED_AT`
                     ),
@@ -139,24 +139,6 @@ constellationRouter.post("/", async (req: Request, res: Response) => {
                 value.language_prefer_to_receive_services = value.language_preferred;
             }
 
-            let dataString = "";
-            if(!_.isEmpty(value.diagnosis)){
-                value.diagnosis = JSON.parse(value.diagnosis.toString());
-            }
-            _.forEach(value.diagnosis, function(valueDiagnosis: any, key: any) {
-
-                if(valueDiagnosis in diagnosis){
-                    dataString += diagnosis[valueDiagnosis]+",";
-                }else{
-                    dataString += valueDiagnosis+",";
-                }
-            });
-
-            if(dataString.substr(-1) == ","){
-                dataString = dataString.slice(0, -1);
-            }
-
-            value.diagnosis = dataString.replace(/,/g, ', ');
 
             value.showUrl = "constellation/show/"+value.constellation_health_id;
         });
@@ -239,7 +221,7 @@ constellationRouter.get("/show/:constellationHealth_id", checkPermissions("const
                     `${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH.IS_THIS_YOUR_LEGAL_NAME_`,
                     `${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH.YOUR_LEGAL_NAME`,
                     `${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH.PRONOUNS`,
-                    db.raw(`JSON_SERIALIZE(CONSTELLATION_HEALTH.DIAGNOSIS) AS DIAGNOSIS,
+                    db.raw(`GENERAL.process_blob_value(CONSTELLATION_HEALTH.DIAGNOSIS, 'CONSTELLATION_HEALTH.CONSTELLATION_HEALTH_DIAGNOSIS_HISTORY') AS DIAGNOSIS,
                     TO_CHAR(CONSTELLATION_HEALTH.DATE_OF_BIRTH, 'YYYY-MM-DD')  AS DATE_OF_BIRTH,
                     TO_CHAR(CONSTELLATION_HEALTH.CREATED_AT, 'YYYY-MM-DD HH24:MI:SS')  AS CREATED_AT,
                     TO_CHAR(CONSTELLATION_HEALTH.UPDATED_AT, 'YYYY-MM-DD HH24:MI:SS')  AS UPDATED_AT`
@@ -276,7 +258,7 @@ constellationRouter.get("/show/:constellationHealth_id", checkPermissions("const
                     `${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH_FAMILY_MEMBERS.IS_THIS_YOUR_LEGAL_NAME_FAMILY_MEMBER`,
                     `${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH_FAMILY_MEMBERS.YOUR_LEGAL_NAME_FAMILY_MEMBER`,
                     `${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH_FAMILY_MEMBERS.PRONOUNS_FAMILY_MEMBER`,
-                    db.raw(`JSON_SERIALIZE(${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH_FAMILY_MEMBERS.DIAGNOSIS_FAMILY_MEMBER) AS DIAGNOSIS_FAMILY_MEMBER,
+                    db.raw(`GENERAL.process_blob_value(${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH_FAMILY_MEMBERS.DIAGNOSIS_FAMILY_MEMBER, 'CONSTELLATION_HEALTH.CONSTELLATION_HEALTH_DIAGNOSIS_HISTORY') AS DIAGNOSIS_FAMILY_MEMBER,
                     TO_CHAR(CONSTELLATION_HEALTH_FAMILY_MEMBERS.DATE_OF_BIRTH_FAMILY_MEMBER, 'YYYY-MM-DD')  AS DATE_OF_BIRTH_FAMILY_MEMBER,
                     TO_CHAR(CONSTELLATION_HEALTH_FAMILY_MEMBERS.CREATED_AT, 'YYYY-MM-DD HH24:MI:SS')  AS CREATED_AT,
                     TO_CHAR(CONSTELLATION_HEALTH_FAMILY_MEMBERS.UPDATED_AT, 'YYYY-MM-DD HH24:MI:SS')  AS UPDATED_AT`
@@ -301,33 +283,6 @@ constellationRouter.get("/show/:constellationHealth_id", checkPermissions("const
             constellationHealth.date_of_birth =  "N/A";
         }
 
-        let dataString = "";
-        var diagnosis = Object();
-
-        diagnosis = await db(`${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH_DIAGNOSIS_HISTORY`).select().then((rows: any) => {
-            let arrayResult = Object();
-
-            for (let row of rows) {
-                arrayResult[row['id']] = row['description'];
-            }
-
-            return arrayResult;
-        });
-
-        const diagnosisList = helper.getJsonDataList(constellationHealth.diagnosis);
-        _.forEach(diagnosisList, function(valueDiagnosis: any, key: any) {
-            if(valueDiagnosis in diagnosis){
-                dataString += diagnosis[valueDiagnosis]+",";
-            }else{
-                dataString += valueDiagnosis+",";
-            }
-        });
-
-        if(dataString.substr(-1) == ","){
-            dataString = dataString.slice(0, -1);
-        }
-
-        constellationHealth.diagnosis = dataString.replace(/,/g, ', ');
 
         constellationHealth.flagFamilyMembers = false;
 
@@ -341,23 +296,6 @@ constellationRouter.get("/show/:constellationHealth_id", checkPermissions("const
                     value.date_of_birth_family_member =  "N/A";
                 }
 
-                let dataString = "";
-                const diagnosisFmList = helper.getJsonDataList(value.diagnosis_family_member);
-
-                _.forEach(diagnosisFmList, function(valueDiagnosisFm: any, key: any) {
-
-                    if(valueDiagnosisFm in diagnosis){
-                        dataString += diagnosis[valueDiagnosisFm]+",";
-                    }else{
-                        dataString += valueDiagnosisFm+",";
-                    }
-                });
-
-                if(dataString.substr(-1) == ","){
-                    dataString = dataString.slice(0, -1);
-                }
-
-                constellationFamily[key].diagnosis_family_member = dataString.replace(/,/g, ', ');
 
             });
         }
@@ -587,7 +525,7 @@ constellationRouter.post("/export/", async (req: Request, res: Response) => {
                     `${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH.FAMILY_PHYSICIAN`,
                     `${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH.CURRENT_FAMILY_PHYSICIAN`,
                     `${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH.ACCESSING_HEALTH_CARE`,
-                    db.raw(`JSON_SERIALIZE(${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH.DIAGNOSIS) AS DIAGNOSIS`),
+                    db.raw(`GENERAL.process_blob_value(${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH.DIAGNOSIS, '${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH_DIAGNOSIS_HISTORY' ) AS DIAGNOSIS`),
                     `${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH_DEMOGRAPHICS.DESCRIPTION AS DEMOGRAPHIC_DESCRIPTION`,
                     `${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH.INCLUDE_FAMILY_MEMBERS`,
                     db.raw(`TO_CHAR(CONSTELLATION_HEALTH.CREATED_AT, 'YYYY-MM-DD HH24:MI:SS')  AS CREATED_AT`),
@@ -631,23 +569,6 @@ constellationRouter.post("/export/", async (req: Request, res: Response) => {
                 value.language_prefer_to_receive_services = value.language_preferred;
             }
 
-            var dataString = "";
-            const diagnosisList = helper.getJsonDataList(value.diagnosis);
-
-            _.forEach(diagnosisList, function(valueDiagnosis: any, key: any) {
-
-                if(valueDiagnosis in diagnosis){
-                    dataString += diagnosis[valueDiagnosis]+",";
-                }else{
-                    dataString += valueDiagnosis+",";
-                }
-            });
-
-            if(dataString.substr(-1) == ","){
-                dataString = dataString.slice(0, -1);
-            }
-
-            value.diagnosis = dataString.replace(/,/g, ', ');
             delete value.id;
         });
 
@@ -672,7 +593,7 @@ constellationRouter.post("/export/", async (req: Request, res: Response) => {
                 'CONSTELLATION_HEALTH_FAMILY_MEMBERS.FAMILY_PHYSICIAN_FAMILY_MEMBER',
                 'CONSTELLATION_HEALTH_FAMILY_MEMBERS.CURRENT_FAMILY_PHYSICIAN_FAMILY_MEMBER',
                 'CONSTELLATION_HEALTH_FAMILY_MEMBERS.ACCESSING_HEALTH_CARE_FAMILY_MEMBER',
-                db.raw(`JSON_SERIALIZE(${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH_FAMILY_MEMBERS.DIAGNOSIS_FAMILY_MEMBER) AS DIAGNOSIS_FAMILY_MEMBER`),
+                db.raw(`GENERAL.process_blob_value(${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH_FAMILY_MEMBERS.DIAGNOSIS_FAMILY_MEMBER, '${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH_DIAGNOSIS_HISTORY' ) AS DIAGNOSIS_FAMILY_MEMBER`),
                 'CONSTELLATION_HEALTH_DEMOGRAPHICS.DESCRIPTION AS DEMOGRAPHIC_DESCRIPTION_FAMILY_MEMBER');
 
         if(!_.isEmpty(idSubmission)){
@@ -695,22 +616,6 @@ constellationRouter.post("/export/", async (req: Request, res: Response) => {
                 if(value.date_of_birth_family_member == 0) {
                     value.date_of_birth_family_member =  "N/A";
                 }
-
-                let dataString = "";
-                const diagnosisList = helper.getJsonDataList(value.diagnosis_family_member);
-                _.forEach(diagnosisList, function(valueDiagnosisFm: any, key: any) {
-                    if(valueDiagnosisFm in diagnosis){
-                        dataString += diagnosis[valueDiagnosisFm]+",";
-                    }else{
-                        dataString += valueDiagnosisFm+",";
-                    }
-                });
-
-                if(dataString.substr(-1) == ","){
-                    dataString = dataString.slice(0, -1);
-                }
-
-                constellationFamily[key].diagnosis_family_member = dataString.replace(/,/g, ', ');
 
             });
         }
