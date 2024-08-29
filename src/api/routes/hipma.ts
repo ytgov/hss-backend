@@ -242,14 +242,18 @@ hipmaRouter.get("/show/:hipma_id",[param("hipma_id").isInt().notEmpty()], async 
                         TO_CHAR(HEALTH_INFORMATION.DATE_FROM_, 'yyyy-mm-dd')  AS DATE_FROM_,
                         TO_CHAR(HEALTH_INFORMATION.DATE_TO_, 'yyyy-mm-dd')  AS DATE_TO_,
                         CASE WHEN HEALTH_INFORMATION.DATE_RANGE_IS_UNKNOWN_OR_I_NEED_HELP_IDENTIFYING_THE_DATE_RANGE = 1 THEN 'Yes' ELSE 'No' END AS DATE_RANGE_IS_UNKNOWN_OR_I_NEED_HELP_IDENTIFYING_THE_DATE_RANGE,
-                        CASE WHEN HEALTH_INFORMATION.I_AFFIRM_THE_INFORMATION_ABOVE_TO_BE_TRUE_AND_ACCURATE_ = 1 THEN 'Yes' ELSE 'No' END AS I_AFFIRM_THE_INFORMATION_ABOVE_TO_BE_TRUE_AND_ACCURATE_`
+                        CASE WHEN HEALTH_INFORMATION.I_AFFIRM_THE_INFORMATION_ABOVE_TO_BE_TRUE_AND_ACCURATE_ = 1 THEN 'Yes' ELSE 'No' END AS I_AFFIRM_THE_INFORMATION_ABOVE_TO_BE_TRUE_AND_ACCURATE_,
+                        GENERAL.process_blob_value(HEALTH_INFORMATION.INDICATE_THE_HSS_SYSTEM_S_YOU_WOULD_LIKE_A_RECORD_OF_USER_ACTIV, '${SCHEMA_HIPMA}.HIPMA_HSS_SYSTEMS') AS INDICATE_THE_HSS_SYSTEM_S_YOU_WOULD_LIKE_A_RECORD_OF_USER_ACTIV`
                     ),
                 `HEALTH_INFORMATION.ADDRESS`, `HEALTH_INFORMATION.CITY_OR_TOWN`,
                 `HEALTH_INFORMATION.POSTAL_CODE`, `HEALTH_INFORMATION.EMAIL_ADDRESS`, `HEALTH_INFORMATION.PHONE_NUMBER`,
                 `HEALTH_INFORMATION.GET_A_COPY_OF_YOUR_HEALTH_INFORMATION_`,
                 `HEALTH_INFORMATION.GET_A_COPY_OF_YOUR_ACTIVITY_REQUEST`,
-                `HEALTH_INFORMATION.NAME_OF_HEALTH_AND_SOCIAL_SERVICES_PROGRAM_AREA_OPTIONAL_`,
-                `HEALTH_INFORMATION.INDICATE_THE_HSS_SYSTEM_S_YOU_WOULD_LIKE_A_RECORD_OF_USER_ACTIV`,
+
+                db.raw(`GENERAL.process_blob_value(HEALTH_INFORMATION.NAME_OF_HEALTH_AND_SOCIAL_SERVICES_PROGRAM_AREA_OPTIONAL_, '${SCHEMA_HIPMA}.HIPMA_HEALTH_SOCIAL_SERVICES_PROGRAM') AS NAME_OF_HEALTH_AND_SOCIAL_SERVICES_PROGRAM_AREA_OPTIONAL_`),
+                //`HEALTH_INFORMATION.NAME_OF_HEALTH_AND_SOCIAL_SERVICES_PROGRAM_AREA_OPTIONAL_`,
+                //db.raw(``),
+                //`HEALTH_INFORMATION.INDICATE_THE_HSS_SYSTEM_S_YOU_WOULD_LIKE_A_RECORD_OF_USER_ACTIV`,
                 `HEALTH_INFORMATION.PROVIDE_DETAILS_ABOUT_YOUR_REQUEST_`,
                 `HEALTH_INFORMATION.CREATED_AT`, `HEALTH_INFORMATION.UPDATED_AT`,
                 `HIPMA_REQUEST_TYPE.DESCRIPTION AS HIPMA_REQUEST_TYPE_DESC`,
@@ -259,7 +263,7 @@ hipmaRouter.get("/show/:hipma_id",[param("hipma_id").isInt().notEmpty()], async 
                 `HIPMA_COPY_ACTIVITY_REQUEST.DESCRIPTION AS CP_ACT_REQ`)
         .where("HEALTH_INFORMATION.ID", hipma_id)
         .first();
-
+        /*
         if(!_.isEmpty(hipma.name_of_health_and_social_services_program_area_optional_)) {
             var dataString = "";
             var socialServices = Object();
@@ -314,6 +318,7 @@ hipmaRouter.get("/show/:hipma_id",[param("hipma_id").isInt().notEmpty()], async 
 
             hipma.indicate_the_hss_system_s_you_would_like_a_record_of_user_activ = dataString.replace(/,/g, ', ');
         }
+*/
         var hipmaFiles = await db(`${SCHEMA_HIPMA}.HIPMA_FILES`).where("HIPMA_ID", hipma_id)
             .select('ID',
                     'HIPMA_ID',

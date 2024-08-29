@@ -109,15 +109,14 @@ dentalRouter.post("/", async (req: Request, res: Response) => {
 
         const countAllQuery = query.clone().clearSelect().clearOrder().count('* as count').first();
 
+        const createdAt = db.raw("TO_DATE(CREATED_AT, 'YYYY-MM-DD HH24:MI:SS')");
+
         if(dateYear) {
-            query.where(db.raw("EXTRACT(YEAR FROM TO_DATE(CREATED_AT, 'YYYY-MM-DD HH24:MI:SS')) = ?",
-                [dateYear]));
+            query.where(db.raw("EXTRACT(YEAR FROM ?) = ?", [createdAt, dateYear]));
         }
 
         if(dateFrom && dateTo) {
-            query.where(db.raw("TO_CHAR(TO_DATE(CREATED_AT, 'YYYY-MM-DD HH24:MI:SS'), 'YYYY-MM-DD') >=  ? "+
-                                "AND TO_CHAR(TO_DATE(CREATED_AT, 'YYYY-MM-DD HH24:MI:SS'), 'YYYY-MM-DD') <= ?",
-                [dateFrom, dateTo]));
+            query.where(db.raw("TO_CHAR(?, 'YYYY-MM-DD') BETWEEN ? AND ?", [createdAt, dateFrom, dateTo]));
         }
 
         if (status_request) {
@@ -167,12 +166,11 @@ dentalRouter.post("/", async (req: Request, res: Response) => {
 
 dentalRouter.patch("/changeStatus", async (req: Request, res: Response) => {
     try {
-        var dentalService_id = req.body.params.requests;
-        var status_id = req.body.params.requestStatus;
+        const { requests: dentalService_id, requestStatus: status_id } = req.body.params;
         db = await helper.getOracleClient(db, DB_CONFIG_DENTAL);
         var updateStatus = await db(`${SCHEMA_DENTAL}.DENTAL_SERVICE`).update({STATUS: status_id}).whereIn("ID", dentalService_id);
         var statusData = await db(`${SCHEMA_DENTAL}.DENTAL_STATUS`).where('ID', status_id).first();
-        var logFields = Array();
+        let logFields: Array<any> = [];
 
         if(updateStatus) {
             let type = "success";
@@ -220,21 +218,17 @@ dentalRouter.patch("/changeStatus", async (req: Request, res: Response) => {
  */
 dentalRouter.get("/validateRecord/:dentalService_id",[param("dentalService_id").isInt().notEmpty()], async (req: Request, res: Response) => {
     try {
-        var dentalService_id = Number(req.params.dentalService_id);
-        var dentalService = Object();
+        const { dentalService_id } = req.params;
         var flagExists = true;
         var message = "";
         var type = "error";
         db = await helper.getOracleClient(db, DB_CONFIG_DENTAL);
 
-        dentalService = await db(`${SCHEMA_DENTAL}.DENTAL_SERVICE`)
+        const dentalService = await db(`${SCHEMA_DENTAL}.DENTAL_SERVICE`)
             .join(`${SCHEMA_DENTAL}.DENTAL_STATUS`, 'DENTAL_SERVICE.STATUS', '=', 'DENTAL_STATUS.ID')
-            .where('DENTAL_SERVICE.ID', dentalService_id)
-            .select(`${SCHEMA_DENTAL}.DENTAL_SERVICE.*`,
-                    'DENTAL_STATUS.DESCRIPTION AS STATUS_DESCRIPTION')
-            .then((data:any) => {
-                return data[0];
-            });
+            .where('DENTAL_SERVICE.ID', Number(dentalService_id))
+            .select(`${SCHEMA_DENTAL}.DENTAL_SERVICE.*`, 'DENTAL_STATUS.DESCRIPTION AS STATUS_DESCRIPTION')
+            .first();
 
         if(!dentalService || dentalService.status_description == "closed"){
             flagExists= false;
@@ -356,30 +350,6 @@ dentalRouter.get("/show/:dentalService_id", checkPermissions("dental_view"), [pa
             });
         }
 
-        if(!_.isEmpty(dentalService.identify_groups)){
-            dentalService.identify_groups = getBlobField(dentalService.identify_groups);
-        }
-
-        if(!_.isEmpty(dentalService.reason_for_dentist)){
-            dentalService.reason_for_dentist = getBlobField(dentalService.reason_for_dentist);
-        }
-
-        if(!_.isEmpty(dentalService.pay_for_visit)){
-            dentalService.pay_for_visit = getBlobField(dentalService.pay_for_visit);
-        }
-
-        if(!_.isEmpty(dentalService.barriers)){
-            dentalService.barriers = getBlobField(dentalService.barriers);
-        }
-
-        if(!_.isEmpty(dentalService.problems)){
-            dentalService.problems = getBlobField(dentalService.problems);
-        }
-
-        if(!_.isEmpty(dentalService.services_needed)){
-            dentalService.services_needed = getBlobField(dentalService.services_needed);
-        }
-
         var dentalCityTown = await getCatalogSelect('DENTAL_SERVICE_CITY_TOWN');
 
         var dentalGroupsCommunities = await db(`${SCHEMA_DENTAL}.DENTAL_SERVICE_GROUPS_COMMUNITIES`).select();
@@ -493,11 +463,7 @@ dentalRouter.get("/show/:dentalService_id", checkPermissions("dental_view"), [pa
  */
 dentalRouter.post("/export/", async (req: Request, res: Response) => {
     try {
-        var requests = req.body.params.requests;
-        let status_request = req.body.params.status;
-        var dateFrom = req.body.params.dateFrom;
-        var dateTo = req.body.params.dateTo;
-        var dateYear = req.body.params.dateYear
+        const { requests, status: status_request, dateFrom, dateTo, dateYear } = req.body.params;
         const idSubmission: number[] = [];
         var dentalInternalFields = Object();
         db = await helper.getOracleClient(db, DB_CONFIG_DENTAL);
@@ -544,67 +510,42 @@ dentalRouter.post("/export/", async (req: Request, res: Response) => {
         )
         .whereIn('DENTAL_SERVICE_ID', submissionsId);
 
-        dentalService.forEach(function (value: any) {
+        interface DentalInternalField {
+            DENTAL_SERVICE_ID: number;
+            PROGRAM_YEAR: string;
+            INCOME_AMOUNT: string;
+            DATE_ENROLLMENT: string;
+            POLICY_NUMBER: string;
+            CREATED_AT: string;
+        }
+
+        dentalService.forEach(value => {
             idSubmission.push(value.id);
 
-            if(value.date_of_birth === null) {
-                value.date_of_birth =  "N/A";
+            value.date_of_birth = value.date_of_birth || "N/A";
+            value.file_fullName = value.file_name ? `${value.file_name}.${value.file_type}` : "";
+
+            const internalField = dentalInternalFields.find((obj: DentalInternalField) => obj.DENTAL_SERVICE_ID === value.id);
+
+            if (internalField) {
+                Object.assign(value, {
+                    program_year: internalField.program_year,
+                    income_amount: internalField.income_amount,
+                    date_enrollment: internalField.date_enrollment,
+                    policy_number: internalField.policy_number,
+                    created_at_if: internalField.created_at
+                });
+            } else {
+                Object.assign(value, {
+                    program_year: "",
+                    income_amount: "",
+                    date_enrollment: "",
+                    policy_number: "",
+                    created_at_if: ""
+                });
             }
 
-            if(!_.isEmpty(value.identify_groups)){
-                value.identify_groups = getBlobField(value.identify_groups);
-            }
-
-            if(!_.isEmpty(value.reason_for_dentist)){
-                value.reason_for_dentist = getBlobField(value.reason_for_dentist);
-            }
-
-            if(!_.isEmpty(value.pay_for_visit)){
-                value.pay_for_visit = getBlobField(value.pay_for_visit);
-            }
-
-            if(!_.isEmpty(value.barriers)){
-                value.barriers = getBlobField(value.barriers);
-            }
-
-            if(!_.isEmpty(value.problems)){
-                value.problems = getBlobField(value.problems);
-            }
-
-            if(!_.isEmpty(value.services_needed)){
-                value.services_needed = getBlobField(value.services_needed);
-            }
-
-            if(!_.isEmpty(value.file_name)){
-                value.file_fullName = value.file_name+"."+value.file_type;
-            }else{
-                value.file_fullName = "";
-            }
-
-            let internalField = dentalInternalFields.find((obj: any) => obj.dental_service_id === value.id);
-
-            if(internalField) {
-                value.program_year = internalField.program_year;
-                value.income_amount = internalField.income_amount;
-                value.date_enrollment = internalField.date_enrollment;
-                value.policy_number = internalField.policy_number;
-                value.created_at_if = internalField.created_at;
-            }else{
-                value.program_year = "";
-                value.income_amount = "";
-                value.date_enrollment = "";
-                value.policy_number = "";
-                value.created_at_if = "";
-            }
-
-            delete value.id;
-            delete value.status;
-            delete value.are_you_eligible_for_the_pharmacare_and_extended_health_care_ben;
-            delete value.file_id;
-            delete value.file_name;
-            delete value.file_type;
-            delete value.file_size;
-
+            ['id', 'status', 'are_you_eligible_for_the_pharmacare_and_extended_health_care_ben', 'file_id', 'file_name', 'file_type', 'file_size'].forEach(key => delete value[key]);
         });
 
         let queryDependents = db(`${SCHEMA_DENTAL}.DENTAL_SERVICE_DEPENDENTS`)
@@ -623,17 +564,9 @@ dentalRouter.post("/export/", async (req: Request, res: Response) => {
         queryDependents.orderBy('DENTAL_SERVICE_DEPENDENTS.DENTAL_SERVICE_ID', 'ASC');
         const dentalServiceDependents = await queryDependents;
 
-        _.forEach(dentalServiceDependents, function(valueDependents: any, key: any) {
-
-            if(valueDependents["c_dob"] == 0) {
-                valueDependents["c_dob"] =  "N/A";
-            }
-
-            if(valueDependents["c_apply"] == "0"){
-                valueDependents["c_apply"] = "Yes, they are applying";
-            }else if(valueDependents["c_apply"] == "1"){
-                valueDependents["c_apply"] = "No, they alredy have coverage";
-            }
+        dentalServiceDependents.forEach(valueDependents => {
+            valueDependents.c_dob = valueDependents.c_dob || "N/A";
+            valueDependents.c_apply = valueDependents.c_apply === "0" ? "Yes, they are applying" : "No, they already have coverage";
         });
 
         var bufferQuery = Object();
@@ -882,30 +815,6 @@ dentalRouter.get("/duplicates/details/:duplicate_id",[param("duplicate_id").isIn
                 if(askDemographic[0].toLowerCase() !== "no"){
                     flagDemographic = false;
                 }
-            }
-
-            if(!_.isEmpty(value.identify_groups)){
-                value.identify_groups = getBlobField(value.identify_groups);
-            }
-
-            if(!_.isEmpty(value.reason_for_dentist)){
-                value.reason_for_dentist = getBlobField(value.reason_for_dentist);
-            }
-
-            if(!_.isEmpty(value.pay_for_visit)){
-                value.pay_for_visit = getBlobField(value.pay_for_visit);
-            }
-
-            if(!_.isEmpty(value.barriers)){
-                value.barriers = getBlobField(value.barriers);
-            }
-
-            if(!_.isEmpty(value.problems)){
-                value.problems = getBlobField(value.problems);
-            }
-
-            if(!_.isEmpty(value.services_needed)){
-                value.services_needed = getBlobField(value.services_needed);
             }
 
             if(value.id == duplicateEntry.original){
@@ -1775,9 +1684,18 @@ dentalRouter.patch("/update", async (req: Request, res: Response) => {
  * @param {idDentalService}
  * @return {result}
  */
-async function getDependents(idDentalService: any, arrayDependets: any): Promise<any[]>{
+interface Dependent {
+    DENTAL_SERVICE_ID: number;
+    C_FIRSTNAME: string | null;
+    C_LASTNAME: string | null;
+    C_DOB: any | null;
+    C_HEALTHCARE: string | null;
+    C_APPLY: string | null;
+}
 
-    let dependents = Array();
+async function getDependents(idDentalService: number, arrayDependets: any[]): Promise<Dependent[]> {
+
+    let dependents: Dependent[] = [];
     db = await helper.getOracleClient(db, DB_CONFIG_DENTAL);
 
     _.forEach(arrayDependets, function(value: any, key: any) {

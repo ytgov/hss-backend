@@ -115,8 +115,7 @@ constellationRouter.post("/", async (req: Request, res: Response) => {
         const countAllQuery = query.clone().clearSelect().clearOrder().count('* as count').first();
 
         if(dateFrom && dateTo) {
-            query.where(db.raw("TO_CHAR(CONSTELLATION_HEALTH.CREATED_AT, 'YYYY-MM-DD') >=  ? AND TO_CHAR(CONSTELLATION_HEALTH.CREATED_AT, 'YYYY-MM-DD') <= ?",
-                [dateFrom, dateTo]));
+            query.whereRaw("TO_CHAR(CONSTELLATION_HEALTH.CREATED_AT, 'YYYY-MM-DD') BETWEEN ? AND ?", [dateFrom, dateTo]);
         }
 
         if (status_request) {

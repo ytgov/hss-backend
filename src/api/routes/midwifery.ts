@@ -185,20 +185,14 @@ midwiferyRouter.post("/", async (req: Request, res: Response) => {
             return arrayResult;
         });
 
-        _.forEach(midwifery, function(value: any, key: any) {
-            value.first_pregnancy = value.first_pregnancy ? ( midwiferyOptions[value.first_pregnancy] == 1 ? 'Yes' : 'No'): '' ;
-            value.medical_concerns = value.medical_concerns ? ( midwiferyOptions[value.medical_concerns] == 1 ? 'Yes' : 'No'): '' ;
-            value.major_medical_conditions = value.major_medical_conditions ? ( midwiferyOptions[value.major_medical_conditions] == 1 ? 'Yes' : 'No'): '' ;
-
-            if(value.due_date == 0) {
-                value.due_date =  "N/A";
-            }
-
-            if(value.preferred_name == "") {
-                value.preferred_name = value.preferred_name;
-            }
-
-            value.showUrl = "midwifery/show/"+value.id;
+        midwifery = midwifery.map(value => {
+            value.first_pregnancy = value.first_pregnancy ? (midwiferyOptions[value.first_pregnancy] == 1 ? 'Yes' : 'No') : '';
+            value.medical_concerns = value.medical_concerns ? (midwiferyOptions[value.medical_concerns] == 1 ? 'Yes' : 'No') : '';
+            value.major_medical_conditions = value.major_medical_conditions ? (midwiferyOptions[value.major_medical_conditions] == 1 ? 'Yes' : 'No') : '';
+            value.due_date = value.due_date || "N/A";
+            value.preferred_name = value.preferred_name || value.preferred_name;
+            value.showUrl = `midwifery/show/${value.id}`;
+            return value;
         });
 
         res.send({data: midwifery, dataStatus: midwiferyStatus, total: countSubmissions, all: countAll});

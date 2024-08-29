@@ -395,143 +395,95 @@ export default {
             }
         },
 		exportFile () {
-			this.loadingExport = true;
+			var idArray = [];
+			this.selected.forEach((e) => {
+				idArray.push(e.id);
+			});
 
-            let totalBatches = 0;
-
-            if(this.selected.length > 0 && !this.isAllData){
-                totalBatches = Math.ceil(this.selected.length / this.exportMaxSize);
-            }else if(this.selected.length == 0 && !this.isAllData){
-                totalBatches = Math.ceil(this.allItems / this.exportMaxSize);
-                this.isAllData = true;
-            }else if(this.selected.length > 0 && this.isAllData){
-                totalBatches = Math.ceil(this.totalItems / this.exportMaxSize);
-            }
-
-            let dentalData = [];
-			let dependantsData = [];
-
-            const fetchBatchData = async (start, end) => {
-				let idArray = [];
-                if (!this.isAllData) {
-                    idArray = this.selected.slice(start, end).map(e => e.constellation_health_id);
-                }
-
-				try {
-					const response = await axios.post(DENTAL_EXPORT_FILE_URL, {
-						params: {
-							requests: idArray,
-							status: this.selectedStatus,
-							dateFrom: this.date,
-							dateTo: this.dateEnd,
-							dateYear: this.dateYear,
-							offset: start,
-                            limit: this.exportMaxSize,
-                            isAllData: this.isAllData,
-						}
-					});
-					return response.data;
-				} catch (error) {
-					console.error(error);
-					throw error;
+			axios
+			.post(DENTAL_EXPORT_FILE_URL, {
+				params: {
+					requests: idArray,
+					status: this.selectedStatus,
+					dateFrom: this.date,
+					dateTo: this.dateEnd,
+					dateYear: this.dateYear
 				}
-			};
+			}).then((resp) => {
+				const ws = utils.json_to_sheet(resp.data.dataDental);
+				const wb = utils.book_new();
+				utils.book_append_sheet(wb, ws, "Dental Service Requests");
 
-			const processBatches = async () => {
-                const batchPromises = [];
+				utils.sheet_add_aoa(
+				ws,
+				[
+					[
+					"FIRST NAME",
+					"MIDDLE NAME",
+					"LAST NAME",
+					"DATE OF BIRTH",
+					"HEALTH CARD NUMBER",
+					"MAILING ADDRESS",
+					"CITY OR TOWN",
+					"POSTAL CODE",
+					"PHONE",
+					"EMAIL",
+					"OTHER COVERAGE",
+					"ELIGIBLE PHARMACARE",
+					"EMAIL INSTEAD",
+					"HAVE CHILDREN",
+					"ASK DEMOGRAPHIC",
+					"IDENTIFY GROUPS",
+					"GENDER",
+					"EDUCATION",
+					"OFTEN BRUSH",
+					"STATE TEETH",
+					"OFTEN FLOSS",
+					"STATE GUMS",
+					"LAST SAW DENTIST",
+					"REASON FOR DENTIST",
+					"BUY SUPPLIES",
+					"PAY FOR VISIT",
+					"BARRIERS",
+					"PROBLEMS",
+					"SERVICES NEEDED",
+					"CREATED AT",
+					"PROOF OF INCOME ATTACHMENT",
+					"PROGRAM YEAR",
+					"INCOME AMOUNT",
+					"DATE OF ENROLLMENT",
+					"POLICY NUMBER",
+					"INTERNAL FIELD CREATED AT"
+					],
+				],
+				{ origin: "A1" }
+				);
+				const ws2 = utils.json_to_sheet(resp.data.dataDependents);
+				utils.book_append_sheet(wb, ws2, "Dental Service Dependents");
+				utils.sheet_add_aoa(
+				ws2,
+				[
+					[
+					"APPLICANT NAME",
+					"FIRST NAME",
+					"LAST NAME",
+					"DATE OF BIRTH",
+					"HEALTHCARE",
+					"APPLY",
+					],
+				],
+				{ origin: "A1" }
+				);
 
-                for (let batch = 0; batch < totalBatches; batch++) {
-                    const start = batch * this.exportMaxSize;
-                    const end = start + this.exportMaxSize;
-                    batchPromises.push(fetchBatchData(start, end));
-                }
+				writeFileXLSX(wb, "DentalService_Requests.xlsx");
 
-                try {
-                    const results = await Promise.all(batchPromises);
-
-                    results.forEach((data) => {
-                        dentalData = dentalData.concat(data.dataDental);
-						dependantsData = dependantsData.concat(data.dataDependents);
-                    });
-
-                    this.generateExcel(dentalData, dependantsData);
-                } catch (error) {
-                    console.error('Error processing Dental Service Export batches:', error);
-                } finally {
-                    this.loadingExport = false;
-                }
-            };
-
-            processBatches();
+				this.loading = false;
+			})
+			.catch((err) => console.error(err))
+			.finally(() => {
+				this.loading = false;
+			});
 		},
-		generateExcel(dentalData, dependantsData) {
-            const ws = utils.json_to_sheet(dentalData);
-			const wb = utils.book_new();
-			utils.book_append_sheet(wb, ws, "Dental Service Requests");
-
-			utils.sheet_add_aoa(
-			ws,
-			[
-				[
-				"FIRST NAME",
-				"MIDDLE NAME",
-				"LAST NAME",
-				"DATE OF BIRTH",
-				"HEALTH CARD NUMBER",
-				"MAILING ADDRESS",
-				"CITY OR TOWN",
-				"POSTAL CODE",
-				"PHONE",
-				"EMAIL",
-				"OTHER COVERAGE",
-				"ELIGIBLE PHARMACARE",
-				"EMAIL INSTEAD",
-				"HAVE CHILDREN",
-				"ASK DEMOGRAPHIC",
-				"IDENTIFY GROUPS",
-				"GENDER",
-				"EDUCATION",
-				"OFTEN BRUSH",
-				"STATE TEETH",
-				"OFTEN FLOSS",
-				"STATE GUMS",
-				"LAST SAW DENTIST",
-				"REASON FOR DENTIST",
-				"BUY SUPPLIES",
-				"PAY FOR VISIT",
-				"BARRIERS",
-				"PROBLEMS",
-				"SERVICES NEEDED",
-				"CREATED AT",
-				"PROOF OF INCOME ATTACHMENT",
-				"PROGRAM YEAR",
-				"INCOME AMOUNT",
-				"DATE OF ENROLLMENT",
-				"POLICY NUMBER",
-				"INTERNAL FIELD CREATED AT"
-				],
-			],
-			{ origin: "A1" }
-			);
-			const ws2 = utils.json_to_sheet(dependantsData);
-			utils.book_append_sheet(wb, ws2, "Dental Service Dependents");
-			utils.sheet_add_aoa(
-			ws2,
-			[
-				[
-				"APPLICANT NAME",
-				"FIRST NAME",
-				"LAST NAME",
-				"DATE OF BIRTH",
-				"HEALTHCARE",
-				"APPLY",
-				],
-			],
-			{ origin: "A1" }
-			);
-
-			writeFileXLSX(wb, "DentalService_Requests.xlsx");
-        }
 	},
 };
 </script>
