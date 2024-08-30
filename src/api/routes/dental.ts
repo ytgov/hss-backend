@@ -463,32 +463,33 @@ dentalRouter.get("/show/:dentalService_id", checkPermissions("dental_view"), [pa
  */
 dentalRouter.post("/export/", async (req: Request, res: Response) => {
     try {
-        const { requests, status: status_request, dateFrom, dateTo, dateYear } = req.body.params;
+        const { requests, status: status_request, dateFrom, dateTo, dateYear, isAllData, offset, limit } = req.body.params;
         const idSubmission: number[] = [];
-        var dentalInternalFields = Object();
+        let dentalInternalFields = Object();
         db = await helper.getOracleClient(db, DB_CONFIG_DENTAL);
         let userId = req.user?.db_user.user.id || null;
 
-        let query  = db(`${SCHEMA_DENTAL}.DENTAL_SERVICE_SUBMISSIONS_DETAILS`)
-                    .where('DENTAL_SERVICE_SUBMISSIONS_DETAILS.STATUS', '<>', 4);
+        let query = db(`${SCHEMA_DENTAL}.DENTAL_SERVICE_SUBMISSIONS_DETAILS`)
+            .where('DENTAL_SERVICE_SUBMISSIONS_DETAILS.STATUS', '<>', 4);
 
-        if(requests.length > 0){
+        if (requests.length > 0 && !isAllData) {
             query.whereIn("ID", requests);
         }
 
-        if(dateYear) {
-            query.where(db.raw("EXTRACT(YEAR FROM TO_DATE(DENTAL_SERVICE_SUBMISSIONS_DETAILS.CREATED_AT, 'YYYY-MM-DD HH24:MI:SS')) = ?",
-                [dateYear]));
+        if (dateYear) {
+            query.where(db.raw("EXTRACT(YEAR FROM TO_DATE(DENTAL_SERVICE_SUBMISSIONS_DETAILS.CREATED_AT, 'YYYY-MM-DD HH24:MI:SS')) = ?", [dateYear]));
         }
 
-        if(dateFrom && dateTo) {
-            query.where(db.raw("TO_CHAR(TO_DATE(CREATED_AT, 'YYYY-MM-DD HH24:MI:SS'), 'YYYY-MM-DD') >=  ? "+
-                                "AND TO_CHAR(TO_DATE(CREATED_AT, 'YYYY-MM-DD HH24:MI:SS'), 'YYYY-MM-DD') <= ?",
-                [dateFrom, dateTo]));
+        if (dateFrom && dateTo) {
+            query.where(db.raw("TO_CHAR(TO_DATE(CREATED_AT, 'YYYY-MM-DD HH24:MI:SS'), 'YYYY-MM-DD') >= ? AND TO_CHAR(TO_DATE(CREATED_AT, 'YYYY-MM-DD HH24:MI:SS'), 'YYYY-MM-DD') <= ?", [dateFrom, dateTo]));
         }
 
         if (status_request) {
             query.whereIn("DENTAL_SERVICE_SUBMISSIONS_DETAILS.STATUS", status_request);
+        }
+
+        if (isAllData) {
+            query.offset(offset).limit(limit);
         }
 
         query.orderBy('ID', 'ASC');
@@ -497,7 +498,8 @@ dentalRouter.post("/export/", async (req: Request, res: Response) => {
         const submissionsId: number[] = dentalService.map(item => item.id);
 
         dentalInternalFields = await db(`${SCHEMA_DENTAL}.DENTAL_SERVICE_INTERNAL_FIELDS`)
-        .select('DENTAL_SERVICE_ID',
+            .select(
+                'DENTAL_SERVICE_ID',
                 'PROGRAM_YEAR',
                 db.raw(`CASE
                         WHEN INCOME_AMOUNT = TRUNC(INCOME_AMOUNT)
@@ -507,25 +509,16 @@ dentalRouter.post("/export/", async (req: Request, res: Response) => {
                 db.raw("TO_CHAR(DATE_ENROLLMENT, 'YYYY-MM-DD') AS DATE_ENROLLMENT"),
                 'POLICY_NUMBER',
                 db.raw("TO_CHAR(CREATED_AT, 'YYYY-MM-DD HH24:MI:SS') AS CREATED_AT")
-        )
-        .whereIn('DENTAL_SERVICE_ID', submissionsId);
+            )
+            .whereIn('DENTAL_SERVICE_ID', submissionsId);
 
-        interface DentalInternalField {
-            DENTAL_SERVICE_ID: number;
-            PROGRAM_YEAR: string;
-            INCOME_AMOUNT: string;
-            DATE_ENROLLMENT: string;
-            POLICY_NUMBER: string;
-            CREATED_AT: string;
-        }
+        const idSubmissions = dentalService.map(item => item.id);
 
         dentalService.forEach(value => {
-            idSubmission.push(value.id);
-
             value.date_of_birth = value.date_of_birth || "N/A";
             value.file_fullName = value.file_name ? `${value.file_name}.${value.file_type}` : "";
 
-            const internalField = dentalInternalFields.find((obj: DentalInternalField) => obj.DENTAL_SERVICE_ID === value.id);
+            const internalField = dentalInternalFields.find((obj: any) => obj.DENTAL_SERVICE_ID === value.id);
 
             if (internalField) {
                 Object.assign(value, {
@@ -549,16 +542,18 @@ dentalRouter.post("/export/", async (req: Request, res: Response) => {
         });
 
         let queryDependents = db(`${SCHEMA_DENTAL}.DENTAL_SERVICE_DEPENDENTS`)
-                            .leftJoin(`${SCHEMA_DENTAL}.DENTAL_SERVICE`, 'DENTAL_SERVICE_DEPENDENTS.DENTAL_SERVICE_ID', 'DENTAL_SERVICE.ID')
-                            .select(db.raw("(DENTAL_SERVICE.FIRST_NAME ||' '|| DENTAL_SERVICE.LAST_NAME) AS APPLICANT_NAME" ),
-                                    'DENTAL_SERVICE_DEPENDENTS.C_FIRSTNAME',
-                                    'DENTAL_SERVICE_DEPENDENTS.C_LASTNAME',
-                                    'DENTAL_SERVICE_DEPENDENTS.C_DOB',
-                                    'DENTAL_SERVICE_DEPENDENTS.C_HEALTHCARE',
-                                    'DENTAL_SERVICE_DEPENDENTS.C_APPLY');
+            .leftJoin(`${SCHEMA_DENTAL}.DENTAL_SERVICE`, 'DENTAL_SERVICE_DEPENDENTS.DENTAL_SERVICE_ID', 'DENTAL_SERVICE.ID')
+            .select(
+                db.raw("(DENTAL_SERVICE.FIRST_NAME ||' '|| DENTAL_SERVICE.LAST_NAME) AS APPLICANT_NAME"),
+                'DENTAL_SERVICE_DEPENDENTS.C_FIRSTNAME',
+                'DENTAL_SERVICE_DEPENDENTS.C_LASTNAME',
+                'DENTAL_SERVICE_DEPENDENTS.C_DOB',
+                'DENTAL_SERVICE_DEPENDENTS.C_HEALTHCARE',
+                'DENTAL_SERVICE_DEPENDENTS.C_APPLY'
+            );
 
-        if (!_.isEmpty(idSubmission)) {
-            queryDependents.whereIn('DENTAL_SERVICE_DEPENDENTS.DENTAL_SERVICE_ID', idSubmission);
+        if (!_.isEmpty(idSubmissions)) {
+            queryDependents.whereIn('DENTAL_SERVICE_DEPENDENTS.DENTAL_SERVICE_ID', idSubmissions);
         }
 
         queryDependents.orderBy('DENTAL_SERVICE_DEPENDENTS.DENTAL_SERVICE_ID', 'ASC');
@@ -573,16 +568,16 @@ dentalRouter.post("/export/", async (req: Request, res: Response) => {
         let stringQuery = query.toString();
 
         // Verify the length of the serialized JSON
-        const maxLengthInBytes = 1 * (1024 * 1024); // 1MB to  bytes
+        const maxLengthInBytes = 1 * (1024 * 1024); // 1MB to bytes
 
         if (Buffer.byteLength(stringQuery, 'utf8') > maxLengthInBytes) {
             console.log('The object exceeds 1MB. It will be truncated.');
             stringQuery = stringQuery.substring(0, maxLengthInBytes);
         }
 
-        if(!_.isEmpty(query)) {
+        if (!_.isEmpty(query)) {
             bufferQuery = Buffer.from(stringQuery);
-        }else{
+        } else {
             bufferQuery = null;
         }
 
@@ -598,20 +593,20 @@ dentalRouter.post("/export/", async (req: Request, res: Response) => {
 
         let loggedAction = await helper.insertLog(logFields);
 
-        if(!loggedAction){
+        if (!loggedAction) {
             console.log("Dental Export could not be logged");
         }
 
-        res.json({ status: 200, dataDental: dentalService, dataDependents: dentalServiceDependents,
-                    dataInternalFields: dentalInternalFields});
-    } catch(e) {
+        res.json({ status: 200, dataDental: dentalService, dataDependents: dentalServiceDependents, dataInternalFields: dentalInternalFields });
+    } catch (e) {
         console.log(e);  // debug if needed
-        res.send( {
+        res.send({
             status: 400,
             message: 'Request could not be processed'
         });
     }
 });
+
 
 
 /**
