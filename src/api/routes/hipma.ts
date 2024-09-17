@@ -700,6 +700,9 @@ hipmaRouter.post("/export", async (req: Request, res: Response) => {
         var dateTo = req.body.params.dateTo;
         db = await helper.getOracleClient(db, DB_CONFIG_HIPMA);
         let userId = req.user?.db_user.user.id || null;
+        var offset = req.body.params.offset;
+        var limit = req.body.params.limit;
+        var isAllData = req.body.params.isAllData;
 
         let query = db(`${SCHEMA_HIPMA}.HEALTH_INFORMATION`)
                 .leftJoin(`${SCHEMA_HIPMA}.HIPMA_REQUEST_TYPE`, 'HEALTH_INFORMATION.WHAT_TYPE_OF_REQUEST_DO_YOU_WANT_TO_MAKE_', '=', 'HIPMA_REQUEST_TYPE.ID')
@@ -740,6 +743,10 @@ hipmaRouter.post("/export", async (req: Request, res: Response) => {
         if(dateFrom && dateTo) {
             query.where(db.raw("TO_CHAR(HEALTH_INFORMATION.CREATED_AT, 'YYYY-MM-DD') >=  ? AND TO_CHAR(HEALTH_INFORMATION.CREATED_AT, 'YYYY-MM-DD') <= ?",
                 [dateFrom, dateTo]));
+        }
+
+        if (isAllData) {
+            query.offset(offset).limit(limit);
         }
 
         const hipma = await query;

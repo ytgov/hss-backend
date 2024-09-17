@@ -407,8 +407,7 @@ export default {
             }else if(this.selected.length > 0 && this.isAllData){
                 totalBatches = Math.ceil(this.totalItems / this.exportMaxSize);
             }
-			console.log(totalBatches);
-			console.log(this.totalItems);
+
             let dentalData = [];
 			let dependantsData = [];
 

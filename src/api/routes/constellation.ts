@@ -1127,6 +1127,12 @@ constellationRouter.patch("/duplicates/primary", async (req: Request, res: Respo
  * @param {arrayMembers} array of family members information
  * @return {familyMembersInsert}
  */
+
+interface Row {
+    id: number;
+    value: string;
+}
+
 async function dataFamilyMembers(idConstellationHealth:number, arrayMembers:any){
 
     db = await helper.getOracleClient(db, DB_CONFIG_CONSTELLATION);
@@ -1134,7 +1140,7 @@ async function dataFamilyMembers(idConstellationHealth:number, arrayMembers:any)
     var languages = Object();
     var demographics = Object();
 
-    languages = await db(`${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH_LANGUAGE`).select().then((rows: any) => {
+    languages = await db(`${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH_LANGUAGE`).select().then((rows: Row[]) => {
                 let arrayResult = Object();
 
                 for (let row of rows) {
@@ -1144,7 +1150,7 @@ async function dataFamilyMembers(idConstellationHealth:number, arrayMembers:any)
                 return arrayResult;
     });
 
-    demographics = await db(`${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH_DEMOGRAPHICS`).select().then((rows: any) => {
+    demographics = await db(`${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH_DEMOGRAPHICS`).select().then((rows: Row[]) => {
             let arrayResult = Object();
 
             for (let row of rows) {

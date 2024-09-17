@@ -366,9 +366,12 @@ export default {
 
             const fetchBatchData = async (start, end) => {
                 let idArray = [];
+
                 if (!this.isAllData) {
-                    idArray = this.selected.slice(start, end).map(e => e.constellation_health_id);
-                }
+					idArray = this.selected.slice(start, end).map(e => e.id);
+				} else {
+					idArray = [];
+				}
 
                 try {
                     const response = await axios.post(CONSTELLATION_EXPORT_FILE_URL, {
@@ -393,10 +396,11 @@ export default {
                 const batchPromises = [];
 
                 for (let batch = 0; batch < totalBatches; batch++) {
-                    const start = batch * this.exportMaxSize;
-                    const end = start + this.exportMaxSize;
-                    batchPromises.push(fetchBatchData(start, end));
-                }
+					const start = batch * this.exportMaxSize;
+					const end = Math.min(start + this.exportMaxSize, this.isAllData ? this.totalItems : this.selected.length);
+
+					batchPromises.push(fetchBatchData(start, end));
+				}
 
                 try {
                     const results = await Promise.all(batchPromises);

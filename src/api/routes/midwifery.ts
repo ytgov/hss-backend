@@ -534,6 +534,7 @@ midwiferyRouter.post("/export", async (req: Request, res: Response) => {
         let userId = req.user?.db_user.user.id || null;
         var offset = req.body.params.offset;
         var limit = req.body.params.limit;
+        var isAllData = req.body.params.isAllData;
  
         let query = db(`${SCHEMA_MIDWIFERY}.MIDWIFERY_SERVICES`)
         .join(`${SCHEMA_MIDWIFERY}.MIDWIFERY_STATUS`, 'MIDWIFERY_SERVICES.STATUS', '=', 'MIDWIFERY_STATUS.ID')
@@ -596,17 +597,33 @@ midwiferyRouter.post("/export", async (req: Request, res: Response) => {
         if (status_request &&  query) {
             query.whereIn("MIDWIFERY_SERVICES.STATUS", status_request);
         }
-        if (offset && limit) {
+
+        if (isAllData) {
             query = query.orderBy('MIDWIFERY_SERVICES.ID', 'ASC');
             query = query.offset(offset).limit(limit);
-
         }
 
 
         const midwifery = await query;
 
         db = await helper.getOracleClient(db, DB_CONFIG_MIDWIFERY);
-        midwiferyOptions = await db(`${SCHEMA_MIDWIFERY}.MIDWIFERY_OPTIONS`).select().then((rows: any) => {
+
+        interface MidwiferyOption {
+            id: number;
+            description: string;
+        }
+
+        interface Community {
+            id: number;
+            description: string;
+        }
+
+        interface ContactType {
+            id: number;
+            description: string;
+        }
+
+        midwiferyOptions = await db(`${SCHEMA_MIDWIFERY}.MIDWIFERY_OPTIONS`).select().then((rows: MidwiferyOption[]) => {
             let arrayResult = Object();
 
             for (let row of rows) {
@@ -621,7 +638,7 @@ midwiferyRouter.post("/export", async (req: Request, res: Response) => {
         var communityLocations = Object();
         var languages = Object();
 
-        communities = await db(`${SCHEMA_MIDWIFERY}.MIDWIFERY_GROUPS_COMMUNITIES`).select().then((rows: any) => {
+        communities = await db(`${SCHEMA_MIDWIFERY}.MIDWIFERY_GROUPS_COMMUNITIES`).select().then((rows: Community[]) => {
             let arrayResult = Object();
 
             for (let row of rows) {
@@ -631,7 +648,7 @@ midwiferyRouter.post("/export", async (req: Request, res: Response) => {
             return arrayResult;
         });
 
-        contact =  await db(`${SCHEMA_MIDWIFERY}.MIDWIFERY_CLINIC_CONTACT_TYPES`).select().then((rows: any) => {
+        contact =  await db(`${SCHEMA_MIDWIFERY}.MIDWIFERY_CLINIC_CONTACT_TYPES`).select().then((rows: ContactType[]) => {
             let arrayResult = Object();
             for (let row of rows) {
                 arrayResult[row['id']] = row['description'];
@@ -981,7 +998,22 @@ midwiferyRouter.get("/duplicates/details/:duplicate_id",[param("duplicate_id").i
         .whereIn("MIDWIFERY_SERVICES.ID", [duplicateEntry.original, duplicateEntry.duplicated])
         .whereNot('MIDWIFERY_SERVICES.STATUS', '4');
 
-        communities = await db(`${SCHEMA_MIDWIFERY}.MIDWIFERY_GROUPS_COMMUNITIES`).select().then((rows: any) => {
+        interface MidwiferyOption {
+            id: number;
+            description: string;
+        }
+
+        interface Community {
+            id: number;
+            description: string;
+        }
+
+        interface ContactType {
+            id: number;
+            description: string;
+        }
+
+        communities = await db(`${SCHEMA_MIDWIFERY}.MIDWIFERY_GROUPS_COMMUNITIES`).select().then((rows: Community[]) => {
             let arrayResult = Object();
 
             for (let row of rows) {
@@ -991,7 +1023,7 @@ midwiferyRouter.get("/duplicates/details/:duplicate_id",[param("duplicate_id").i
             return arrayResult;
         });
 
-        contact =  await db(`${SCHEMA_MIDWIFERY}.MIDWIFERY_CLINIC_CONTACT_TYPES`).select().then((rows: any) => {
+        contact =  await db(`${SCHEMA_MIDWIFERY}.MIDWIFERY_CLINIC_CONTACT_TYPES`).select().then((rows: ContactType[]) => {
             let arrayResult = Object();
             for (let row of rows) {
                 arrayResult[row['id']] = row['description'];
@@ -1000,7 +1032,7 @@ midwiferyRouter.get("/duplicates/details/:duplicate_id",[param("duplicate_id").i
             return arrayResult;
         });
 
-        midwiferyOptions = await db(`${SCHEMA_MIDWIFERY}.MIDWIFERY_OPTIONS`).select().then((rows: any) => {
+        midwiferyOptions = await db(`${SCHEMA_MIDWIFERY}.MIDWIFERY_OPTIONS`).select().then((rows: MidwiferyOption[]) => {
             let arrayResult = Object();
 
             for (let row of rows) {
