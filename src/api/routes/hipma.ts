@@ -242,18 +242,14 @@ hipmaRouter.get("/show/:hipma_id",[param("hipma_id").isInt().notEmpty()], async 
                         TO_CHAR(HEALTH_INFORMATION.DATE_FROM_, 'yyyy-mm-dd')  AS DATE_FROM_,
                         TO_CHAR(HEALTH_INFORMATION.DATE_TO_, 'yyyy-mm-dd')  AS DATE_TO_,
                         CASE WHEN HEALTH_INFORMATION.DATE_RANGE_IS_UNKNOWN_OR_I_NEED_HELP_IDENTIFYING_THE_DATE_RANGE = 1 THEN 'Yes' ELSE 'No' END AS DATE_RANGE_IS_UNKNOWN_OR_I_NEED_HELP_IDENTIFYING_THE_DATE_RANGE,
-                        CASE WHEN HEALTH_INFORMATION.I_AFFIRM_THE_INFORMATION_ABOVE_TO_BE_TRUE_AND_ACCURATE_ = 1 THEN 'Yes' ELSE 'No' END AS I_AFFIRM_THE_INFORMATION_ABOVE_TO_BE_TRUE_AND_ACCURATE_,
-                        GENERAL.process_blob_value(HEALTH_INFORMATION.INDICATE_THE_HSS_SYSTEM_S_YOU_WOULD_LIKE_A_RECORD_OF_USER_ACTIV, '${SCHEMA_HIPMA}.HIPMA_HSS_SYSTEMS') AS INDICATE_THE_HSS_SYSTEM_S_YOU_WOULD_LIKE_A_RECORD_OF_USER_ACTIV`
+                        CASE WHEN HEALTH_INFORMATION.I_AFFIRM_THE_INFORMATION_ABOVE_TO_BE_TRUE_AND_ACCURATE_ = 1 THEN 'Yes' ELSE 'No' END AS I_AFFIRM_THE_INFORMATION_ABOVE_TO_BE_TRUE_AND_ACCURATE_`
                     ),
                 `HEALTH_INFORMATION.ADDRESS`, `HEALTH_INFORMATION.CITY_OR_TOWN`,
                 `HEALTH_INFORMATION.POSTAL_CODE`, `HEALTH_INFORMATION.EMAIL_ADDRESS`, `HEALTH_INFORMATION.PHONE_NUMBER`,
                 `HEALTH_INFORMATION.GET_A_COPY_OF_YOUR_HEALTH_INFORMATION_`,
                 `HEALTH_INFORMATION.GET_A_COPY_OF_YOUR_ACTIVITY_REQUEST`,
-
-                db.raw(`GENERAL.process_blob_value(HEALTH_INFORMATION.NAME_OF_HEALTH_AND_SOCIAL_SERVICES_PROGRAM_AREA_OPTIONAL_, '${SCHEMA_HIPMA}.HIPMA_HEALTH_SOCIAL_SERVICES_PROGRAM') AS NAME_OF_HEALTH_AND_SOCIAL_SERVICES_PROGRAM_AREA_OPTIONAL_`),
-                //`HEALTH_INFORMATION.NAME_OF_HEALTH_AND_SOCIAL_SERVICES_PROGRAM_AREA_OPTIONAL_`,
-                //db.raw(``),
-                //`HEALTH_INFORMATION.INDICATE_THE_HSS_SYSTEM_S_YOU_WOULD_LIKE_A_RECORD_OF_USER_ACTIV`,
+                db.raw(`GENERAL.process_blob_value_format(HEALTH_INFORMATION.INDICATE_THE_HSS_SYSTEM_S_YOU_WOULD_LIKE_A_RECORD_OF_USER_ACTIV, '${SCHEMA_HIPMA}.HIPMA_HSS_SYSTEMS') AS INDICATE_THE_HSS_SYSTEM_S_YOU_WOULD_LIKE_A_RECORD_OF_USER_ACTIV,
+                        GENERAL.process_blob_value_format(HEALTH_INFORMATION.NAME_OF_HEALTH_AND_SOCIAL_SERVICES_PROGRAM_AREA_OPTIONAL_, '${SCHEMA_HIPMA}.HIPMA_HEALTH_SOCIAL_SERVICES_PROGRAM') AS NAME_OF_HEALTH_AND_SOCIAL_SERVICES_PROGRAM_AREA_OPTIONAL_`),
                 `HEALTH_INFORMATION.PROVIDE_DETAILS_ABOUT_YOUR_REQUEST_`,
                 `HEALTH_INFORMATION.CREATED_AT`, `HEALTH_INFORMATION.UPDATED_AT`,
                 `HIPMA_REQUEST_TYPE.DESCRIPTION AS HIPMA_REQUEST_TYPE_DESC`,
@@ -263,62 +259,7 @@ hipmaRouter.get("/show/:hipma_id",[param("hipma_id").isInt().notEmpty()], async 
                 `HIPMA_COPY_ACTIVITY_REQUEST.DESCRIPTION AS CP_ACT_REQ`)
         .where("HEALTH_INFORMATION.ID", hipma_id)
         .first();
-        /*
-        if(!_.isEmpty(hipma.name_of_health_and_social_services_program_area_optional_)) {
-            var dataString = "";
-            var socialServices = Object();
-            hipma.name_of_health_and_social_services_program_area_optional_ = JSON.parse(hipma.name_of_health_and_social_services_program_area_optional_.toString());
 
-            socialServices = await db(`${SCHEMA_HIPMA}.HIPMA_HEALTH_SOCIAL_SERVICES_PROGRAM`).select().then((rows: any) => {
-                let arrayResult = Object();
-                for (let row of rows) {
-                    arrayResult[row['id']] = row['description'];
-                }
-                return arrayResult;
-            });
-
-            _.forEach(hipma.name_of_health_and_social_services_program_area_optional_, function(value: any, key: any) {
-                if(socialServices.hasOwnProperty(value)) {
-                    dataString += socialServices[value]+",";
-                }else{
-                    dataString += value+",";
-                }
-            });
-
-            if(dataString.substr(-1) == ",") {
-                dataString = dataString.slice(0, -1);
-            }
-
-            hipma.name_of_health_and_social_services_program_area_optional_ = dataString.replace(/,/g, ', ');
-        }
-
-        if(!_.isEmpty(hipma.indicate_the_hss_system_s_you_would_like_a_record_of_user_activ)) {
-            var dataString = "";
-            var hssSystems = Object();
-            hipma.indicate_the_hss_system_s_you_would_like_a_record_of_user_activ = JSON.parse(hipma.indicate_the_hss_system_s_you_would_like_a_record_of_user_activ.toString());
-            hssSystems = await db(`${SCHEMA_HIPMA}.HIPMA_HSS_SYSTEMS`).select().then((rows: any) => {
-                let arrayResult = Object();
-                for (let row of rows) {
-                    arrayResult[row['id']] = row['description'];
-                }
-                return arrayResult;
-            });
-
-            _.forEach(hipma.indicate_the_hss_system_s_you_would_like_a_record_of_user_activ, function(value: any, key: any) {
-                if(hssSystems.hasOwnProperty(value)) {
-                    dataString += hssSystems[value]+",";
-                }else{
-                    dataString += value+",";
-                }
-            });
-
-            if(dataString.substr(-1) == ",") {
-                dataString = dataString.slice(0, -1);
-            }
-
-            hipma.indicate_the_hss_system_s_you_would_like_a_record_of_user_activ = dataString.replace(/,/g, ', ');
-        }
-*/
         var hipmaFiles = await db(`${SCHEMA_HIPMA}.HIPMA_FILES`).where("HIPMA_ID", hipma_id)
             .select('ID',
                     'HIPMA_ID',
@@ -718,14 +659,13 @@ hipmaRouter.post("/export", async (req: Request, res: Response) => {
                     db.raw(`TO_CHAR(HEALTH_INFORMATION.DATE_OF_BIRTH, 'YYYY-MM-DD')  AS DATE_OF_BIRTH`),
                     `HEALTH_INFORMATION.ADDRESS`, `HEALTH_INFORMATION.CITY_OR_TOWN`,
                     `HEALTH_INFORMATION.POSTAL_CODE`, `HEALTH_INFORMATION.EMAIL_ADDRESS`, `HEALTH_INFORMATION.PHONE_NUMBER`, 
-                    `HEALTH_INFORMATION.NAME_OF_HEALTH_AND_SOCIAL_SERVICES_PROGRAM_AREA_OPTIONAL_`,
-                    `HEALTH_INFORMATION.INDICATE_THE_HSS_SYSTEM_S_YOU_WOULD_LIKE_A_RECORD_OF_USER_ACTIV`,
                     `HEALTH_INFORMATION.PROVIDE_DETAILS_ABOUT_YOUR_REQUEST_`,
-                    db.raw(`TO_CHAR(HEALTH_INFORMATION.DATE_FROM_, 'YYYY-MM-DD')  AS DATE_FROM_,
-                            TO_CHAR(HEALTH_INFORMATION.DATE_TO_, 'YYYY-MM-DD')  AS DATE_TO_`),
-                    db.raw(`TO_CHAR(HEALTH_INFORMATION.CREATED_AT, 'YYYY-MM-DD HH24:MI:SS') AS CREATED_AT,
-                            TO_CHAR(HEALTH_INFORMATION.UPDATED_AT, 'YYYY-MM-DD HH24:MI:SS') AS UPDATED_AT`
-                        ),
+                    db.raw(`GENERAL.process_blob_value_format(HEALTH_INFORMATION.INDICATE_THE_HSS_SYSTEM_S_YOU_WOULD_LIKE_A_RECORD_OF_USER_ACTIV, '${SCHEMA_HIPMA}.HIPMA_HSS_SYSTEMS') AS INDICATE_THE_HSS_SYSTEM_S_YOU_WOULD_LIKE_A_RECORD_OF_USER_ACTIV,
+                    GENERAL.process_blob_value_format(HEALTH_INFORMATION.NAME_OF_HEALTH_AND_SOCIAL_SERVICES_PROGRAM_AREA_OPTIONAL_, '${SCHEMA_HIPMA}.HIPMA_HEALTH_SOCIAL_SERVICES_PROGRAM') AS NAME_OF_HEALTH_AND_SOCIAL_SERVICES_PROGRAM_AREA_OPTIONAL_,
+                    TO_CHAR(HEALTH_INFORMATION.DATE_FROM_, 'YYYY-MM-DD')  AS DATE_FROM_,
+                    TO_CHAR(HEALTH_INFORMATION.DATE_TO_, 'YYYY-MM-DD')  AS DATE_TO_,
+                    TO_CHAR(HEALTH_INFORMATION.CREATED_AT, 'YYYY-MM-DD HH24:MI:SS') AS CREATED_AT,
+                    TO_CHAR(HEALTH_INFORMATION.UPDATED_AT, 'YYYY-MM-DD HH24:MI:SS') AS UPDATED_AT`),
                     `HIPMA_REQUEST_TYPE.DESCRIPTION AS HIPMA_REQUEST_TYPE_DESC`,
                     `HIPMA_REQUEST_ACCESS_PERSONAL_HEALTH_INFORMATION.DESCRIPTION AS ACCESS_PERSONAL_HEALTH_INFORMATION`,
                     `HIPMA_COPY_HEALTH_INFORMATION.DESCRIPTION AS CP_HEALTH_INFO`,
@@ -750,68 +690,6 @@ hipmaRouter.post("/export", async (req: Request, res: Response) => {
         }
 
         const hipma = await query;
-
-        var socialServices = Object();
-        var hssSystems = Object();
-
-        socialServices = await db(`${SCHEMA_HIPMA}.HIPMA_HEALTH_SOCIAL_SERVICES_PROGRAM`).select().then((rows: any) => {
-            let arrayResult = Object();
-
-            for (let row of rows) {
-                arrayResult[row['id']] = row['description'];
-            }
-
-            return arrayResult;
-        });
-
-        hssSystems = await db(`${SCHEMA_HIPMA}.HIPMA_HSS_SYSTEMS`).select().then((rows: any) => {
-            let arrayResult = Object();
-
-            for (let row of rows) {
-                arrayResult[row['id']] = row['description'];
-            }
-
-            return arrayResult;
-        });
-
-        hipma.forEach(function (value: any) {
-            if(!_.isEmpty(value.name_of_health_and_social_services_program_area_optional_)) {
-                var dataString = "";
-                value.name_of_health_and_social_services_program_area_optional_ = JSON.parse(value.name_of_health_and_social_services_program_area_optional_.toString());
-                _.forEach(value.name_of_health_and_social_services_program_area_optional_, function(value: any, key: any) {
-                    if(socialServices.hasOwnProperty(value)) {
-                        dataString += socialServices[value]+",";
-                    }else{
-                        dataString += value+",";
-                    }
-                });
-
-                if(dataString.substr(-1) == ",") {
-                    dataString = dataString.slice(0, -1);
-                }
-
-                value.name_of_health_and_social_services_program_area_optional_ = dataString.replace(/,/g, ', ');
-            }
-
-            if(!_.isEmpty(value.indicate_the_hss_system_s_you_would_like_a_record_of_user_activ)) {
-                var dataString = "";
-                value.indicate_the_hss_system_s_you_would_like_a_record_of_user_activ = JSON.parse(value.indicate_the_hss_system_s_you_would_like_a_record_of_user_activ.toString());
-                _.forEach(value.indicate_the_hss_system_s_you_would_like_a_record_of_user_activ, function(value: any, key: any) {
-                    if(hssSystems.hasOwnProperty(value)) {
-                        dataString += hssSystems[value]+",";
-                    }else{
-                        dataString += value+",";
-                    }
-                });
-
-                if(dataString.substr(-1) == ",") {
-                    dataString = dataString.slice(0, -1);
-                }
-
-                value.indicate_the_hss_system_s_you_would_like_a_record_of_user_activ = dataString.replace(/,/g, ', ');
-            }
-
-        });
 
         let today = new Date();
         let dd = String(today.getDate()).padStart(2, '0');

@@ -517,6 +517,7 @@ dentalRouter.post("/export/", async (req: Request, res: Response) => {
         dentalService.forEach(value => {
             value.date_of_birth = value.date_of_birth || "N/A";
             value.file_fullName = value.file_name ? `${value.file_name}.${value.file_type}` : "";
+            delete value.rownum_;
 
             const internalField = dentalInternalFields.find((obj: any) => obj.DENTAL_SERVICE_ID === value.id);
 
@@ -596,7 +597,7 @@ dentalRouter.post("/export/", async (req: Request, res: Response) => {
         if (!loggedAction) {
             console.log("Dental Export could not be logged");
         }
-
+        console.log(dentalService);
         res.json({ status: 200, dataDental: dentalService, dataDependents: dentalServiceDependents, dataInternalFields: dentalInternalFields });
     } catch (e) {
         console.log(e);  // debug if needed

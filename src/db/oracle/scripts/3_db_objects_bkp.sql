@@ -1664,6 +1664,95 @@ END GETVALUEFORRULESTATUS;
 
 /
 
+
+CREATE OR REPLACE FUNCTION process_blob_value_format(
+    p_blob_value   BLOB,
+    p_table_name   VARCHAR2
+) RETURN VARCHAR2 IS
+    v_original_value     VARCHAR2(4000);
+    v_all_replace_text   VARCHAR2(4000);
+    v_partial_value      VARCHAR2(4000);
+    v_desc_text          VARCHAR2(4000);
+    v_sql                VARCHAR2(4000);
+    v_result_text        VARCHAR2(4000);
+BEGIN
+    -- Check if p_blob_value is NULL
+    IF p_blob_value IS NULL THEN
+        RETURN NULL;
+    END IF;
+
+    -- Convert BLOB to VARCHAR2
+    v_original_value := utl_raw.cast_to_varchar2(p_blob_value);
+    DBMS_OUTPUT.PUT_LINE('v_original_value: ' || v_original_value);
+
+    -- Check if v_original_value is NULL
+    IF v_original_value IS NULL THEN
+        RETURN NULL;
+    END IF;
+
+    v_all_replace_text := v_original_value;
+    v_all_replace_text := REPLACE(v_all_replace_text, '{"data":', '');
+    v_all_replace_text := REPLACE(v_all_replace_text, '{', '');
+    v_all_replace_text := REPLACE(v_all_replace_text, '}', '');
+    v_all_replace_text := TRIM(v_all_replace_text);
+    DBMS_OUTPUT.PUT_LINE('v_all_replace_text after cleanup: ' || v_all_replace_text);
+
+    v_all_replace_text := REPLACE(v_all_replace_text, '[', '');
+    v_all_replace_text := REPLACE(v_all_replace_text, ']', '');
+    DBMS_OUTPUT.PUT_LINE('v_all_replace_text after removing brackets: ' || v_all_replace_text);
+
+    v_all_replace_text := REPLACE(v_all_replace_text, '"', '');
+    DBMS_OUTPUT.PUT_LINE('v_all_replace_text after removing quotes: ' || v_all_replace_text);
+
+    -- Check if v_all_replace_text is NULL or empty
+    IF v_all_replace_text IS NULL OR v_all_replace_text = '' THEN
+        RETURN NULL;
+    END IF;
+
+    v_result_text := '';
+
+
+    FOR i IN 1..NVL(REGEXP_COUNT(v_all_replace_text, ','), 0) + 1 LOOP
+
+        v_partial_value := TRIM(REGEXP_SUBSTR(v_all_replace_text, '[^,]+', 1, i));
+        DBMS_OUTPUT.PUT_LINE('Processing value: ' || v_partial_value);
+
+        IF REGEXP_LIKE(v_partial_value, '^\d+(\.\d+)?$') THEN
+            BEGIN
+
+                v_sql := 'SELECT description FROM ' || p_table_name || ' WHERE id = :1';
+                DBMS_OUTPUT.PUT_LINE('Executing SQL: ' || v_sql || ' with ID: ' || v_partial_value);
+                EXECUTE IMMEDIATE v_sql INTO v_desc_text USING TO_NUMBER(v_partial_value);
+                DBMS_OUTPUT.PUT_LINE('Fetched description: ' || v_desc_text);
+            EXCEPTION
+                WHEN NO_DATA_FOUND THEN
+                    v_desc_text := v_partial_value; -- Keep original value if no match found
+                    DBMS_OUTPUT.PUT_LINE('No data found for ID: ' || v_partial_value);
+                WHEN TOO_MANY_ROWS THEN
+                    v_desc_text := v_partial_value;
+                    DBMS_OUTPUT.PUT_LINE('Too many rows found for ID: ' || v_partial_value);
+                WHEN OTHERS THEN
+                    DBMS_OUTPUT.PUT_LINE('An error occurred: ' || SQLERRM);
+                    RAISE;
+            END;
+        ELSE
+            v_desc_text := v_partial_value;
+            DBMS_OUTPUT.PUT_LINE('Non-numeric value, using as is: ' || v_desc_text);
+        END IF;
+
+        IF v_result_text IS NULL OR v_result_text = '' THEN
+            v_result_text := v_desc_text;
+        ELSE
+            v_result_text := v_result_text || ', ' || v_desc_text;
+        END IF;
+
+        DBMS_OUTPUT.PUT_LINE('Updated v_result_text: ' || v_result_text);
+    END LOOP;
+
+    RETURN TRIM(v_result_text);
+END process_blob_value_format;
+
+
 CREATE OR REPLACE FUNCTION base64encode(p_blob IN BLOB)
   RETURN CLOB
 -- -----------------------------------------------------------------------------------
