@@ -192,7 +192,7 @@ export default {
         initialItemsPerPage: 10,
         totalItems: 0,
 		itemsPerPage: [10, 15, 50, 100, -1],
-		exportMaxSize: 250,
+		exportMaxSize: 800,
 		allItems: 0,
         isAllData: false,
         initialFetch: 1,
@@ -309,15 +309,12 @@ export default {
             }
         },
 		exportFile () {
-
 			this.loadingExport = true;
-
             let totalBatches = 0;
-
             if(this.selected.length > 0 && !this.isAllData){
                 totalBatches = Math.ceil(this.selected.length / this.exportMaxSize);
             }else if(this.selected.length == 0 && !this.isAllData){
-                totalBatches = Math.ceil(this.allItems / this.exportMaxSize);
+                totalBatches = Math.ceil(this.totalItems / this.exportMaxSize);
                 this.isAllData = true;
             }else if(this.selected.length > 0 && this.isAllData){
                 totalBatches = Math.ceil(this.totalItems / this.exportMaxSize);
@@ -356,7 +353,6 @@ export default {
 
 			const processBatches = async () => {
                 const batchPromises = [];
-
 				for (let batch = 0; batch < totalBatches; batch++) {
 					const start = batch * this.exportMaxSize;
 					const end = Math.min(start + this.exportMaxSize, this.isAllData ? this.totalItems : this.selected.length);
@@ -426,6 +422,7 @@ export default {
 			]], { origin: "A1" });
 
 			writeFileXLSX(wb, fileName);
+			this.isAllData = false;
         }
 	},
 };

@@ -686,8 +686,8 @@ constellationRouter.post("/export/", async (req: Request, res: Response) => {
 
         res.json({ status: 200, dataConstellation: constellationHealth, dataFamilyMembers: constellationFamily});
 
-    } catch(e) {
-        console.log(e);  // debug if needed
+    } catch(error) {
+        console.error("Error in /export/:", error);  // debug if needed
         res.status(500).json({ status: 500, message: "Internal Server Error" });
     }    
 });
