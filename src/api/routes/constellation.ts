@@ -551,30 +551,34 @@ constellationRouter.post("/export/", async (req: Request, res: Response) => {
                 )
             .where('CONSTELLATION_HEALTH.STATUS', '<>', 4 );
 
-        if(requests && requests.length > 0){
+        if(requests && requests.length > 0  && requests.length < 1000){
             query.whereIn("CONSTELLATION_HEALTH.ID", requests);
         }
 
         if(dateFrom && dateTo) {
-            query.where(db.raw("TO_CHAR(CONSTELLATION_HEALTH.CREATED_AT, 'YYYY-MM-DD') >=  ? AND TO_CHAR(CONSTELLATION_HEALTH.CREATED_AT, 'YYYY-MM-DD') <= ?",
-            [dateFrom, dateTo]));
+            query.whereRaw(
+                "CONSTELLATION_HEALTH.CREATED_AT BETWEEN TO_DATE(?, 'YYYY-MM-DD') AND TO_DATE(?, 'YYYY-MM-DD')",
+                [dateFrom, dateTo]
+            );
         }
 
         if (status_request) {
             query.whereIn("CONSTELLATION_HEALTH.STATUS", status_request);
         }
 
-        if (isAllData) {
+        if (isAllData || requests.length > 1000) {
             query = query.offset(offset).limit(limit);
         }
+
+
+
+
         const constellationHealth = await query;
 
 
         constellationHealth.forEach(function (value: any) {
             idSubmission.push(value.id); 
-            if(value.date_of_birth === null) {
-                value.date_of_birth =  "N/A";
-            }
+            value.date_of_birth = value.date_of_birth || "N/A";
             if(value.language_prefer_to_receive_services){
                 value.language_prefer_to_receive_services = value.preferred_language;
             }else{
@@ -583,8 +587,8 @@ constellationRouter.post("/export/", async (req: Request, res: Response) => {
             delete value.id;
         });
 
-    let queryFamily = db(`${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH_FAMILY_MEMBERS`)
-        .leftJoin(`${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH`,'CONSTELLATION_HEALTH_FAMILY_MEMBERS.CONSTELLATION_HEALTH_ID','CONSTELLATION_HEALTH.ID')
+        let queryFamily = db(`${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH_FAMILY_MEMBERS`)
+        .innerJoin(`${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH`,'CONSTELLATION_HEALTH_FAMILY_MEMBERS.CONSTELLATION_HEALTH_ID','CONSTELLATION_HEALTH.ID')
         .leftJoin(`${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH_LANGUAGE`, 'CONSTELLATION_HEALTH_FAMILY_MEMBERS.LANGUAGE_PREFER_TO_RECEIVE_SERVICES_FAMILY_MEMBER', 'CONSTELLATION_HEALTH_LANGUAGE.ID')
         .leftJoin(`${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH_DEMOGRAPHICS`, 'CONSTELLATION_HEALTH_FAMILY_MEMBERS.DEMOGRAPHICS_GROUPS_FAMILY_MEMBER', 'CONSTELLATION_HEALTH_DEMOGRAPHICS.ID')
         .select('CONSTELLATION_HEALTH.YOUR_LEGAL_NAME AS FAMILYMEMBEROF' ,
@@ -607,16 +611,32 @@ constellationRouter.post("/export/", async (req: Request, res: Response) => {
                 db.raw(`GENERAL.process_blob_value(${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH_FAMILY_MEMBERS.DIAGNOSIS_FAMILY_MEMBER, '${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH_DIAGNOSIS_HISTORY' ) AS DIAGNOSIS_FAMILY_MEMBER`),
                 'CONSTELLATION_HEALTH_DEMOGRAPHICS.DESCRIPTION AS DEMOGRAPHIC_DESCRIPTION_FAMILY_MEMBER');
 
-        if(!_.isEmpty(idSubmission)){
-            queryFamily.whereIn('CONSTELLATION_HEALTH_FAMILY_MEMBERS.CONSTELLATION_HEALTH_ID', idSubmission );
-        }   
+
+        if(requests && requests.length > 0  && requests.length < 1000){
+            queryFamily.whereIn("CONSTELLATION_HEALTH.ID", requests);
+        }
+
+        if(dateFrom && dateTo) {
+            queryFamily.whereRaw(
+                "CONSTELLATION_HEALTH.CREATED_AT BETWEEN TO_DATE(?, 'YYYY-MM-DD') AND TO_DATE(?, 'YYYY-MM-DD')",
+                [dateFrom, dateTo]
+            );
+        }
+
+        if (status_request) {
+            queryFamily.whereIn("CONSTELLATION_HEALTH.STATUS", status_request);
+        }
+
+        if (isAllData || requests.length > 1000) {
+            queryFamily = queryFamily.offset(offset).limit(limit);
+        }
+
         const constellationFamily = await queryFamily;
         let flagFamilyMembers = false;
 
         //If the client has family members, the same treatment of the corresponding data is given.
         if(constellationFamily.length){
             flagFamilyMembers = true;
-
             constellationFamily.forEach(function (value: any, key: any) {
 
                 var date_of_birth : string= JSON.stringify(value.date_of_birth_family_member);
@@ -668,10 +688,7 @@ constellationRouter.post("/export/", async (req: Request, res: Response) => {
 
     } catch(e) {
         console.log(e);  // debug if needed
-        res.send( {
-            status: 400,
-            message: 'Request could not be processed'
-        });
+        res.status(500).json({ status: 500, message: "Internal Server Error" });
     }    
 });
 
