@@ -142,7 +142,7 @@ export function configureAuthentication(app: Express) {
         }
     });
 
-app.get('/api/auth/logout', async (req: any, res) => {
+    app.get('/api/auth/logout', async (req: any, res) => {
         try {
             const claims = req.oidc.idTokenClaims;
             if (claims) {
