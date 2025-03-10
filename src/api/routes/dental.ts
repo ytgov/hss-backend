@@ -5,6 +5,7 @@ import knex from "knex";
 import { DB_CONFIG_DENTAL, SCHEMA_DENTAL, SCHEMA_GENERAL } from "../config";
 import { groupBy, helper } from "../utils";
 import { checkPermissions } from "../middleware/permissions";
+import { Console } from "console";
 var RateLimit = require('express-rate-limit');
 var _ = require('lodash');
 let db = knex(DB_CONFIG_DENTAL);
@@ -464,24 +465,37 @@ dentalRouter.get("/show/:dentalService_id", checkPermissions("dental_view"), [pa
 dentalRouter.post("/export/", async (req: Request, res: Response) => {
     try {
         const { requests, status: status_request, dateFrom, dateTo, dateYear, isAllData, offset, limit } = req.body.params;
-        const idSubmission: number[] = [];
+        const idSubmissions: number[] = [];
         let dentalInternalFields = Object();
         db = await helper.getOracleClient(db, DB_CONFIG_DENTAL);
         let userId = req.user?.db_user.user.id || null;
 
         let query = db(`${SCHEMA_DENTAL}.DENTAL_SERVICE_SUBMISSIONS_DETAILS`)
-            .where('DENTAL_SERVICE_SUBMISSIONS_DETAILS.STATUS', '<>', 4);
+        .leftJoin(`${SCHEMA_DENTAL}.DENTAL_SERVICE_INTERNAL_FIELDS`, "DENTAL_SERVICE_SUBMISSIONS_DETAILS.ID", "DENTAL_SERVICE_INTERNAL_FIELDS.DENTAL_SERVICE_ID")
+        .select(
+            "DENTAL_SERVICE_SUBMISSIONS_DETAILS.*",
+            "DENTAL_SERVICE_INTERNAL_FIELDS.PROGRAM_YEAR as program_year",
+            db.raw(`CASE
+                    WHEN DENTAL_SERVICE_INTERNAL_FIELDS.INCOME_AMOUNT = TRUNC(DENTAL_SERVICE_INTERNAL_FIELDS.INCOME_AMOUNT)
+                    THEN TO_CHAR(DENTAL_SERVICE_INTERNAL_FIELDS.INCOME_AMOUNT, 'FM9999999')
+                    ELSE TO_CHAR(DENTAL_SERVICE_INTERNAL_FIELDS.INCOME_AMOUNT, 'FM9999999.99')
+                    END AS income_amount`),
+            db.raw("TO_CHAR(DENTAL_SERVICE_INTERNAL_FIELDS.DATE_ENROLLMENT, 'YYYY-MM-DD') AS date_enrollment"),
+            "DENTAL_SERVICE_INTERNAL_FIELDS.POLICY_NUMBER as policy_number",
+            db.raw("TO_CHAR(DENTAL_SERVICE_INTERNAL_FIELDS.CREATED_AT, 'YYYY-MM-DD HH24:MI:SS') AS created_at_if")
+        )
+        .where("DENTAL_SERVICE_SUBMISSIONS_DETAILS.STATUS", "<>", 4);
 
         if (requests.length > 0 && !isAllData) {
-            query.whereIn("ID", requests);
+            query.whereIn("DENTAL_SERVICE_SUBMISSIONS_DETAILS.ID", requests);
         }
 
         if (dateYear) {
-            query.where(db.raw("EXTRACT(YEAR FROM TO_DATE(DENTAL_SERVICE_SUBMISSIONS_DETAILS.CREATED_AT, 'YYYY-MM-DD HH24:MI:SS')) = ?", [dateYear]));
+            query.whereRaw("EXTRACT(YEAR FROM TO_DATE(DENTAL_SERVICE_SUBMISSIONS_DETAILS.CREATED_AT, 'YYYY-MM-DD HH24:MI:SS')) = ?", [dateYear]);
         }
 
         if (dateFrom && dateTo) {
-            query.where(db.raw("TO_CHAR(TO_DATE(CREATED_AT, 'YYYY-MM-DD HH24:MI:SS'), 'YYYY-MM-DD') >= ? AND TO_CHAR(TO_DATE(CREATED_AT, 'YYYY-MM-DD HH24:MI:SS'), 'YYYY-MM-DD') <= ?", [dateFrom, dateTo]));
+            query.whereRaw(`TRUNC(TO_DATE(DENTAL_SERVICE_SUBMISSIONS_DETAILS.CREATED_AT, 'YYYY-MM-DD HH24:MI:SS')) BETWEEN TO_DATE(?, 'YYYY-MM-DD') AND TO_DATE(?, 'YYYY-MM-DD')`, [dateFrom, dateTo]);
         }
 
         if (status_request) {
@@ -492,56 +506,19 @@ dentalRouter.post("/export/", async (req: Request, res: Response) => {
             query.offset(offset).limit(limit);
         }
 
-        query.orderBy('ID', 'ASC');
+        query.orderBy('DENTAL_SERVICE_SUBMISSIONS_DETAILS.ID', 'ASC');
+
         const dentalService = await query;
-
-        const submissionsId: number[] = dentalService.map(item => item.id);
-
-        dentalInternalFields = await db(`${SCHEMA_DENTAL}.DENTAL_SERVICE_INTERNAL_FIELDS`)
-            .select(
-                'DENTAL_SERVICE_ID',
-                'PROGRAM_YEAR',
-                db.raw(`CASE
-                        WHEN INCOME_AMOUNT = TRUNC(INCOME_AMOUNT)
-                        THEN TO_CHAR(INCOME_AMOUNT, 'FM9999999')
-                        ELSE TO_CHAR(INCOME_AMOUNT, 'FM9999999.99')
-                        END AS INCOME_AMOUNT`),
-                db.raw("TO_CHAR(DATE_ENROLLMENT, 'YYYY-MM-DD') AS DATE_ENROLLMENT"),
-                'POLICY_NUMBER',
-                db.raw("TO_CHAR(CREATED_AT, 'YYYY-MM-DD HH24:MI:SS') AS CREATED_AT")
-            )
-            .whereIn('DENTAL_SERVICE_ID', submissionsId);
-
-        const idSubmissions = dentalService.map(item => item.id);
 
         dentalService.forEach(value => {
             value.date_of_birth = value.date_of_birth || "N/A";
-            value.file_fullName = value.file_name ? `${value.file_name}.${value.file_type}` : "";
+            value.file_name = value.file_name ? `${value.file_name}.${value.file_type}` : "";
             delete value.rownum_;
-
-            const internalField = dentalInternalFields.find((obj: any) => obj.DENTAL_SERVICE_ID === value.id);
-
-            if (internalField) {
-                Object.assign(value, {
-                    program_year: internalField.program_year,
-                    income_amount: internalField.income_amount,
-                    date_enrollment: internalField.date_enrollment,
-                    policy_number: internalField.policy_number,
-                    created_at_if: internalField.created_at
-                });
-            } else {
-                Object.assign(value, {
-                    program_year: "",
-                    income_amount: "",
-                    date_enrollment: "",
-                    policy_number: "",
-                    created_at_if: ""
-                });
-            }
-
-            ['id', 'status', 'are_you_eligible_for_the_pharmacare_and_extended_health_care_ben', 'file_id', 'file_name', 'file_type', 'file_size'].forEach(key => delete value[key]);
+            idSubmissions.push(value.id);
+            ['id', 'status', 'are_you_eligible_for_the_pharmacare_and_extended_health_care_ben', 
+             'file_id', 'file_type', 'file_size'].forEach(key => delete value[key]);
         });
-
+        
         let queryDependents = db(`${SCHEMA_DENTAL}.DENTAL_SERVICE_DEPENDENTS`)
             .leftJoin(`${SCHEMA_DENTAL}.DENTAL_SERVICE`, 'DENTAL_SERVICE_DEPENDENTS.DENTAL_SERVICE_ID', 'DENTAL_SERVICE.ID')
             .select(
@@ -597,7 +574,6 @@ dentalRouter.post("/export/", async (req: Request, res: Response) => {
         if (!loggedAction) {
             console.log("Dental Export could not be logged");
         }
-        console.log(dentalService);
         res.json({ status: 200, dataDental: dentalService, dataDependents: dentalServiceDependents, dataInternalFields: dentalInternalFields });
     } catch (e) {
         console.log(e);  // debug if needed
@@ -1401,7 +1377,6 @@ dentalRouter.patch("/update", async (req: Request, res: Response) => {
         var fieldList = Object();
         let responseSent = false;
         db = await helper.getOracleClient(db, DB_CONFIG_DENTAL);
-
         if(!_.isEmpty(data.DATE_OF_BIRTH)){
             let dob = new Date(data.DATE_OF_BIRTH);
             let result: string =   dob.toISOString().split('T')[0];
@@ -1507,9 +1482,9 @@ dentalRouter.patch("/update", async (req: Request, res: Response) => {
                 responseSent = true;         
             }
         }
+        console.log(newDependents)
 
-        if(newDependents.length > 0){
-
+        if(newDependents.length > 0 && !_.isEmpty(newDependents[0].C_FIRSTNAME) && !_.isEmpty(newDependents[0].C_HEALTHCARE)  ){
             _.forEach(newDependents, function(value: any) {
                 if(!_.isEmpty(value.C_DOB)){
                     let dob = new Date(value.C_DOB);
