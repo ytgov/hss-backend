@@ -314,7 +314,6 @@ constellationRouter.get("/show/:constellationHealth_id", checkPermissions("const
                 if(value.date_of_birth_family_member === null) {
                     value.date_of_birth_family_member =  "N/A";
                 }
-
             });
         }
 
@@ -584,6 +583,7 @@ constellationRouter.post("/export/", async (req: Request, res: Response) => {
             }else{
                 value.language_prefer_to_receive_services = value.language_preferred;
             }
+
             delete value.id;
         });
 
