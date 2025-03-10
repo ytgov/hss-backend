@@ -195,7 +195,7 @@ export default {
 		loadingTable: false,
 		totalItems: 0,
 		itemsPerPage: [10, 15, 50, 100, -1],
-		exportMaxSize: 250,
+		exportMaxSize: 800,
 		allItems: 0,
 		isAllData: false,
 		initialFetch: 1,
@@ -269,11 +269,16 @@ export default {
 		loader () {
 			const l = this.loader;
 			this[l] = !this[l];
-
 			setTimeout(() => (this[l] = false), 2000)
-
 			this.loader = null;
 		},
+		selected(newSelected) {
+			if (newSelected.length === this.items.length) {
+				this.isAllData = true;
+			} else {
+				this.isAllData = false;
+			}
+		}
 	},
 	mounted() {
 		//this.getDataFromApi();
@@ -362,9 +367,12 @@ export default {
         },
 		selectAll(isChecked) {
 			this.isAllData = isChecked.value;
-			this.selected = this.selected.length === this.items.length
-			? []
-			: this.items
+			if (isChecked.value) {
+				this.selected = [...this.items];
+			} else {
+				this.selected = [];
+			}
+			
 		},
 		resetInputs() {
 			this.loader = 'loadingReset';
@@ -402,7 +410,7 @@ export default {
             if(this.selected.length > 0 && !this.isAllData){
                 totalBatches = Math.ceil(this.selected.length / this.exportMaxSize);
             }else if(this.selected.length == 0 && !this.isAllData){
-                totalBatches = Math.ceil(this.allItems / this.exportMaxSize);
+                totalBatches = Math.ceil(this.totalItems / this.exportMaxSize);
                 this.isAllData = true;
             }else if(this.selected.length > 0 && this.isAllData){
                 totalBatches = Math.ceil(this.totalItems / this.exportMaxSize);
@@ -411,7 +419,7 @@ export default {
             let dentalData = [];
 			let dependantsData = [];
 
-            const fetchBatchData = async (start, end) => {
+			const fetchBatchData =  async (start, end) => {
 				let idArray = [];
 
 				if (!this.isAllData) {
@@ -441,29 +449,21 @@ export default {
 			};
 
 			const processBatches = async () => {
-				const batchPromises = [];
-
 				for (let batch = 0; batch < totalBatches; batch++) {
-					const start = batch * this.exportMaxSize;
-					const end = Math.min(start + this.exportMaxSize, this.isAllData ? this.totalItems : this.selected.length);
+                    const start = batch * this.exportMaxSize;
+                    const end = Math.min(start + this.exportMaxSize, this.isAllData ? this.totalItems : this.selected.length);
+                    try {
+                        let response = await fetchBatchData(start, end,this.selectedStatus,this.date,this.dateEnd,this.exportMaxSize,this.isAllData);
+                        dentalData.push(...response.dataDental);
+                        dependantsData.push(...response.dataDependents);
+                    } catch (error) {
+                        console.error('Error en batch:', batch, error);
+                    }
+                }
+				this.generateExcel(dentalData, dependantsData);
+				this.loadingExport = false;
+                this.isAllData = false;
 
-					batchPromises.push(fetchBatchData(start, end));
-				}
-
-				try {
-					const results = await Promise.all(batchPromises);
-
-					results.forEach((data) => {
-						dentalData = dentalData.concat(data.dataDental);
-						dependantsData = dependantsData.concat(data.dataDependents);
-					});
-
-					this.generateExcel(dentalData, dependantsData);
-				} catch (error) {
-					console.error('Error processing Dental Service Export batches:', error);
-				} finally {
-					this.loadingExport = false;
-				}
 			};
 
             processBatches();
@@ -535,6 +535,7 @@ export default {
 			);
 
 			writeFileXLSX(wb, "DentalService_Requests.xlsx");
+			this.isAllData = false;
         }
 	},
 };
