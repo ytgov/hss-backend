@@ -12,7 +12,7 @@ export class UserPermissionRepository extends BaseRepository<UserPermissionDTO> 
         let user_permissions_qry = Object();
         let mainDb =  await helper.getOracleClient(this.mainDb, DB_CONFIG_GENERAL);
         user_permissions_qry = await mainDb(`${SCHEMA_GENERAL}.USER_PERMISSIONS_V`)
-            .where("USER_EMAIL", "=", user_email)
+            .whereRaw('LOWER("USER_EMAIL") = LOWER(?)', [user_email])
             .select(
                 this.mainDb.ref("PERMISSION_ID").as("ID"),
                 "PERMISSION_NAME"
