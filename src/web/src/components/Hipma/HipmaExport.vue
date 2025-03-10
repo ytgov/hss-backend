@@ -281,17 +281,22 @@ export default {
 			this.loadingExport = true;
 
             let totalBatches = 0;
+			if (this.isAllData && this.selected.length === 0) {
+				this.isAllData = false;
+			}
 
-            if(this.selected.length > 0 && !this.isAllData){
-                totalBatches = Math.ceil(this.selected.length / this.exportMaxSize);
-            }else if(this.selected.length == 0 && !this.isAllData){
-                totalBatches = Math.ceil(this.allItems / this.exportMaxSize);
-                this.isAllData = true;
-            }else if(this.selected.length > 0 && this.isAllData){
-                totalBatches = Math.ceil(this.totalItems / this.exportMaxSize);
-            }
+			if (this.selected.length > 0 && !this.isAllData) {
+				totalBatches = Math.ceil(this.selected.length / this.exportMaxSize);
 
-            let hipmaData = [];
+			} else if (this.selected.length == 0 && !this.isAllData) {
+				totalBatches = Math.ceil(this.totalItems / this.exportMaxSize);
+				this.isAllData = true;
+
+			} else if (this.selected.length > 0 && this.isAllData) {
+				totalBatches = Math.ceil(this.totalItems / this.exportMaxSize);
+			}
+
+			let hipmaData = [];
 			let fileName = "";
 
             const fetchBatchData = async (start, end) => {
@@ -323,7 +328,6 @@ export default {
 
 			const processBatches = async () => {
                 const batchPromises = [];
-
                 for (let batch = 0; batch < totalBatches; batch++) {
 					const start = batch * this.exportMaxSize;
 					const end = Math.min(start + this.exportMaxSize, this.isAllData ? this.totalItems : this.selected.length);
@@ -336,8 +340,16 @@ export default {
 
                     results.forEach((data) => {
                         hipmaData = hipmaData.concat(data.data);
-						fileName = data.fileName;
+						if (!fileName && data.fileName) {
+							fileName = data.fileName;
+						}
                     });
+
+					if (!fileName || fileName.trim() === "") {
+						fileName = `Hipma_Export_${new Date().toISOString().slice(0, 10)}.xlsx`;
+					} else {
+						fileName = fileName.replace(/\.[^/.]+$/, "") + ".xlsx";
+					}
 
                     this.generateExcel(hipmaData, fileName);
                 } catch (error) {
@@ -350,6 +362,11 @@ export default {
             processBatches();
 		},
 		generateExcel(hipmaData, fileName) {
+
+			if (!fileName.endsWith(".xlsx")) {
+				fileName += ".xlsx";
+			}
+
             const ws = utils.json_to_sheet(hipmaData);
 			const wb = utils.book_new();
 			utils.book_append_sheet(wb, ws, "Hipma Requests");
@@ -389,6 +406,7 @@ export default {
 			]], { origin: "A1" });
 
 			writeFileXLSX(wb, fileName);
+			this.loadingExport = false;
         }
 	},
 };
