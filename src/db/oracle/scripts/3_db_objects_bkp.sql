@@ -406,7 +406,7 @@ CREATE OR REPLACE FORCE EDITIONABLE VIEW "DENTAL"."DENTAL_SERVICE_SUBMISSIONS_DE
     CASE WHEN DENTAL_SERVICE.EMAIL_INSTEAD = 1 THEN 'Yes' ELSE 'No' END AS EMAIL_INSTEAD,
     DENTAL_SERVICE.HAVE_CHILDREN,
     DENTAL_SERVICE.ASK_DEMOGRAPHIC,
-    DENTAL_SERVICE.IDENTIFY_GROUPS,
+		GENERAL.process_blob_value(DENTAL_SERVICE.IDENTIFY_GROUPS, 'DENTAL.DENTAL_SERVICE_GROUPS_COMMUNITIES') AS IDENTIFY_GROUPS,
     DENTAL_SERVICE.GENDER,
     DENTAL_SERVICE.EDUCATION,
     DENTAL_SERVICE.OFTEN_BRUSH,
@@ -414,12 +414,12 @@ CREATE OR REPLACE FORCE EDITIONABLE VIEW "DENTAL"."DENTAL_SERVICE_SUBMISSIONS_DE
     DENTAL_SERVICE.OFTEN_FLOSS,
     DENTAL_SERVICE.STATE_GUMS,
     DENTAL_SERVICE.LAST_SAW_DENTIST,
-    DENTAL_SERVICE.REASON_FOR_DENTIST,
+		GENERAL.process_blob_value(DENTAL_SERVICE.REASON_FOR_DENTIST, 'DENTAL.DENTAL_SERVICE_REASONS_DENTIST') AS REASON_FOR_DENTIST,
     DENTAL_SERVICE.BUY_SUPPLIES,
-    DENTAL_SERVICE.PAY_FOR_VISIT,
-    DENTAL_SERVICE.BARRIERS,
-		DENTAL_SERVICE.PROBLEMS,
-		DENTAL_SERVICE.SERVICES_NEEDED,
+		GENERAL.process_blob_value(DENTAL_SERVICE.PAY_FOR_VISIT, 'DENTAL.DENTAL_SERVICE_PAYMENT_METHODS') AS PAY_FOR_VISIT,
+		GENERAL.process_blob_value(DENTAL_SERVICE.BARRIERS, 'DENTAL.DENTAL_SERVICE_BARRIERS') AS BARRIERS,
+		GENERAL.process_blob_value(DENTAL_SERVICE.PROBLEMS, 'DENTAL.DENTAL_SERVICE_PROBLEMS') AS PROBLEMS,
+		GENERAL.process_blob_value(DENTAL_SERVICE.SERVICES_NEEDED, 'DENTAL.DENTAL_SERVICE_NEED_SERVICES') AS SERVICES_NEEDED,
     TO_CHAR(DENTAL_SERVICE.CREATED_AT, 'YYYY-MM-DD HH24:MI:SS') AS CREATED_AT,
 		DENTAL_SERVICE_FILES.id AS FILE_ID,
 		DENTAL_SERVICE_FILES.FILE_NAME,
@@ -427,7 +427,7 @@ CREATE OR REPLACE FORCE EDITIONABLE VIEW "DENTAL"."DENTAL_SERVICE_SUBMISSIONS_DE
     DENTAL_SERVICE_FILES.FILE_SIZE
 FROM
     DENTAL.DENTAL_SERVICE
-    LEFT JOIN DENTAL.DENTAL_SERVICE_FILES ON DENTAL_SERVICE.ID = DENTAL_SERVICE_FILES.DENTAL_SERVICE_ID;
+    LEFT JOIN DENTAL.DENTAL_SERVICE_FILES ON DENTAL_SERVICE.ID = DENTAL_SERVICE_FILES.DENTAL_SERVICE_ID
 --------------------------------------------------------
 --  DDL for View SUBMISSIONS_DENTAL_AGE_WEEK_V
 --------------------------------------------------------
@@ -1663,6 +1663,95 @@ BEGIN
 END GETVALUEFORRULESTATUS;
 
 /
+
+
+CREATE OR REPLACE FUNCTION process_blob_value_format(
+    p_blob_value   BLOB,
+    p_table_name   VARCHAR2
+) RETURN VARCHAR2 IS
+    v_original_value     VARCHAR2(4000);
+    v_all_replace_text   VARCHAR2(4000);
+    v_partial_value      VARCHAR2(4000);
+    v_desc_text          VARCHAR2(4000);
+    v_sql                VARCHAR2(4000);
+    v_result_text        VARCHAR2(4000);
+BEGIN
+    -- Check if p_blob_value is NULL
+    IF p_blob_value IS NULL THEN
+        RETURN NULL;
+    END IF;
+
+    -- Convert BLOB to VARCHAR2
+    v_original_value := utl_raw.cast_to_varchar2(p_blob_value);
+    DBMS_OUTPUT.PUT_LINE('v_original_value: ' || v_original_value);
+
+    -- Check if v_original_value is NULL
+    IF v_original_value IS NULL THEN
+        RETURN NULL;
+    END IF;
+
+    v_all_replace_text := v_original_value;
+    v_all_replace_text := REPLACE(v_all_replace_text, '{"data":', '');
+    v_all_replace_text := REPLACE(v_all_replace_text, '{', '');
+    v_all_replace_text := REPLACE(v_all_replace_text, '}', '');
+    v_all_replace_text := TRIM(v_all_replace_text);
+    DBMS_OUTPUT.PUT_LINE('v_all_replace_text after cleanup: ' || v_all_replace_text);
+
+    v_all_replace_text := REPLACE(v_all_replace_text, '[', '');
+    v_all_replace_text := REPLACE(v_all_replace_text, ']', '');
+    DBMS_OUTPUT.PUT_LINE('v_all_replace_text after removing brackets: ' || v_all_replace_text);
+
+    v_all_replace_text := REPLACE(v_all_replace_text, '"', '');
+    DBMS_OUTPUT.PUT_LINE('v_all_replace_text after removing quotes: ' || v_all_replace_text);
+
+    -- Check if v_all_replace_text is NULL or empty
+    IF v_all_replace_text IS NULL OR v_all_replace_text = '' THEN
+        RETURN NULL;
+    END IF;
+
+    v_result_text := '';
+
+
+    FOR i IN 1..NVL(REGEXP_COUNT(v_all_replace_text, ','), 0) + 1 LOOP
+
+        v_partial_value := TRIM(REGEXP_SUBSTR(v_all_replace_text, '[^,]+', 1, i));
+        DBMS_OUTPUT.PUT_LINE('Processing value: ' || v_partial_value);
+
+        IF REGEXP_LIKE(v_partial_value, '^\d+(\.\d+)?$') THEN
+            BEGIN
+
+                v_sql := 'SELECT description FROM ' || p_table_name || ' WHERE id = :1';
+                DBMS_OUTPUT.PUT_LINE('Executing SQL: ' || v_sql || ' with ID: ' || v_partial_value);
+                EXECUTE IMMEDIATE v_sql INTO v_desc_text USING TO_NUMBER(v_partial_value);
+                DBMS_OUTPUT.PUT_LINE('Fetched description: ' || v_desc_text);
+            EXCEPTION
+                WHEN NO_DATA_FOUND THEN
+                    v_desc_text := v_partial_value; -- Keep original value if no match found
+                    DBMS_OUTPUT.PUT_LINE('No data found for ID: ' || v_partial_value);
+                WHEN TOO_MANY_ROWS THEN
+                    v_desc_text := v_partial_value;
+                    DBMS_OUTPUT.PUT_LINE('Too many rows found for ID: ' || v_partial_value);
+                WHEN OTHERS THEN
+                    DBMS_OUTPUT.PUT_LINE('An error occurred: ' || SQLERRM);
+                    RAISE;
+            END;
+        ELSE
+            v_desc_text := v_partial_value;
+            DBMS_OUTPUT.PUT_LINE('Non-numeric value, using as is: ' || v_desc_text);
+        END IF;
+
+        IF v_result_text IS NULL OR v_result_text = '' THEN
+            v_result_text := v_desc_text;
+        ELSE
+            v_result_text := v_result_text || ', ' || v_desc_text;
+        END IF;
+
+        DBMS_OUTPUT.PUT_LINE('Updated v_result_text: ' || v_result_text);
+    END LOOP;
+
+    RETURN TRIM(v_result_text);
+END process_blob_value_format;
+
 
 CREATE OR REPLACE FUNCTION base64encode(p_blob IN BLOB)
   RETURN CLOB

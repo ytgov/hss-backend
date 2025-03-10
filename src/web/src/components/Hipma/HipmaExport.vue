@@ -4,7 +4,16 @@
 		<v-row class="mb-5" no-gutters>
 			<span class="title-service">Health Information Export</span>
 		</v-row>
-
+		<div class="text-center loading" v-show="loadingExport">
+			<v-progress-circular
+				:size="125"
+				:width="10"
+				color="primary"
+				indeterminate
+			>
+				Generating...
+			</v-progress-circular>
+		</div>
 		<v-row class="row-filter">
 			<v-col
 				cols="10"
@@ -113,6 +122,12 @@
 			checkbox-color="black"
 			:value="selected"
 			@toggle-select-all="selectAll"
+
+			:server-items-length="totalItems"
+			@update:options="handlePagination"
+			:footer-props="{
+                'items-per-page-options': itemsPerPage
+            }"
 		>
 
 		</v-data-table>
@@ -131,7 +146,11 @@ export default {
 		loading: false,
 		items: [],
 		itemsUnfiltered: [],
-		options: {},
+		fetchedItems: [],
+		options: {
+			page: 1,
+			itemsPerPage: 10
+		},
 		flagAlert: false,
 		menu: false,
 		date: null,
@@ -148,17 +167,16 @@ export default {
 			{ text: "Applicant", value: "applicant_full_name", sortable: true},
 			{ text: "Created", value: "created_at", sortable: true},
 		],
-		page: 1,
-		pageCount: 0,
-		iteamsPerPage: 10,
+		initialPage: 1,
+        initialItemsPerPage: 10,
+        totalItems: 0,
+		itemsPerPage: [10, 15, 50, 100, -1],
+		exportMaxSize: 250,
+		allItems: 0,
+		isAllData: false,
+		initialFetch: 1,
 	}),
 	watch: {
-		options: {
-			handler() {
-				this.getDataFromApi();
-			},
-			deep: true,
-		},
 		loader () {
 			const l = this.loader;
 			this[l] = !this[l];
@@ -169,7 +187,6 @@ export default {
 		},
 	},
 	mounted() {
-		this.getDataFromApi();
 	},
 	methods: {
 		updateDate(){
@@ -180,26 +197,57 @@ export default {
 		},
 		getDataFromApi() {
 		this.loading = true;
+		this.items = [];
+		const { page, itemsPerPage, sortBy, sortDesc } = this.options;
 
 			axios
 			.post(HIPMA_URL, {
 				params: {
 					dateFrom: this.date,
 					dateTo: this.dateEnd,
+					page: page,
+					pageSize: itemsPerPage,
+					sortBy: sortBy.length ? sortBy[0] : null,
+					sortOrder: sortBy.length ? (sortDesc[0] ? 'DESC' : 'ASC') : null,
+					initialFetch: this.initialFetch,
 				}
 			})
 			.then((resp) => {
-				this.items = resp.data.data;
+				this.fetchedItems = resp.data.data;
 				this.itemsUnfiltered = resp.data.data;
 				this.loading = false;
+				this.totalItems = resp.data.total;
+				this.allItems = resp.data.all;
+
+                if (this.initialFetch == 1) {
+                    this.items = this.fetchedItems.slice(0, itemsPerPage);
+                    this.initialFetch = 0;
+                } else {
+                    this.items = this.fetchedItems;
+                }
 			})
 			.catch((err) => console.error(err))
 			.finally(() => {
 				this.loading = false;
 			});
 		},
-		selectAll() {
-			//event.value - boolen value if needed
+		handlePagination() {
+            const { page, itemsPerPage, sortBy, sortDesc } = this.options;
+            const startIndex = (page - 1) * itemsPerPage;
+            const endIndex = startIndex + itemsPerPage;
+
+            if (sortBy.length || sortDesc.length) {
+                this.getDataFromApi();
+            } else {
+                if (this.fetchedItems.length >= endIndex) {
+                    this.items = this.fetchedItems.slice(startIndex, endIndex);
+                } else {
+                    this.getDataFromApi();
+                }
+            }
+        },
+		selectAll(isChecked) {
+			this.isAllData = isChecked.value;
 			this.selected = this.selected.length === this.items.length
 			? []
 			: this.items
@@ -209,76 +257,157 @@ export default {
 			this.date = null;
 			this.dateEnd = null;
 			this.selected = [];
+			this.options.page = this.initialPage;
+            this.options.itemsPerPage = this.initialItemsPerPage;
+			this.initialFetch = 1;
 			this.getDataFromApi();
 		},
-		exportFile () {
-			this.loader = 'loadingExport';
-			let requests = [];
-			let checked = this.selected;
+		sortItems(items, sortBy, sortDesc) {
+            if (sortBy.length) {
+                let sorted = items.sort((a, b) => {
+                    const sortKey = sortBy[0];
+                    const sortOrder = sortDesc[0] ? -1 : 1;
+                    if (a[sortKey] < b[sortKey]) return -1 * sortOrder;
+                    if (a[sortKey] > b[sortKey]) return 1 * sortOrder;
+                    return 0;
+                });
 
-			if(checked.length > 0){
-				checked.forEach(function (value) {
-					requests.push(value.id);
-				});
+                return sorted;
+            }else{
+                return items;
+            }
+        },
+		exportFile () {
+			this.loadingExport = true;
+
+            let totalBatches = 0;
+			if (this.isAllData && this.selected.length === 0) {
+				this.isAllData = false;
 			}
 
-			axios
-			.post(HIPMA_EXPORT_FILE_URL, {
-				params: {
-					requests: requests,
-					dateFrom: this.date,
-					dateTo: this.dateEnd
+			if (this.selected.length > 0 && !this.isAllData) {
+				totalBatches = Math.ceil(this.selected.length / this.exportMaxSize);
+
+			} else if (this.selected.length == 0 && !this.isAllData) {
+				totalBatches = Math.ceil(this.totalItems / this.exportMaxSize);
+				this.isAllData = true;
+
+			} else if (this.selected.length > 0 && this.isAllData) {
+				totalBatches = Math.ceil(this.totalItems / this.exportMaxSize);
+			}
+
+			let hipmaData = [];
+			let fileName = "";
+
+            const fetchBatchData = async (start, end) => {
+				let idArray = [];
+
+				if (!this.isAllData) {
+					idArray = this.selected.slice(start, end).map(e => e.constellation_health_id);
+				} else {
+					idArray = [];
 				}
-			})
-			.then((resp) => {
 
-				const ws = utils.json_to_sheet(resp.data.data);
-				const wb = utils.book_new();
-				utils.book_append_sheet(wb, ws, "Hipma Requests");
+				try {
+					const response = await axios.post(HIPMA_EXPORT_FILE_URL, {
+						params: {
+							requests: idArray,
+							dateFrom: this.date,
+							dateTo: this.dateEnd,
+							offset: start,
+                            limit: this.exportMaxSize,
+                            isAllData: this.isAllData,
+						}
+					});
+					return response.data;
+				} catch (error) {
+					console.error(error);
+					throw error;
+				}
+			};
 
-				utils.sheet_add_aoa(ws, [[
-					"Confirmation number",
-					"First name behalf",
-					"Last name behalf",
-					"Company or organization optional behalf",
-					"Address behalf",
-					"City or town behalf",
-					"Postal code behalf",
-					"Email address behalf",
-					"Phone number behalf",
-					"First name",
-					"Last name",
-					"Date of birth",
-					"Address",
-					"City or town",
-					"Postal code",
-					"Email address",
-					"Phone number",
-					"Name of health and social services program area optional ",
-					"Indicate the hss system s you would like a record of user activity",
-					"Provide details about your request ",
-					"Date from ",
-					"Date to ",
-					"Created at",
-					"Updated at",
-					"Request Type",
-					"Access Personal Health Information",
-					"Get a copy of your health information",
-					"Situations",
-					"Copy activity request",
-					"Need help identifying data range",
-					"Affirm information accurate"
-				]], { origin: "A1" });
+			const processBatches = async () => {
+                const batchPromises = [];
+                for (let batch = 0; batch < totalBatches; batch++) {
+					const start = batch * this.exportMaxSize;
+					const end = Math.min(start + this.exportMaxSize, this.isAllData ? this.totalItems : this.selected.length);
 
-				writeFileXLSX(wb, resp.data.fileName);
+					batchPromises.push(fetchBatchData(start, end));
+				}
 
-				this.loading = false;
-			})
-			.catch((err) => console.error(err))
-			.finally(() => {
-				this.loading = false;
-			});
+                try {
+                    const results = await Promise.all(batchPromises);
+
+                    results.forEach((data) => {
+                        hipmaData = hipmaData.concat(data.data);
+						if (!fileName && data.fileName) {
+							fileName = data.fileName;
+						}
+                    });
+
+					if (!fileName || fileName.trim() === "") {
+						fileName = `Hipma_Export_${new Date().toISOString().slice(0, 10)}.xlsx`;
+					} else {
+						fileName = fileName.replace(/\.[^/.]+$/, "") + ".xlsx";
+					}
+
+                    this.generateExcel(hipmaData, fileName);
+                } catch (error) {
+                    console.error('Error processing Hipma Export batches:', error);
+                } finally {
+                    this.loadingExport = false;
+                }
+            };
+
+            processBatches();
 		},
+		generateExcel(hipmaData, fileName) {
+
+			if (!fileName.endsWith(".xlsx")) {
+				fileName += ".xlsx";
+			}
+
+            const ws = utils.json_to_sheet(hipmaData);
+			const wb = utils.book_new();
+			utils.book_append_sheet(wb, ws, "Hipma Requests");
+
+			utils.sheet_add_aoa(ws, [[
+				"Confirmation number",
+				"First name behalf",
+				"Last name behalf",
+				"Company or organization optional behalf",
+				"Address behalf",
+				"City or town behalf",
+				"Postal code behalf",
+				"Email address behalf",
+				"Phone number behalf",
+				"First name",
+				"Last name",
+				"Date of birth",
+				"Address",
+				"City or town",
+				"Postal code",
+				"Email address",
+				"Phone number",
+				"Name of health and social services program area optional ",
+				"Indicate the hss system s you would like a record of user activity",
+				"Provide details about your request ",
+				"Date from ",
+				"Date to ",
+				"Created at",
+				"Updated at",
+				"Request Type",
+				"Access Personal Health Information",
+				"Get a copy of your health information",
+				"Situations",
+				"Copy activity request",
+				"Need help identifying data range",
+				"Affirm information accurate"
+			]], { origin: "A1" });
+
+			writeFileXLSX(wb, fileName);
+			this.loadingExport = false;
+        }
 	},
 };
 </script>

@@ -136,6 +136,12 @@
             checkbox-color="black"
             :value="selected"
             @toggle-select-all="selectAll"
+
+            :server-items-length="totalItems"
+			@update:options="handlePagination"
+            :footer-props="{
+                'items-per-page-options': itemsPerPage
+            }"
         >
             <template v-slot:[`item.showUrl`]="{ item }">
                 <v-icon @click="showDetails(item.showUrl)">mdi-eye</v-icon>
@@ -160,10 +166,14 @@ export default {
         dateEnd: null,
         menuEnd: false,
         items: [],
+        fetchedItems: [],
         alertMessage: "",
         alertType: null,
         search: "",
-        options: {},
+        options: {
+			page: 1,
+			itemsPerPage: 10
+		},
         flagAlert: false,
         selected: [],
         applyDisabled: true,
@@ -184,20 +194,18 @@ export default {
             { text: "Created", value: "created_at", sortable: true},
             { text: "", value: "showUrl", sortable: false},
         ],
-        page: 1,
-        pageCount: 0,
-        iteamsPerPage: 10,
+        initialPage: 1,
+        initialItemsPerPage: 10,
+        totalItems: 0,
+        itemsPerPage: [10, 15, 50, 100, -1],
+        allItems: 0,
+        isAllData: false,
+        initialFetch: 1,
     }),
     components: {
         Notifications
     },
     watch: {
-        options: {
-            handler() {
-            this.getDataFromApi();
-            },
-            deep: true,
-        },
         search: {
             handler() {
                 this.getDataFromApi();
@@ -225,12 +233,13 @@ export default {
 			}
 		}
 
-        this.getDataFromApi();
     },
     methods: {
         updateDate(){
             if(this.date !== null && this.dateEnd !== null){
                 this.selected = [];
+                this.options.page = this.initialPage;
+				this.options.itemsPerPage = this.initialItemsPerPage;
                 this.getDataFromApi();
             }
         },
@@ -243,32 +252,66 @@ export default {
             this.selectedStatus = null;
             this.applyDisabled = true;
             this.selected = [];
+            this.options.page = this.initialPage;
+            this.options.itemsPerPage = this.initialItemsPerPage;
+            this.initialFetch = 1;
             this.getDataFromApi();
         },
         getDataFromApi() {
             this.loading = true;
+            this.items = [];
+            const { page, itemsPerPage, sortBy, sortDesc } = this.options;
 
             axios
             .post(HIPMA_URL, {
                 params: {
                     dateFrom: this.date,
                     dateTo: this.dateEnd,
+                    page: page,
+					pageSize: itemsPerPage,
+                    sortBy: sortBy.length ? sortBy[0] : null,
+					sortOrder: sortBy.length ? (sortDesc[0] ? 'DESC' : 'ASC') : null,
+                    initialFetch: this.initialFetch,
                 }
             })
             .then((resp) => {
-                this.items = resp.data.data;
+                this.fetchedItems = resp.data.data;
                 this.loading = false;
+                this.totalItems = resp.data.total;
+                this.allItems = resp.data.all;
+
+                if (this.initialFetch == 1) {
+                    this.items = this.fetchedItems.slice(0, itemsPerPage);
+                    this.initialFetch = 0;
+                } else {
+                    this.items = this.fetchedItems;
+                }
             })
             .catch((err) => console.error(err))
             .finally(() => {
                 this.loading = false;
             });
         },
+        handlePagination() {
+            const { page, itemsPerPage, sortBy, sortDesc } = this.options;
+            const startIndex = (page - 1) * itemsPerPage;
+            const endIndex = startIndex + itemsPerPage;
+
+            if (sortBy.length || sortDesc.length) {
+                this.getDataFromApi();
+            } else {
+                if (this.fetchedItems.length >= endIndex) {
+                    this.items = this.fetchedItems.slice(startIndex, endIndex);
+                } else {
+                    this.getDataFromApi();
+                }
+            }
+        },
         showDetails (route) {
             this.$router.push({ path: route });
         },
-        selectAll() {
-            //event.value - boolen value if needed
+        selectAll(isChecked) {
+            this.isAllData = isChecked.value;
             this.selected = this.selected.length === this.items.length
             ? []
             : this.items
@@ -305,7 +348,22 @@ export default {
             .finally(() => {
                 this.loading = false;
             });
-        }
+        },
+        sortItems(items, sortBy, sortDesc) {
+            if (sortBy.length) {
+                let sorted = items.sort((a, b) => {
+                    const sortKey = sortBy[0];
+                    const sortOrder = sortDesc[0] ? -1 : 1;
+                    if (a[sortKey] < b[sortKey]) return -1 * sortOrder;
+                    if (a[sortKey] > b[sortKey]) return 1 * sortOrder;
+                    return 0;
+                });
+
+                return sorted;
+            }else{
+                return items;
+            }
+        },
     },
 };
 </script>
