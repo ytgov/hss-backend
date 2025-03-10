@@ -152,6 +152,12 @@
             :loading="loading"
             :search="search"
             @input="enterSelect"
+
+            :server-items-length="totalItems"
+			@update:options="handlePagination"
+            :footer-props="{
+                'items-per-page-options': itemsPerPage
+            }"
         >
             <template v-slot:[`item.showUrl`]="{ item }">
                 <v-icon @click="showDetails(item.showUrl)">mdi-eye</v-icon>
@@ -172,6 +178,7 @@ export default {
         loading: false,
         bulkSelected: [],
         items: [],
+        fetchedItems: [],
         statusSelected: [1],
         date: null,
         menu: false,
@@ -186,7 +193,10 @@ export default {
         alertType: null,
         search: "",
         applyDisabled: true,
-        options: {},
+        options: {
+			page: 1,
+			itemsPerPage: 10
+		},
         flagAlert: false,
         statusChangeMessage: "Status changed successfully.",
 		nonexistentMessage: "The submission you are consulting is closed or non existant, please choose a valid submission.",
@@ -214,21 +224,19 @@ export default {
         { text: "Status", value: "status", sortable: true },
         { text: "", value: "showUrl", sortable: false },
         ],
-        page: 1,
-        pageCount: 0,
-        iteamsPerPage: 10,
+        initialPage: 1,
+        initialItemsPerPage: 10,
         alignments: "center",
+        totalItems: 0,
+        itemsPerPage: [10, 15, 50, 100, -1],
+        allItems: 0,
+        isAllData: false,
+        initialFetch: 1,
     }),
     components: {
         Notifications
     },
     watch: {
-        options: {
-            handler() {
-                this.getDataFromApi();
-            },
-            deep: true,
-        },
         search: {
             handler() {
                 this.getDataFromApi();
@@ -248,16 +256,19 @@ export default {
 			}
 		}
 
-        this.getDataFromApi();
     },
     methods: {
         changeStatusSelect(){
             this.selected = [];
+            this.options.page = this.initialPage;
+            this.options.itemsPerPage = this.initialItemsPerPage;
             this.getDataFromApi();
         },
         updateDate(){
             if(this.date !== null && this.dateEnd !== null){
                 this.selected = [];
+                this.options.page = this.initialPage;
+				this.options.itemsPerPage = this.initialItemsPerPage;
                 this.getDataFromApi();
             }
         },
@@ -271,28 +282,67 @@ export default {
             this.bulkSelected = null;
             this.applyDisabled = true;
             this.selected = [];
+            this.initialFetch = 1;
             this.getDataFromApi();
         },
         getDataFromApi() {
             this.loading = true;
+            this.items = [];
+            const { page, itemsPerPage, sortBy, sortDesc } = this.options;
+
             axios
             .post(CONSTELLATION_URL, {
                 params: {
                     dateFrom: this.date,
                     dateTo: this.dateEnd,
-                    status: this.statusSelected
+                    status: this.statusSelected,
+                    page: page,
+					pageSize: itemsPerPage,
+                    sortBy: sortBy.length ? sortBy[0] : null,
+					sortOrder: sortBy.length ? (sortDesc[0] ? 'DESC' : 'ASC') : null,
+                    initialFetch: this.initialFetch,
                 }
             })
             .then((resp) => {
-                this.items = resp.data.data;
+                this.fetchedItems = resp.data.data;
                 this.bulkActions = resp.data.dataStatus;
                 this.statusFilter = resp.data.dataStatus.filter((element) => element.value != 4);
                 this.loading = false;
+                this.totalItems = resp.data.total;
+                this.allItems = resp.data.all;
+
+                if (this.initialFetch == 1) {
+                    this.items = this.fetchedItems.slice(0, itemsPerPage);
+                    this.initialFetch = 0;
+                } else {
+                    this.items = this.fetchedItems;
+                }
             })
             .catch((err) => console.error(err))
             .finally(() => {
                 this.loading = false;
             });
+        },
+        handlePagination() {
+            const { page, itemsPerPage, sortBy, sortDesc } = this.options;
+            const startIndex = (page - 1) * itemsPerPage;
+            const endIndex = startIndex + itemsPerPage;
+
+            if ((sortBy.length || sortDesc.length) && sortBy[0] == 'diagnosis') {
+                this.initialFetch = 1;
+                this.getDataFromApi();
+            } else if(sortBy.length || sortDesc.length){
+                this.getDataFromApi();
+            } else {
+                if (this.fetchedItems.length >= endIndex) {
+                    this.items = this.fetchedItems.slice(startIndex, endIndex);
+                } else {
+                    this.getDataFromApi();
+                }
+            }
+        },
+        selectAll(isChecked) {
+            this.isAllData = isChecked.value;
         },
         showDetails(route) {
             this.$router.push({ path: route });
@@ -329,6 +379,21 @@ export default {
                         this.loading = false;
                     });
                 }
+            }
+        },
+        sortItems(items, sortBy, sortDesc) {
+            if (sortBy.length) {
+                let sorted = items.sort((a, b) => {
+                    const sortKey = sortBy[0];
+                    const sortOrder = sortDesc[0] ? -1 : 1;
+                    if (a[sortKey] < b[sortKey]) return -1 * sortOrder;
+                    if (a[sortKey] > b[sortKey]) return 1 * sortOrder;
+                    return 0;
+                });
+
+                return sorted;
+            }else{
+                return items;
             }
         },
     },

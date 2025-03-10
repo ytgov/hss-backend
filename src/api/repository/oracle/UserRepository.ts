@@ -24,7 +24,7 @@ export class UserRepository extends BaseRepository<UserDTO> {
                     'USER_DATA.USER_NAME',
                     'USER_DATA.USER_EMAIL'
             )
-            .where('USER_DATA.USER_EMAIL', user_email);
+            .whereRaw('LOWER(USER_DATA.USER_EMAIL) = LOWER(?)', [user_email]);
 
         roles.forEach((x: any) => {
             allRoles.push({ 

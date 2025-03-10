@@ -3,7 +3,16 @@
 	<v-row class="mb-5" no-gutters>
 		<span class="title-service">Dental Service Requests</span>
 	</v-row>
-
+	<div class="text-center loading" v-show="loadingExport">
+		<v-progress-circular
+			:size="125"
+			:width="10"
+			color="primary"
+			indeterminate
+		>
+			Generating...
+		</v-progress-circular>
+    </div>
     <v-row class="row-filter">
 		<v-col
 			cols="10"
@@ -139,10 +148,16 @@
 		:items="items"
 		:headers="headers"
 		:options.sync="options"
-		:loading="loading"
+		:loading="loadingTable"
 		checkbox-color="black"
 		:value="selected"
 		@toggle-select-all="selectAll"
+
+		:server-items-length="totalItems"
+		@update:options="handlePagination"
+		:footer-props="{
+			'items-per-page-options': itemsPerPage
+		}"
 	>
 	</v-data-table>
 	</div>
@@ -157,7 +172,13 @@ export default {
 	data: () => ({
 	loading: false,
 		items: [],
-		options: {},
+		fetchedItems: [],
+		initialPage: 1,
+		initialItemsPerPage: 10,
+		options: {
+			page: 1,
+			itemsPerPage: 10
+		},
 		flagAlert: false,
 		menu: false,
 		date: null,
@@ -171,6 +192,13 @@ export default {
 		loader: null,
 		loadingExport: false,
 		loadingReset: false,
+		loadingTable: false,
+		totalItems: 0,
+		itemsPerPage: [10, 15, 50, 100, -1],
+		exportMaxSize: 800,
+		allItems: 0,
+		isAllData: false,
+		initialFetch: 1,
 	}),
 	computed: {
 		headers() {
@@ -238,23 +266,22 @@ export default {
 	components: {
 	},
 	watch: {
-		options: {
-			handler() {
-				this.getDataFromApi();
-			},
-			deep: true,
-		},
 		loader () {
 			const l = this.loader;
 			this[l] = !this[l];
-
 			setTimeout(() => (this[l] = false), 2000)
-
 			this.loader = null;
 		},
+		selected(newSelected) {
+			if (newSelected.length === this.items.length) {
+				this.isAllData = true;
+			} else {
+				this.isAllData = false;
+			}
+		}
 	},
 	mounted() {
-		this.getDataFromApi();
+		//this.getDataFromApi();
 	},
 	methods: {
 		handleYear() {
@@ -265,45 +292,87 @@ export default {
 				this.date = null;
 				this.dateEnd = null;
 				this.selected = [];
+				this.options.page = this.initialPage;
+				this.options.itemsPerPage = this.initialItemsPerPage;
 				this.getDataFromApi();
 			}
 		},
 		updateDate(){
 			if(this.date !== null && this.dateEnd !== null) {
 				this.selected = [];
+				this.options.page = this.initialPage;
+				this.options.itemsPerPage = this.initialItemsPerPage;
 				this.getDataFromApi();
 			}
 		},
 		changeSelect(){
 			this.selected = [];
+			this.options.page = this.initialPage;
+			this.options.itemsPerPage = this.initialItemsPerPage;
 			this.getDataFromApi();
 		},
 		getDataFromApi() {
-			this.loading = true;
+			this.loadingTable = true;
+			this.items = [];
+			const { page, itemsPerPage, sortBy, sortDesc } = this.options;
+
 			axios
 			.post(DENTAL_URL, {
 				params: {
 					dateFrom: this.date,
 					dateTo: this.dateEnd,
 					dateYear: this.dateYear,
-					status: this.selectedStatus
+					status: this.selectedStatus,
+					page: page,
+					pageSize: itemsPerPage,
+					sortBy: sortBy.length ? sortBy[0] : null,
+					sortOrder: sortBy.length ? (sortDesc[0] ? 'DESC' : 'ASC') : null,
+					initialFetch: this.initialFetch,
 				}
 			})
 			.then((resp) => {
-				this.items = resp.data.data;
+				this.fetchedItems = resp.data.data;
 				this.itemsStatus = resp.data.dataStatus.filter((element) => element.value != 4);
-				this.loading = false;
+				this.loadingTable = false;
+				this.totalItems = resp.data.total;
+				this.allItems = resp.data.all;
+
+                if (this.initialFetch == 1) {
+                    this.items = this.fetchedItems.slice(0, itemsPerPage);
+                    this.initialFetch = 0;
+                } else {
+                    this.items = this.fetchedItems;
+                }
 
 			})
 			.catch((err) => console.error(err))
 			.finally(() => {
-			this.loading = false;
+				this.loadingTable = false;
 			});
 		},
-		selectAll() {
-			this.selected = this.selected.length === this.items.length
-			? []
-			: this.items
+		handlePagination() {
+            const { page, itemsPerPage, sortBy, sortDesc } = this.options;
+            const startIndex = (page - 1) * itemsPerPage;
+            const endIndex = startIndex + itemsPerPage;
+
+            if (sortBy.length || sortDesc.length) {
+                this.getDataFromApi();
+            } else {
+                if (this.fetchedItems.length >= endIndex) {
+                    this.items = this.fetchedItems.slice(startIndex, endIndex);
+                } else {
+                    this.getDataFromApi();
+                }
+            }
+        },
+		selectAll(isChecked) {
+			this.isAllData = isChecked.value;
+			if (isChecked.value) {
+				this.selected = [...this.items];
+			} else {
+				this.selected = [];
+			}
+			
 		},
 		resetInputs() {
 			this.loader = 'loadingReset';
@@ -313,98 +382,161 @@ export default {
 			this.dateYear = null;
 			this.selectedYear = null;
 			this.selected = [];
+			this.options.page = this.initialPage;
+			this.options.itemsPerPage = this.initialItemsPerPage;
+			this.initialFetch = 1;
 			this.getDataFromApi();
 		},
+		sortItems(items, sortBy, sortDesc) {
+            if (sortBy.length) {
+                let sorted = items.sort((a, b) => {
+                    const sortKey = sortBy[0];
+                    const sortOrder = sortDesc[0] ? -1 : 1;
+                    if (a[sortKey] < b[sortKey]) return -1 * sortOrder;
+                    if (a[sortKey] > b[sortKey]) return 1 * sortOrder;
+                    return 0;
+                });
+
+                return sorted;
+            }else{
+                return items;
+            }
+        },
 		exportFile () {
-			var idArray = [];
-			this.selected.forEach((e) => {
-				idArray.push(e.id);
-			});
+			this.loadingExport = true;
 
-			axios
-			.post(DENTAL_EXPORT_FILE_URL, {
-				params: {
-					requests: idArray,
-					status: this.selectedStatus,
-					dateFrom: this.date,
-					dateTo: this.dateEnd,
-					dateYear: this.dateYear
+            let totalBatches = 0;
+
+            if(this.selected.length > 0 && !this.isAllData){
+                totalBatches = Math.ceil(this.selected.length / this.exportMaxSize);
+            }else if(this.selected.length == 0 && !this.isAllData){
+                totalBatches = Math.ceil(this.totalItems / this.exportMaxSize);
+                this.isAllData = true;
+            }else if(this.selected.length > 0 && this.isAllData){
+                totalBatches = Math.ceil(this.totalItems / this.exportMaxSize);
+            }
+
+            let dentalData = [];
+			let dependantsData = [];
+
+			const fetchBatchData =  async (start, end) => {
+				let idArray = [];
+
+				if (!this.isAllData) {
+					idArray = this.selected.slice(start, end).map(e => e.id);
+				} else {
+					idArray = []; // Send an empty array when all data is to be exported
 				}
-			}).then((resp) => {
-				const ws = utils.json_to_sheet(resp.data.dataDental);
-				const wb = utils.book_new();
-				utils.book_append_sheet(wb, ws, "Dental Service Requests");
 
-				utils.sheet_add_aoa(
-				ws,
-				[
-					[
-					"FIRST NAME",
-					"MIDDLE NAME",
-					"LAST NAME",
-					"DATE OF BIRTH",
-					"HEALTH CARD NUMBER",
-					"MAILING ADDRESS",
-					"CITY OR TOWN",
-					"POSTAL CODE",
-					"PHONE",
-					"EMAIL",
-					"OTHER COVERAGE",
-					"ELIGIBLE PHARMACARE",
-					"EMAIL INSTEAD",
-					"HAVE CHILDREN",
-					"ASK DEMOGRAPHIC",
-					"IDENTIFY GROUPS",
-					"GENDER",
-					"EDUCATION",
-					"OFTEN BRUSH",
-					"STATE TEETH",
-					"OFTEN FLOSS",
-					"STATE GUMS",
-					"LAST SAW DENTIST",
-					"REASON FOR DENTIST",
-					"BUY SUPPLIES",
-					"PAY FOR VISIT",
-					"BARRIERS",
-					"PROBLEMS",
-					"SERVICES NEEDED",
-					"CREATED AT",
-					"PROOF OF INCOME ATTACHMENT",
-					"PROGRAM YEAR",
-					"INCOME AMOUNT",
-					"DATE OF ENROLLMENT",
-					"POLICY NUMBER",
-					"INTERNAL FIELD CREATED AT"
-					],
-				],
-				{ origin: "A1" }
-				);
-				const ws2 = utils.json_to_sheet(resp.data.dataDependents);
-				utils.book_append_sheet(wb, ws2, "Dental Service Dependents");
-				utils.sheet_add_aoa(
-				ws2,
-				[
-					[
-					"APPLICANT NAME",
-					"FIRST NAME",
-					"LAST NAME",
-					"DATE OF BIRTH",
-					"HEALTHCARE",
-					"APPLY",
-					],
-				],
-				{ origin: "A1" }
-				);
+				try {
+					const response = await axios.post(DENTAL_EXPORT_FILE_URL, {
+						params: {
+							status: this.selectedStatus,
+							requests: idArray,
+							dateFrom: this.date,
+							dateTo: this.dateEnd,
+							dateYear: this.dateYear,
+							offset: start, // Server should handle offset for all data
+							limit: this.exportMaxSize,
+							isAllData: this.isAllData,
+						}
+					});
+					return response.data;
+				} catch (error) {
+					console.error(error);
+					throw error;
+				}
+			};
 
-				writeFileXLSX(wb, "DentalService_Requests.xlsx");
+			const processBatches = async () => {
+				for (let batch = 0; batch < totalBatches; batch++) {
+                    const start = batch * this.exportMaxSize;
+                    const end = Math.min(start + this.exportMaxSize, this.isAllData ? this.totalItems : this.selected.length);
+                    try {
+                        let response = await fetchBatchData(start, end,this.selectedStatus,this.date,this.dateEnd,this.exportMaxSize,this.isAllData);
+                        dentalData.push(...response.dataDental);
+                        dependantsData.push(...response.dataDependents);
+                    } catch (error) {
+                        console.error('Error en batch:', batch, error);
+                    }
+                }
+				this.generateExcel(dentalData, dependantsData);
+				this.loadingExport = false;
+                this.isAllData = false;
 
-				this.loading = false;
-			})
-			.catch((err) => console.error(err))
-			.finally(() => {
-				this.loading = false;
-			});
+			};
+
+            processBatches();
 		},
+		generateExcel(dentalData, dependantsData) {
+            const ws = utils.json_to_sheet(dentalData);
+			const wb = utils.book_new();
+			utils.book_append_sheet(wb, ws, "Dental Service Requests");
+
+			utils.sheet_add_aoa(
+			ws,
+			[
+				[
+				"FIRST NAME",
+				"MIDDLE NAME",
+				"LAST NAME",
+				"DATE OF BIRTH",
+				"HEALTH CARD NUMBER",
+				"MAILING ADDRESS",
+				"CITY OR TOWN",
+				"POSTAL CODE",
+				"PHONE",
+				"EMAIL",
+				"OTHER COVERAGE",
+				"ELIGIBLE PHARMACARE",
+				"EMAIL INSTEAD",
+				"HAVE CHILDREN",
+				"ASK DEMOGRAPHIC",
+				"IDENTIFY GROUPS",
+				"GENDER",
+				"EDUCATION",
+				"OFTEN BRUSH",
+				"STATE TEETH",
+				"OFTEN FLOSS",
+				"STATE GUMS",
+				"LAST SAW DENTIST",
+				"REASON FOR DENTIST",
+				"BUY SUPPLIES",
+				"PAY FOR VISIT",
+				"BARRIERS",
+				"PROBLEMS",
+				"SERVICES NEEDED",
+				"CREATED AT",
+				"PROOF OF INCOME ATTACHMENT",
+				"PROGRAM YEAR",
+				"INCOME AMOUNT",
+				"DATE OF ENROLLMENT",
+				"POLICY NUMBER",
+				"INTERNAL FIELD CREATED AT"
+				],
+			],
+			{ origin: "A1" }
+			);
+			const ws2 = utils.json_to_sheet(dependantsData);
+			utils.book_append_sheet(wb, ws2, "Dental Service Dependents");
+			utils.sheet_add_aoa(
+			ws2,
+			[
+				[
+				"APPLICANT NAME",
+				"FIRST NAME",
+				"LAST NAME",
+				"DATE OF BIRTH",
+				"HEALTHCARE",
+				"APPLY",
+				],
+			],
+			{ origin: "A1" }
+			);
+
+			writeFileXLSX(wb, "DentalService_Requests.xlsx");
+			this.isAllData = false;
+        }
 	},
 };
 </script>

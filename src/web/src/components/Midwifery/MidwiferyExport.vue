@@ -4,7 +4,16 @@
 		<v-row class="mb-5" no-gutters>
 			<span class="title-service">Midwifery Export</span>
 		</v-row>
-
+		<div class="text-center loading" v-show="loadingExport">
+			<v-progress-circular
+				:size="125"
+				:width="10"
+				color="primary"
+				indeterminate
+			>
+				Generating...
+			</v-progress-circular>
+		</div>
 		<v-row class="row-filter">
 			<v-col
 				cols="10"
@@ -129,6 +138,12 @@
 			checkbox-color="black"
 			:value="selected"
 			@toggle-select-all="selectAll"
+
+			:server-items-length="totalItems"
+			@update:options="handlePagination"
+			:footer-props="{
+                'items-per-page-options': itemsPerPage
+            }"
 		>
 		</v-data-table>
 	</div>
@@ -145,7 +160,11 @@ export default {
 	data: () => ({
 		loading: false,
 		items: [],
-		options: {},
+		fetchedItems: [],
+		options: {
+			page: 1,
+			itemsPerPage: 10
+		},
 		flagAlert: false,
 		menu: false,
 		date: null,
@@ -169,17 +188,16 @@ export default {
 			{ text: "Status", value: "status_description", sortable: true},
 			{ text: "Created", value: "created_at", sortable: true},
 		],
-		page: 1,
-		pageCount: 0,
-		iteamsPerPage: 10,
+		initialPage: 1,
+        initialItemsPerPage: 10,
+        totalItems: 0,
+		itemsPerPage: [10, 15, 50, 100, -1],
+		exportMaxSize: 800,
+		allItems: 0,
+        isAllData: false,
+        initialFetch: 1,
 	}),
 	watch: {
-		options: {
-			handler() {
-				this.getDataFromApi();
-			},
-			deep: true,
-		},
 		loader () {
 			const l = this.loader;
 			this[l] = !this[l];
@@ -190,40 +208,76 @@ export default {
 		},
 	},
 	mounted() {
-		this.getDataFromApi();
 	},
 	methods: {
 		updateDate(){
 			if(this.date !== null && this.dateEnd !== null){
 				this.selected = [];
+				this.options.page = this.initialPage;
+				this.options.itemsPerPage = this.initialItemsPerPage;
 				this.getDataFromApi();
 			}
 		},
 		changeSelect(){
 			this.selected = [];
+			this.options.page = this.initialPage;
+            this.options.itemsPerPage = this.initialItemsPerPage;
 			this.getDataFromApi();
 		},
 		getDataFromApi() {
 			this.loading = true;
+			this.items = [];
+			const { page, itemsPerPage, sortBy, sortDesc } = this.options;
+
 			axios
 			.post(MIDWIFERY_URL, {
 				params: {
 					dateFrom: this.date,
 					dateTo: this.dateEnd,
-					status: this.selectedStatus
+					status: this.selectedStatus,
+					page: page,
+					pageSize: itemsPerPage,
+					sortBy: sortBy.length ? sortBy[0] : null,
+					sortOrder: sortBy.length ? (sortDesc[0] ? 'DESC' : 'ASC') : null,
+					initialFetch: this.initialFetch,
 				}
 			})
 			.then((resp) => {
-				this.items = resp.data.data;
+				this.fetchedItems = resp.data.data;
 				this.itemsStatus = resp.data.dataStatus.filter((element) => element.value != 4);
 				this.loading = false;
+				this.totalItems = resp.data.total;
+				this.allItems = resp.data.all;
+
+                if (this.initialFetch == 1) {
+                    this.items = this.fetchedItems.slice(0, itemsPerPage);
+                    this.initialFetch = 0;
+                } else {
+                    this.items = this.fetchedItems;
+                }
 			})
 			.catch((err) => console.error(err))
 			.finally(() => {
 				this.loading = false;
 			});
 		},
-		selectAll() {
+		handlePagination() {
+            const { page, itemsPerPage, sortBy, sortDesc } = this.options;
+            const startIndex = (page - 1) * itemsPerPage;
+            const endIndex = startIndex + itemsPerPage;
+
+            if (sortBy.length || sortDesc.length) {
+                this.getDataFromApi();
+            } else {
+                if (this.fetchedItems.length >= endIndex) {
+                    this.items = this.fetchedItems.slice(startIndex, endIndex);
+                } else {
+                    this.getDataFromApi();
+                }
+            }
+        },
+		selectAll(isChecked) {
+			this.isAllData = isChecked.value;
 			this.selected = this.selected.length === this.items.length
 			? []
 			: this.items
@@ -234,81 +288,142 @@ export default {
 			this.dateEnd = null;
 			this.selectedStatus = null;
 			this.selected = [];
+			this.options.page = this.initialPage;
+            this.options.itemsPerPage = this.initialItemsPerPage;
+			this.initialFetch = 1;
 			this.getDataFromApi();
 		},
+		sortItems(items, sortBy, sortDesc) {
+            if (sortBy.length) {
+                let sorted = items.sort((a, b) => {
+                    const sortKey = sortBy[0];
+                    const sortOrder = sortDesc[0] ? -1 : 1;
+                    if (a[sortKey] < b[sortKey]) return -1 * sortOrder;
+                    if (a[sortKey] > b[sortKey]) return 1 * sortOrder;
+                    return 0;
+                });
+
+                return sorted;
+            }else{
+                return items;
+            }
+        },
 		exportFile () {
-			this.loader = 'loadingExport';
-			let requests = [];
-			let checked = this.selected;
-			if(checked.length > 0){
-				checked.forEach(function (value) {
-					requests.push(value.id);
-				});
-			}
+			this.loadingExport = true;
+            let totalBatches = 0;
+            if(this.selected.length > 0 && !this.isAllData){
+                totalBatches = Math.ceil(this.selected.length / this.exportMaxSize);
+            }else if(this.selected.length == 0 && !this.isAllData){
+                totalBatches = Math.ceil(this.totalItems / this.exportMaxSize);
+                this.isAllData = true;
+            }else if(this.selected.length > 0 && this.isAllData){
+                totalBatches = Math.ceil(this.totalItems / this.exportMaxSize);
+            }
 
-			axios
-			.post(MIDWIFERY_EXPORT_FILE_URL, {
-				params: {
-					requests: requests,
-					dateFrom: this.date,
-					dateTo: this.dateEnd,
-					status: this.selectedStatus
+            let midwiferyData = [];
+			let fileName = "";
+
+            const fetchBatchData = async (start, end) => {
+				let idArray = [];
+
+				if (!this.isAllData) {
+					idArray = this.selected.slice(start, end).map(e => e.id);
+				} else {
+					idArray = [];
 				}
-			})
-			.then((resp) => {
 
-				const ws = utils.json_to_sheet(resp.data.data);
-				const wb = utils.book_new();
-				utils.book_append_sheet(wb, ws, "Midwifery Requests");
+				try {
+					const response = await axios.post(MIDWIFERY_EXPORT_FILE_URL, {
+						params: {
+							requests: idArray,
+							dateFrom: this.date,
+							dateTo: this.dateEnd,
+							status: this.selectedStatus,
+							offset: start,
+                            limit: this.exportMaxSize,
+                            isAllData: this.isAllData,
+						}
+					});
+					return response.data;
+				} catch (error) {
+					console.error(error);
+					throw error;
+				}
+			};
 
-				utils.sheet_add_aoa(ws, [[
-					"Confirmation number",
-					"First name",
-					"Last name",
-					"Preferred name",
-					"Pronouns",
-					"Yukon health insurance",
-					"Need interpretation",
-					"Preferred phone",
-					"Preferred email",
-					"Is okay to leave message",
-					"Date confirmed",
-					"Is this your first pregnancy?",
-					"How many vaginal births",
-					"How many c-section births",
-					"Complications with previous",
-					"Provide details",
-					"Midwife before",
-					"Medical Concerns with Pregnancy",
-					"Provide details2",
-					"Have you had primary healthcare?",
-					"Menstrual cycle length",
-					"Family physician",
-					"Physician's name",
-					"Major medical conditions",
-					"Provide details3",
-					"Do you identify with one or more of these groups and communities",
-					"How did you find out about the midwifery clinic",
-					"Birth location",
-					"Preferred contact",
-					"Date of birth",
-					"When was the first day of your last period",
-					"Due date",
-					"Created at",
-					"Updated at",
-					"Community located",
-					"Preferred language"
-				]], { origin: "A1" });
+			const processBatches = async () => {
+                const batchPromises = [];
+				for (let batch = 0; batch < totalBatches; batch++) {
+					const start = batch * this.exportMaxSize;
+					const end = Math.min(start + this.exportMaxSize, this.isAllData ? this.totalItems : this.selected.length);
 
-				writeFileXLSX(wb, resp.data.fileName);
+					batchPromises.push(fetchBatchData(start, end));
+				}
 
-				this.loading = false;
-			})
-			.catch((err) => console.error(err))
-			.finally(() => {
-				this.loading = false;
-			});
+                try {
+                    const results = await Promise.all(batchPromises);
+                    results.forEach((data) => {
+                        midwiferyData = midwiferyData.concat(data.data);
+						fileName = data.fileName;
+                    });
+
+                    this.generateExcel(midwiferyData, fileName);
+                } catch (error) {
+                    console.error('Error processing Midwifery Export batches:', error);
+                } finally {
+                    this.loadingExport = false;
+                }
+            };
+
+            processBatches();
 		},
+		generateExcel(midwiferyData, fileName) {
+            const ws = utils.json_to_sheet(midwiferyData);
+			const wb = utils.book_new();
+			utils.book_append_sheet(wb, ws, "Midwifery Requests");
+
+			utils.sheet_add_aoa(ws, [[
+				"Confirmation number",
+				"First name",
+				"Last name",
+				"Preferred name",
+				"Pronouns",
+				"Yukon health insurance",
+				"Need interpretation",
+				"Preferred phone",
+				"Preferred email",
+				"Is okay to leave message",
+				"Date confirmed",
+				"Is this your first pregnancy?",
+				"How many vaginal births",
+				"How many c-section births",
+				"Complications with previous",
+				"Provide details",
+				"Midwife before",
+				"Medical Concerns with Pregnancy",
+				"Provide details2",
+				"Have you had primary healthcare?",
+				"Menstrual cycle length",
+				"Family physician",
+				"Physician's name",
+				"Major medical conditions",
+				"Provide details3",
+				"Do you identify with one or more of these groups and communities",
+				"How did you find out about the midwifery clinic",
+				"Birth location",
+				"Preferred contact",
+				"Date of birth",
+				"When was the first day of your last period",
+				"Due date",
+				"Created at",
+				"Updated at",
+				"Community located",
+				"Preferred language"
+			]], { origin: "A1" });
+
+			writeFileXLSX(wb, fileName);
+			this.isAllData = false;
+        }
 	},
 };
 </script>

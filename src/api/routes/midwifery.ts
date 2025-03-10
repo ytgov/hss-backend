@@ -93,6 +93,17 @@ midwiferyRouter.post("/", async (req: Request, res: Response) => {
         var midwiferyOptions = Object();
         db = await helper.getOracleClient(db, DB_CONFIG_MIDWIFERY);
 
+        const allowedSortOrders = ["ASC", "DESC"];
+        const allowedSortFields = ["ID", "PREFERRED_NAME", "PREFERRED_PHONE", "FIRST_PREGNANCY", "DUE_DATE", "BIRTH_LOCATIONS", "MEDICAL_CONCERNS", "MAJOR_MEDICAL_CONDITIONS", "DO_YOU_IDENTIFY_WITH_ONE_OR_MORE_OF_THESE_GROUPS_AND_COMMUNITIE","CREATED_AT", "STATUS_DESCRIPTION" ];
+
+        const page = parseInt(req.body.params.page as string) || 1;
+        const pageSize = parseInt(req.body.params.pageSize as string) || 10;
+        const offset = (page - 1) * pageSize;
+        const sortBy = req.body.params.sortBy;
+        const sortOrder = req.body.params.sortOrder;
+        const initialFetch = req.body.params.initialFetch;
+        const safeSortOrder = allowedSortOrders.includes(sortOrder?.toUpperCase()) ? sortOrder.toUpperCase() : "ASC";
+        const safeSortBy = allowedSortFields.includes(sortBy?.toUpperCase()) ? sortBy.toUpperCase() : "ID";
         let query = db(`${SCHEMA_MIDWIFERY}.MIDWIFERY_SERVICES`)
         .join(`${SCHEMA_MIDWIFERY}.MIDWIFERY_STATUS`, 'MIDWIFERY_SERVICES.STATUS', '=', 'MIDWIFERY_STATUS.ID')
         .leftJoin(`${SCHEMA_MIDWIFERY}.MIDWIFERY_BIRTH_LOCATIONS`, 'MIDWIFERY_SERVICES.WHERE_TO_GIVE_BIRTH', '=', 'MIDWIFERY_BIRTH_LOCATIONS.ID')
@@ -106,25 +117,58 @@ midwiferyRouter.post("/", async (req: Request, res: Response) => {
                 'MIDWIFERY_BIRTH_LOCATIONS.DESCRIPTION as BIRTH_LOCATIONS',
                 'MIDWIFERY_SERVICES.MEDICAL_CONCERNS',
                 'MIDWIFERY_SERVICES.MAJOR_MEDICAL_CONDITIONS',
-                'MIDWIFERY_SERVICES.DO_YOU_IDENTIFY_WITH_ONE_OR_MORE_OF_THESE_GROUPS_AND_COMMUNITIE',
+                db.raw(`GENERAL.process_blob_value(MIDWIFERY_SERVICES.DO_YOU_IDENTIFY_WITH_ONE_OR_MORE_OF_THESE_GROUPS_AND_COMMUNITIE, '${SCHEMA_MIDWIFERY}.MIDWIFERY_GROUPS_COMMUNITIES') AS DO_YOU_IDENTIFY_WITH_ONE_OR_MORE_OF_THESE_GROUPS_AND_COMMUNITIE
+                `),
                 'MIDWIFERY_STATUS.DESCRIPTION AS STATUS_DESCRIPTION',
                 'MIDWIFERY_PREFERRED_CONTACT_TYPES.DESCRIPTION AS PREFERRED_CONTACT',
                 db.raw("TO_CHAR(MIDWIFERY_SERVICES.CREATED_AT, 'YYYY-MM-DD HH24:MI:SS') AS CREATED_AT,"+
                         "CASE  WHEN DUE_DATE IS NULL THEN ''  ELSE TO_CHAR(DUE_DATE, 'YYYY, FMMonth, FMDD')  || CASE  WHEN DUE_DATE IS NULL THEN '' WHEN TO_CHAR(DUE_DATE, 'DD') IN ('01', '21', '31') THEN 'st' WHEN TO_CHAR(DUE_DATE, 'DD') IN ('02', '22') THEN 'nd' WHEN TO_CHAR(DUE_DATE, 'DD') IN ('03', '23') THEN 'rd'  ELSE 'th'  END  END AS DUE_DATE ")
         )
-        .where('MIDWIFERY_SERVICES.STATUS', '<>', 4 )
-        .orderBy('MIDWIFERY_SERVICES.ID', 'ASC');
+        .where('MIDWIFERY_SERVICES.STATUS', '<>', 4 );
+
+        const countAllQuery = query.clone().clearSelect().clearOrder().count('* as count').first();
 
         if(dateFrom && dateTo) {
             query.where(db.raw("TO_CHAR(MIDWIFERY_SERVICES.CREATED_AT, 'YYYY-MM-DD') >=  ? AND TO_CHAR(MIDWIFERY_SERVICES.CREATED_AT, 'YYYY-MM-DD') <= ?",
                 [dateFrom, dateTo]));
         }
-
-        if (status_request) {
+        if (status_request && status_request.length > 0) {
             query.whereIn("MIDWIFERY_SERVICES.STATUS", status_request);
         }
+        if (safeSortBy) {
+            switch (safeSortBy) {
+                case "BIRTH_LOCATIONS":
+                    query = query.orderBy(`MIDWIFERY_SERVICES.WHERE_TO_GIVE_BIRTH`, safeSortOrder);
+                    break;
+                case "STATUS_DESCRIPTION":
+                        query = query.orderBy(`MIDWIFERY_STATUS.DESCRIPTION`, safeSortOrder);
+                        break;
+                case "do_you_identify_with_one_or_more_of_these_groups_and_communitie":
+                 query = query.orderByRaw(`GENERAL.process_blob_value(MIDWIFERY_SERVICES.DO_YOU_IDENTIFY_WITH_ONE_OR_MORE_OF_THESE_GROUPS_AND_COMMUNITIE, '${SCHEMA_MIDWIFERY}.MIDWIFERY_GROUPS_COMMUNITIES')  ${safeSortOrder}`);
+                    break;
+                default:
+                    query = query.orderBy(`MIDWIFERY_SERVICES.${safeSortBy.toUpperCase()}`, safeSortOrder);
+                    break;
+            }
+        } else {
+            query = query.orderBy('MIDWIFERY_SERVICES.ID', 'ASC');
+        }
 
-        const midwifery = await query;
+        const countQuery = query.clone().clearSelect().clearOrder().count('* as count').first();
+
+        if(pageSize !== -1 && initialFetch == 0){
+            query = query.offset(offset).limit(pageSize);
+        }else if(initialFetch == 1){
+            query = query.offset(offset).limit(250);
+        }
+
+        var [midwifery, countResult, countResultAll] = await Promise.all([
+            query,
+            countQuery,
+            countAllQuery
+        ]);
+        const countAll = countResultAll ? countResultAll.count : 0;
+        const countSubmissions = countResult ? countResult.count : 0;
 
         midwiferyStatus = await db(`${SCHEMA_MIDWIFERY}.MIDWIFERY_STATUS`).select().whereNot('DESCRIPTION', 'Closed')
             .then((rows: any) => {
@@ -146,55 +190,17 @@ midwiferyRouter.post("/", async (req: Request, res: Response) => {
             return arrayResult;
         });
 
-        var communities = Object();
-
-        communities = await db(`${SCHEMA_MIDWIFERY}.MIDWIFERY_GROUPS_COMMUNITIES`).select().then((rows: any) => {
-            let arrayResult = Object();
-
-            for (let row of rows) {
-                arrayResult[row['id']] = row['description'];
-            }
-
-            return arrayResult;
+        midwifery = midwifery.map(value => {
+            value.first_pregnancy = value.first_pregnancy ? (midwiferyOptions[value.first_pregnancy] == 1 ? 'Yes' : 'No') : '';
+            value.medical_concerns = value.medical_concerns ? (midwiferyOptions[value.medical_concerns] == 1 ? 'Yes' : 'No') : '';
+            value.major_medical_conditions = value.major_medical_conditions ? (midwiferyOptions[value.major_medical_conditions] == 1 ? 'Yes' : 'No') : '';
+            value.due_date = value.due_date || "N/A";
+            value.preferred_name = value.preferred_name || value.preferred_name;
+            value.showUrl = `midwifery/show/${value.id}`;
+            return value;
         });
 
-        _.forEach(midwifery, function(value: any, key: any) {
-            value.first_pregnancy = value.first_pregnancy ? ( midwiferyOptions[value.first_pregnancy] == 1 ? 'Yes' : 'No'): '' ;
-            value.medical_concerns = value.medical_concerns ? ( midwiferyOptions[value.medical_concerns] == 1 ? 'Yes' : 'No'): '' ;
-            value.major_medical_conditions = value.major_medical_conditions ? ( midwiferyOptions[value.major_medical_conditions] == 1 ? 'Yes' : 'No'): '' ;
-
-            if(value.due_date == 0) {
-                value.due_date =  "N/A";
-            }
-
-            if(value.preferred_name == "") {
-                value.preferred_name = value.preferred_name;
-            }
-
-            if(!_.isEmpty(value.do_you_identify_with_one_or_more_of_these_groups_and_communitie)) {
-
-                var dataString = "";
-                value.do_you_identify_with_one_or_more_of_these_groups_and_communitie = JSON.parse(value.do_you_identify_with_one_or_more_of_these_groups_and_communitie.toString());
-
-                _.forEach(value.do_you_identify_with_one_or_more_of_these_groups_and_communitie.data, function(value: any, key: any) {
-                    if(!isNaN(value) && communities.hasOwnProperty(value)) {
-                        dataString += communities[value]+",";
-                    }else{
-                        dataString += value+",";
-                    }
-                });
-
-                if(dataString.substr(-1) == ",") {
-                    dataString = dataString.slice(0, -1);
-                }
-
-                value.do_you_identify_with_one_or_more_of_these_groups_and_communitie = dataString.replace(/,/g, ', ');
-            }
-
-            value.showUrl = "midwifery/show/"+value.id;
-        });
-
-        res.send({data: midwifery, dataStatus: midwiferyStatus});
+        res.send({data: midwifery, dataStatus: midwiferyStatus, total: countSubmissions, all: countAll});
 
     } catch(e) {
         console.log(e);  // debug if needed
@@ -263,6 +269,8 @@ midwiferyRouter.get("/show/:midwifery_id",[param("midwifery_id").isInt().notEmpt
         midwifery = await db(`${SCHEMA_MIDWIFERY}.MIDWIFERY_SERVICES`)
             .leftJoin(`${SCHEMA_MIDWIFERY}.MIDWIFERY_BIRTH_LOCATIONS`, 'MIDWIFERY_SERVICES.WHERE_TO_GIVE_BIRTH', 'MIDWIFERY_BIRTH_LOCATIONS.ID')
             .leftJoin(`${SCHEMA_MIDWIFERY}.MIDWIFERY_PREFERRED_CONTACT_TYPES`, 'MIDWIFERY_SERVICES.PREFER_TO_BE_CONTACTED', 'MIDWIFERY_PREFERRED_CONTACT_TYPES.ID')
+            .leftJoin(`${SCHEMA_MIDWIFERY}.MIDWIFERY_COMMUNITY_LOCATIONS`, 'MIDWIFERY_SERVICES.COMMUNITY_LOCATED', 'MIDWIFERY_COMMUNITY_LOCATIONS.ID')
+            .leftJoin(`${SCHEMA_MIDWIFERY}.MIDWIFERY_LANGUAGES`, 'MIDWIFERY_SERVICES.PREFERRED_LANGUAGE', 'MIDWIFERY_LANGUAGES.ID')
             .select('MIDWIFERY_SERVICES.ID',
                     'MIDWIFERY_SERVICES.CONFIRMATION_NUMBER',
                     'MIDWIFERY_SERVICES.STATUS',
@@ -271,8 +279,8 @@ midwiferyRouter.get("/show/:midwifery_id",[param("midwifery_id").isInt().notEmpt
                     'MIDWIFERY_SERVICES.PREFERRED_NAME',
                     'MIDWIFERY_SERVICES.PRONOUNS',
                     'MIDWIFERY_SERVICES.YUKON_HEALTH_INSURANCE',
-                    'MIDWIFERY_SERVICES.COMMUNITY_LOCATED',
-                    'MIDWIFERY_SERVICES.PREFERRED_LANGUAGE',
+                    'MIDWIFERY_COMMUNITY_LOCATIONS.DESCRIPTION AS COMMUNITY_LOCATED',
+                    'MIDWIFERY_LANGUAGES.DESCRIPTION AS PREFERRED_LANGUAGE', 
                     'MIDWIFERY_SERVICES.NEED_INTERPRETATION',
                     'MIDWIFERY_SERVICES.PREFERRED_PHONE',
                     'MIDWIFERY_SERVICES.PREFERRED_EMAIL',
@@ -294,8 +302,9 @@ midwiferyRouter.get("/show/:midwifery_id",[param("midwifery_id").isInt().notEmpt
                     'MIDWIFERY_SERVICES.PHYSICIAN_S_NAME',
                     'MIDWIFERY_SERVICES.MAJOR_MEDICAL_CONDITIONS',
                     'MIDWIFERY_SERVICES.PROVIDE_DETAILS3',
-                    'MIDWIFERY_SERVICES.DO_YOU_IDENTIFY_WITH_ONE_OR_MORE_OF_THESE_GROUPS_AND_COMMUNITIE',
-                    'MIDWIFERY_SERVICES.HOW_DID_YOU_FIND_OUT_ABOUT_THE_MIDWIFERY_CLINIC_SELECT_ALL_THAT',
+                    db.raw(`GENERAL.process_blob_value(MIDWIFERY_SERVICES.DO_YOU_IDENTIFY_WITH_ONE_OR_MORE_OF_THESE_GROUPS_AND_COMMUNITIE, '${SCHEMA_MIDWIFERY}.MIDWIFERY_GROUPS_COMMUNITIES') AS DO_YOU_IDENTIFY_WITH_ONE_OR_MORE_OF_THESE_GROUPS_AND_COMMUNITIE,
+                        GENERAL.process_blob_value(MIDWIFERY_SERVICES.HOW_DID_YOU_FIND_OUT_ABOUT_THE_MIDWIFERY_CLINIC_SELECT_ALL_THAT, '${SCHEMA_MIDWIFERY}.MIDWIFERY_CLINIC_CONTACT_TYPES') AS HOW_DID_YOU_FIND_OUT_ABOUT_THE_MIDWIFERY_CLINIC_SELECT_ALL_THAT
+                    `),
                     'MIDWIFERY_PREFERRED_CONTACT_TYPES.DESCRIPTION as preferred_contact',
                     'MIDWIFERY_BIRTH_LOCATIONS.DESCRIPTION AS BIRTH_LOCATIONS',
                     db.raw("TO_CHAR(MIDWIFERY_SERVICES.DATE_OF_BIRTH, 'YYYY-MM-DD') AS DATE_OF_BIRTH, "+
@@ -315,26 +324,6 @@ midwiferyRouter.get("/show/:midwifery_id",[param("midwifery_id").isInt().notEmpt
             return arrayResult;
         });
 
-        communityLocations = await db(`${SCHEMA_MIDWIFERY}.MIDWIFERY_COMMUNITY_LOCATIONS`).select().then((rows: any) => {
-            let arrayResult = Object();
-
-            for (let row of rows) {
-                arrayResult[row['id']] = row['description'];
-            }
-
-            return arrayResult;
-        });
-
-        languages = await db(`${SCHEMA_MIDWIFERY}.MIDWIFERY_LANGUAGES`).select().then((rows: any) => {
-            let arrayResult = Object();
-
-            for (let row of rows) {
-                arrayResult[row['id']] = row['description'];
-            }
-
-            return arrayResult;
-        });
-
         midwiferyStatus = await db(`${SCHEMA_MIDWIFERY}.MIDWIFERY_STATUS`).select()
             .then((rows: any) => {
                 let arrayResult = Array();
@@ -345,36 +334,7 @@ midwiferyRouter.get("/show/:midwifery_id",[param("midwifery_id").isInt().notEmpt
                 return arrayResult;
         });
 
-        if(!_.isNull(midwifery.community_located)) {
-            if(communityLocations.hasOwnProperty(midwifery.community_located)){
-                midwifery.community = communityLocations[midwifery.community_located];
-            }else{
-                midwifery.community = midwifery.community_located;
-            }
-        }
-
-        if(!_.isNull(midwifery.preferred_language)) {
-            if(languages.hasOwnProperty(midwifery.preferred_language)){
-                midwifery.language = languages[midwifery.preferred_language];
-                midwifery.language = midwifery.language.charAt(0).toUpperCase() + midwifery.language.slice(1);
-            }else{
-                midwifery.language = midwifery.preferred_language;
-            }
-        }
-
-        var communities = Object();
         var contact = Object();
-
-        communities = await db(`${SCHEMA_MIDWIFERY}.MIDWIFERY_GROUPS_COMMUNITIES`).select().then((rows: any) => {
-            let arrayResult = Object();
-
-            for (let row of rows) {
-                arrayResult[row['id']] = row['description'];
-            }
-
-            return arrayResult;
-        });
-
         contact =  await db(`${SCHEMA_MIDWIFERY}.MIDWIFERY_CLINIC_CONTACT_TYPES`).select().then((rows: any) => {
             let arrayResult = Object();
             for (let row of rows) {
@@ -383,49 +343,6 @@ midwiferyRouter.get("/show/:midwifery_id",[param("midwifery_id").isInt().notEmpt
 
             return arrayResult;
         });
-
-        if(!_.isEmpty(midwifery.do_you_identify_with_one_or_more_of_these_groups_and_communitie)){
-
-            var dataString = "";
-
-            midwifery.do_you_identify_with_one_or_more_of_these_groups_and_communitie = JSON.parse(midwifery.do_you_identify_with_one_or_more_of_these_groups_and_communitie.toString());
-
-            _.forEach(midwifery.do_you_identify_with_one_or_more_of_these_groups_and_communitie.data, function(valueCommunity: any) {
-                if(!isNaN(valueCommunity) && communities.hasOwnProperty(valueCommunity)) {
-                    dataString += communities[valueCommunity]+",";
-                }else{
-                    dataString += valueCommunity+",";
-                }
-            });
-
-            if(dataString.substr(-1) == ","){
-                dataString = dataString.slice(0, -1);
-            }
-
-            midwifery.do_you_identify_with_one_or_more_of_these_groups_and_communitie = dataString.replace(/,/g, ', ');
-
-        }
-
-        if(!_.isEmpty(midwifery.how_did_you_find_out_about_the_midwifery_clinic_select_all_that)){
-
-            var dataString = "";
-            midwifery.how_did_you_find_out_about_the_midwifery_clinic_select_all_that = JSON.parse(midwifery.how_did_you_find_out_about_the_midwifery_clinic_select_all_that.toString());
-
-            _.forEach(midwifery.how_did_you_find_out_about_the_midwifery_clinic_select_all_that.data, function(valueContact: any) {
-                if(!isNaN(valueContact) && contact.hasOwnProperty(valueContact)) {
-                    dataString += contact[valueContact]+",";
-                }else{
-                    dataString += valueContact+",";
-                }
-            });
-
-            if(dataString.substr(-1) == ","){
-                dataString = dataString.slice(0, -1);
-            }
-
-            midwifery.how_did_you_find_out_about_the_midwifery_clinic_select_all_that = dataString.replace(/,/g, ', ');
-
-        }
 
         var statusMidwifery =  await db(`${SCHEMA_MIDWIFERY}.MIDWIFERY_STATUS`).where("DESCRIPTION", "Closed").select().first();
 
@@ -617,14 +534,20 @@ midwiferyRouter.post("/export", async (req: Request, res: Response) => {
         var dateFrom = req.body.params.dateFrom;
         var dateTo = req.body.params.dateTo;
         let status_request = req.body.params.status;
+
         var midwiferyOptions = Object();
         db = await helper.getOracleClient(db, DB_CONFIG_MIDWIFERY);
         let userId = req.user?.db_user.user.id || null;
-
+        var offset = req.body.params.offset;
+        var limit = req.body.params.limit;
+        var isAllData = req.body.params.isAllData;
+ 
         let query = db(`${SCHEMA_MIDWIFERY}.MIDWIFERY_SERVICES`)
         .join(`${SCHEMA_MIDWIFERY}.MIDWIFERY_STATUS`, 'MIDWIFERY_SERVICES.STATUS', '=', 'MIDWIFERY_STATUS.ID')
         .leftJoin(`${SCHEMA_MIDWIFERY}.MIDWIFERY_BIRTH_LOCATIONS`, 'MIDWIFERY_SERVICES.WHERE_TO_GIVE_BIRTH', 'MIDWIFERY_BIRTH_LOCATIONS.ID')
         .leftJoin(`${SCHEMA_MIDWIFERY}.MIDWIFERY_PREFERRED_CONTACT_TYPES`, 'MIDWIFERY_SERVICES.PREFER_TO_BE_CONTACTED', 'MIDWIFERY_PREFERRED_CONTACT_TYPES.ID')
+        .leftJoin(`${SCHEMA_MIDWIFERY}.MIDWIFERY_COMMUNITY_LOCATIONS`, 'MIDWIFERY_SERVICES.COMMUNITY_LOCATED', 'MIDWIFERY_COMMUNITY_LOCATIONS.ID')
+        .leftJoin(`${SCHEMA_MIDWIFERY}.MIDWIFERY_LANGUAGES`, 'MIDWIFERY_SERVICES.PREFERRED_LANGUAGE', 'MIDWIFERY_LANGUAGES.ID')
         .select('MIDWIFERY_SERVICES.ID',
                 'MIDWIFERY_SERVICES.CONFIRMATION_NUMBER',
                 'MIDWIFERY_SERVICES.STATUS',
@@ -633,8 +556,8 @@ midwiferyRouter.post("/export", async (req: Request, res: Response) => {
                 'MIDWIFERY_SERVICES.PREFERRED_NAME',
                 'MIDWIFERY_SERVICES.PRONOUNS',
                 'MIDWIFERY_SERVICES.YUKON_HEALTH_INSURANCE',
-                'MIDWIFERY_SERVICES.COMMUNITY_LOCATED',
-                'MIDWIFERY_SERVICES.PREFERRED_LANGUAGE',
+                'MIDWIFERY_COMMUNITY_LOCATIONS.DESCRIPTION AS COMMUNITY_LOCATED',
+                'MIDWIFERY_LANGUAGES.DESCRIPTION AS PREFERRED_LANGUAGE',
                 'MIDWIFERY_SERVICES.NEED_INTERPRETATION',
                 'MIDWIFERY_SERVICES.PREFERRED_PHONE',
                 'MIDWIFERY_SERVICES.PREFERRED_EMAIL',
@@ -656,8 +579,9 @@ midwiferyRouter.post("/export", async (req: Request, res: Response) => {
                 'MIDWIFERY_SERVICES.PHYSICIAN_S_NAME',
                 'MIDWIFERY_SERVICES.MAJOR_MEDICAL_CONDITIONS',
                 'MIDWIFERY_SERVICES.PROVIDE_DETAILS3',
-                'MIDWIFERY_SERVICES.DO_YOU_IDENTIFY_WITH_ONE_OR_MORE_OF_THESE_GROUPS_AND_COMMUNITIE',
-                'MIDWIFERY_SERVICES.HOW_DID_YOU_FIND_OUT_ABOUT_THE_MIDWIFERY_CLINIC_SELECT_ALL_THAT',
+                 db.raw(`GENERAL.process_blob_value(MIDWIFERY_SERVICES.DO_YOU_IDENTIFY_WITH_ONE_OR_MORE_OF_THESE_GROUPS_AND_COMMUNITIE, '${SCHEMA_MIDWIFERY}.MIDWIFERY_GROUPS_COMMUNITIES') AS DO_YOU_IDENTIFY_WITH_ONE_OR_MORE_OF_THESE_GROUPS_AND_COMMUNITIE,
+                        GENERAL.process_blob_value(MIDWIFERY_SERVICES.HOW_DID_YOU_FIND_OUT_ABOUT_THE_MIDWIFERY_CLINIC_SELECT_ALL_THAT, '${SCHEMA_MIDWIFERY}.MIDWIFERY_CLINIC_CONTACT_TYPES') AS HOW_DID_YOU_FIND_OUT_ABOUT_THE_MIDWIFERY_CLINIC_SELECT_ALL_THAT
+                `),
                 'MIDWIFERY_BIRTH_LOCATIONS.DESCRIPTION AS BIRTH_LOCATIONS',
                 'MIDWIFERY_PREFERRED_CONTACT_TYPES.DESCRIPTION AS PREFERRED_CONTACT',
             db.raw("TO_CHAR(MIDWIFERY_SERVICES.DATE_OF_BIRTH, 'YYYY-MM-DD') AS DATE_OF_BIRTH, "+
@@ -676,14 +600,36 @@ midwiferyRouter.post("/export", async (req: Request, res: Response) => {
             [dateFrom, dateTo]));
         }
 
-        if (status_request &&  query) {
+        if (status_request && status_request.length > 0 &&  query) {
             query.whereIn("MIDWIFERY_SERVICES.STATUS", status_request);
         }
+
+        if (isAllData) {
+            query = query.orderBy('MIDWIFERY_SERVICES.ID', 'ASC');
+            query = query.offset(offset).limit(limit);
+        }
+
 
         const midwifery = await query;
 
         db = await helper.getOracleClient(db, DB_CONFIG_MIDWIFERY);
-        midwiferyOptions = await db(`${SCHEMA_MIDWIFERY}.MIDWIFERY_OPTIONS`).select().then((rows: any) => {
+
+        interface MidwiferyOption {
+            id: number;
+            description: string;
+        }
+
+        interface Community {
+            id: number;
+            description: string;
+        }
+
+        interface ContactType {
+            id: number;
+            description: string;
+        }
+
+        midwiferyOptions = await db(`${SCHEMA_MIDWIFERY}.MIDWIFERY_OPTIONS`).select().then((rows: MidwiferyOption[]) => {
             let arrayResult = Object();
 
             for (let row of rows) {
@@ -698,7 +644,7 @@ midwiferyRouter.post("/export", async (req: Request, res: Response) => {
         var communityLocations = Object();
         var languages = Object();
 
-        communities = await db(`${SCHEMA_MIDWIFERY}.MIDWIFERY_GROUPS_COMMUNITIES`).select().then((rows: any) => {
+        communities = await db(`${SCHEMA_MIDWIFERY}.MIDWIFERY_GROUPS_COMMUNITIES`).select().then((rows: Community[]) => {
             let arrayResult = Object();
 
             for (let row of rows) {
@@ -708,28 +654,8 @@ midwiferyRouter.post("/export", async (req: Request, res: Response) => {
             return arrayResult;
         });
 
-        contact =  await db(`${SCHEMA_MIDWIFERY}.MIDWIFERY_CLINIC_CONTACT_TYPES`).select().then((rows: any) => {
+        contact =  await db(`${SCHEMA_MIDWIFERY}.MIDWIFERY_CLINIC_CONTACT_TYPES`).select().then((rows: ContactType[]) => {
             let arrayResult = Object();
-            for (let row of rows) {
-                arrayResult[row['id']] = row['description'];
-            }
-
-            return arrayResult;
-        });
-
-        communityLocations = await db(`${SCHEMA_MIDWIFERY}.MIDWIFERY_COMMUNITY_LOCATIONS`).select().then((rows: any) => {
-            let arrayResult = Object();
-
-            for (let row of rows) {
-                arrayResult[row['id']] = row['description'];
-            }
-
-            return arrayResult;
-        });
-
-        languages = await db(`${SCHEMA_MIDWIFERY}.MIDWIFERY_LANGUAGES`).select().then((rows: any) => {
-            let arrayResult = Object();
-
             for (let row of rows) {
                 arrayResult[row['id']] = row['description'];
             }
@@ -738,22 +664,6 @@ midwiferyRouter.post("/export", async (req: Request, res: Response) => {
         });
 
         midwifery.forEach(function (value: any) {
-
-            if(!_.isNull(value.community_located)) {
-                if(communityLocations.hasOwnProperty(value.community_located)){
-                    value.community = communityLocations[value.community_located];
-                }else{
-                    value.community = value.community_located;
-                }
-            }
-
-            if(!_.isNull(value.preferred_language)) {
-                if(languages.hasOwnProperty(value.preferred_language)){
-                    value.language = languages[value.preferred_language];
-                }else{
-                    value.language = value.preferred_language;
-                }
-            }
 
             if(!value.preferred_name || value.preferred_name == "") {
                 value.preferred_name = value.preferred_name;
@@ -801,48 +711,6 @@ midwiferyRouter.post("/export", async (req: Request, res: Response) => {
 
             if(!_.isNull(value.major_medical_conditions)){
                 value.major_medical_conditions = midwiferyOptions[value.major_medical_conditions];
-            }
-
-            if(!_.isEmpty(value.do_you_identify_with_one_or_more_of_these_groups_and_communitie)){
-
-                var dataString = "";
-                value.do_you_identify_with_one_or_more_of_these_groups_and_communitie = JSON.parse(value.do_you_identify_with_one_or_more_of_these_groups_and_communitie.toString());
-
-                _.forEach(value.do_you_identify_with_one_or_more_of_these_groups_and_communitie.data, function(valueCommunity: any) {
-                    if(!isNaN(valueCommunity) && communities.hasOwnProperty(valueCommunity)) {
-                        dataString += communities[valueCommunity]+",";
-                    }else{
-                        dataString += valueCommunity+",";
-                    }
-                });
-
-                if(dataString.substr(-1) == ","){
-                    dataString = dataString.slice(0, -1);
-                }
-
-                value.do_you_identify_with_one_or_more_of_these_groups_and_communitie = dataString.replace(/,/g, ', ');
-
-            }
-
-            if(!_.isEmpty(value.how_did_you_find_out_about_the_midwifery_clinic_select_all_that)){
-
-                var dataString = "";
-                value.how_did_you_find_out_about_the_midwifery_clinic_select_all_that = JSON.parse(value.how_did_you_find_out_about_the_midwifery_clinic_select_all_that.toString());
-
-                _.forEach(value.how_did_you_find_out_about_the_midwifery_clinic_select_all_that.data, function(valueContact: any) {
-                    if(!isNaN(valueContact) && contact.hasOwnProperty(valueContact)) {
-                        dataString += contact[valueContact]+",";
-                    }else{
-                        dataString += valueContact+",";
-                    }
-                });
-
-                if(dataString.substr(-1) == ","){
-                    dataString = dataString.slice(0, -1);
-                }
-
-                value.how_did_you_find_out_about_the_midwifery_clinic_select_all_that = dataString.replace(/,/g, ', ');
-
             }
 
             delete value.id;
@@ -1091,6 +959,8 @@ midwiferyRouter.get("/duplicates/details/:duplicate_id",[param("duplicate_id").i
         midwiferyEntries = await db(`${SCHEMA_MIDWIFERY}.MIDWIFERY_SERVICES`)
         .leftJoin(`${SCHEMA_MIDWIFERY}.MIDWIFERY_BIRTH_LOCATIONS`, 'MIDWIFERY_SERVICES.WHERE_TO_GIVE_BIRTH', 'MIDWIFERY_BIRTH_LOCATIONS.ID')
         .leftJoin(`${SCHEMA_MIDWIFERY}.MIDWIFERY_PREFERRED_CONTACT_TYPES`, 'MIDWIFERY_SERVICES.PREFER_TO_BE_CONTACTED', 'MIDWIFERY_PREFERRED_CONTACT_TYPES.ID')
+        .leftJoin(`${SCHEMA_MIDWIFERY}.MIDWIFERY_COMMUNITY_LOCATIONS`, 'MIDWIFERY_SERVICES.COMMUNITY_LOCATED', 'MIDWIFERY_COMMUNITY_LOCATIONS.ID')
+        .leftJoin(`${SCHEMA_MIDWIFERY}.MIDWIFERY_LANGUAGES`, 'MIDWIFERY_SERVICES.PREFERRED_LANGUAGE', 'MIDWIFERY_LANGUAGES.ID')
         .select('MIDWIFERY_SERVICES.ID',
                 'MIDWIFERY_SERVICES.CONFIRMATION_NUMBER',
                 'MIDWIFERY_SERVICES.STATUS',
@@ -1099,8 +969,8 @@ midwiferyRouter.get("/duplicates/details/:duplicate_id",[param("duplicate_id").i
                 'MIDWIFERY_SERVICES.PREFERRED_NAME',
                 'MIDWIFERY_SERVICES.PRONOUNS',
                 'MIDWIFERY_SERVICES.YUKON_HEALTH_INSURANCE',
-                'MIDWIFERY_SERVICES.COMMUNITY_LOCATED',
-                'MIDWIFERY_SERVICES.PREFERRED_LANGUAGE',
+                'MIDWIFERY_COMMUNITY_LOCATIONS.DESCRIPTION AS COMMUNITY_LOCATED',
+                'MIDWIFERY_LANGUAGES.DESCRIPTION AS PREFERRED_LANGUAGE',
                 'MIDWIFERY_SERVICES.NEED_INTERPRETATION',
                 'MIDWIFERY_SERVICES.PREFERRED_PHONE',
                 'MIDWIFERY_SERVICES.PREFERRED_EMAIL',
@@ -1122,9 +992,9 @@ midwiferyRouter.get("/duplicates/details/:duplicate_id",[param("duplicate_id").i
                 'MIDWIFERY_SERVICES.PHYSICIAN_S_NAME',
                 'MIDWIFERY_SERVICES.MAJOR_MEDICAL_CONDITIONS',
                 'MIDWIFERY_SERVICES.PROVIDE_DETAILS3',
-                'MIDWIFERY_SERVICES.DO_YOU_IDENTIFY_WITH_ONE_OR_MORE_OF_THESE_GROUPS_AND_COMMUNITIE',
-                'MIDWIFERY_SERVICES.HOW_DID_YOU_FIND_OUT_ABOUT_THE_MIDWIFERY_CLINIC_SELECT_ALL_THAT',
-                'MIDWIFERY_PREFERRED_CONTACT_TYPES.DESCRIPTION as preferred_contact',
+                 db.raw(`GENERAL.process_blob_value(MIDWIFERY_SERVICES.DO_YOU_IDENTIFY_WITH_ONE_OR_MORE_OF_THESE_GROUPS_AND_COMMUNITIE, '${SCHEMA_MIDWIFERY}.MIDWIFERY_GROUPS_COMMUNITIES') AS DO_YOU_IDENTIFY_WITH_ONE_OR_MORE_OF_THESE_GROUPS_AND_COMMUNITIE,
+                    GENERAL.process_blob_value(MIDWIFERY_SERVICES.HOW_DID_YOU_FIND_OUT_ABOUT_THE_MIDWIFERY_CLINIC_SELECT_ALL_THAT, '${SCHEMA_MIDWIFERY}.MIDWIFERY_CLINIC_CONTACT_TYPES') AS HOW_DID_YOU_FIND_OUT_ABOUT_THE_MIDWIFERY_CLINIC_SELECT_ALL_THAT
+                `),
                 'MIDWIFERY_BIRTH_LOCATIONS.DESCRIPTION AS BIRTH_LOCATIONS',
                 'MIDWIFERY_PREFERRED_CONTACT_TYPES.DESCRIPTION AS PREFERRED_CONTACT',
                 db.raw("TO_CHAR(MIDWIFERY_SERVICES.DATE_OF_BIRTH, 'YYYY-MM-DD') AS DATE_OF_BIRTH, "+
@@ -1134,7 +1004,22 @@ midwiferyRouter.get("/duplicates/details/:duplicate_id",[param("duplicate_id").i
         .whereIn("MIDWIFERY_SERVICES.ID", [duplicateEntry.original, duplicateEntry.duplicated])
         .whereNot('MIDWIFERY_SERVICES.STATUS', '4');
 
-        communities = await db(`${SCHEMA_MIDWIFERY}.MIDWIFERY_GROUPS_COMMUNITIES`).select().then((rows: any) => {
+        interface MidwiferyOption {
+            id: number;
+            description: string;
+        }
+
+        interface Community {
+            id: number;
+            description: string;
+        }
+
+        interface ContactType {
+            id: number;
+            description: string;
+        }
+
+        communities = await db(`${SCHEMA_MIDWIFERY}.MIDWIFERY_GROUPS_COMMUNITIES`).select().then((rows: Community[]) => {
             let arrayResult = Object();
 
             for (let row of rows) {
@@ -1144,7 +1029,7 @@ midwiferyRouter.get("/duplicates/details/:duplicate_id",[param("duplicate_id").i
             return arrayResult;
         });
 
-        contact =  await db(`${SCHEMA_MIDWIFERY}.MIDWIFERY_CLINIC_CONTACT_TYPES`).select().then((rows: any) => {
+        contact =  await db(`${SCHEMA_MIDWIFERY}.MIDWIFERY_CLINIC_CONTACT_TYPES`).select().then((rows: ContactType[]) => {
             let arrayResult = Object();
             for (let row of rows) {
                 arrayResult[row['id']] = row['description'];
@@ -1153,27 +1038,7 @@ midwiferyRouter.get("/duplicates/details/:duplicate_id",[param("duplicate_id").i
             return arrayResult;
         });
 
-        midwiferyOptions = await db(`${SCHEMA_MIDWIFERY}.MIDWIFERY_OPTIONS`).select().then((rows: any) => {
-            let arrayResult = Object();
-
-            for (let row of rows) {
-                arrayResult[row['id']] = row['description'];
-            }
-
-            return arrayResult;
-        });
-
-        communityLocations = await db(`${SCHEMA_MIDWIFERY}.MIDWIFERY_COMMUNITY_LOCATIONS`).select().then((rows: any) => {
-            let arrayResult = Object();
-
-            for (let row of rows) {
-                arrayResult[row['id']] = row['description'];
-            }
-
-            return arrayResult;
-        });
-
-        languages = await db(`${SCHEMA_MIDWIFERY}.MIDWIFERY_LANGUAGES`).select().then((rows: any) => {
+        midwiferyOptions = await db(`${SCHEMA_MIDWIFERY}.MIDWIFERY_OPTIONS`).select().then((rows: MidwiferyOption[]) => {
             let arrayResult = Object();
 
             for (let row of rows) {
@@ -1185,63 +1050,6 @@ midwiferyRouter.get("/duplicates/details/:duplicate_id",[param("duplicate_id").i
 
         if(midwiferyEntries){
             midwiferyEntries.forEach(function (value: any) {
-
-                if(!_.isNull(value.community_located)) {
-                    if(communityLocations.hasOwnProperty(value.community_located)){
-                        value.community = communityLocations[value.community_located];
-                    }else{
-                        value.community = value.community_located;
-                    }
-                }
-
-                if(!_.isNull(value.preferred_language)) {
-                    if(languages.hasOwnProperty(value.preferred_language)){
-                        value.language = languages[value.preferred_language];
-                    }else{
-                        value.language = value.preferred_language;
-                    }
-                }
-
-                if(!_.isEmpty(value.do_you_identify_with_one_or_more_of_these_groups_and_communitie)){
-
-                    var dataString = "";
-                    value.do_you_identify_with_one_or_more_of_these_groups_and_communitie = JSON.parse(value.do_you_identify_with_one_or_more_of_these_groups_and_communitie.toString());
-
-                    _.forEach(value.do_you_identify_with_one_or_more_of_these_groups_and_communitie.data, function(valueCommunity: any) {
-                        if(!isNaN(valueCommunity) && communities.hasOwnProperty(valueCommunity)) {
-                            dataString += communities[valueCommunity]+",";
-                        }else{
-                            dataString += valueCommunity+",";
-                        }
-                    });
-
-                    if(dataString.substr(-1) == ","){
-                        dataString = dataString.slice(0, -1);
-                    }
-
-                    value.do_you_identify_with_one_or_more_of_these_groups_and_communitie = dataString.replace(/,/g, ', ');
-
-                }
-
-                if(!_.isEmpty(value.how_did_you_find_out_about_the_midwifery_clinic_select_all_that)){
-                    var dataString = "";
-                    value.how_did_you_find_out_about_the_midwifery_clinic_select_all_that = JSON.parse(value.how_did_you_find_out_about_the_midwifery_clinic_select_all_that.toString());
-
-                    _.forEach(value.how_did_you_find_out_about_the_midwifery_clinic_select_all_that.data, function(valueContact: any) {
-                        if(!isNaN(valueContact) && contact.hasOwnProperty(valueContact)) {
-                            dataString += contact[valueContact]+",";
-                        }else{
-                            dataString += valueContact+",";
-                        }
-                    });
-
-                    if(dataString.substr(-1) == ","){
-                        dataString = dataString.slice(0, -1);
-                    }
-
-                    value.how_did_you_find_out_about_the_midwifery_clinic_select_all_that = dataString.replace(/,/g, ', ');
-
-                }
 
                 if(value.id == duplicateEntry.original){
                     midwifery = value;
