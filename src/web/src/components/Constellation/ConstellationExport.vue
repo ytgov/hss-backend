@@ -177,7 +177,7 @@ export default {
             initialItemsPerPage: 10,
             totalItems: 0,
             itemsPerPage: [10, 15, 50, 100, -1],
-            exportMaxSize: 250,
+            exportMaxSize: 800,
             allItems: 0,
             isAllData: false,
             initialFetch: 1,
@@ -355,7 +355,7 @@ export default {
             if(this.selected.length > 0 && !this.isAllData){
                 totalBatches = Math.ceil(this.selected.length / this.exportMaxSize);
             }else if(this.selected.length == 0 && !this.isAllData){
-                totalBatches = Math.ceil(this.allItems / this.exportMaxSize);
+                totalBatches = Math.ceil(this.totalItems / this.exportMaxSize);
                 this.isAllData = true;
             }else if(this.selected.length > 0 && this.isAllData){
                 totalBatches = Math.ceil(this.totalItems / this.exportMaxSize);
@@ -363,8 +363,7 @@ export default {
 
             let allConstellationData = [];
             let allFamilyMembersData = [];
-
-            const fetchBatchData = async (start, end) => {
+            const fetchBatchData =  async (start, end, selectedStatus, date, dateEnd, exportMaxSize, isAllData) => {
                 let idArray = [];
 
                 if (!this.isAllData) {
@@ -377,47 +376,39 @@ export default {
                     const response = await axios.post(CONSTELLATION_EXPORT_FILE_URL, {
                         params: {
                             requests: idArray,
-                            status: this.actionSelected,
-                            dateFrom: this.date,
-                            dateTo: this.dateEnd,
+                            status: selectedStatus,
+                            dateFrom: date,
+                            dateTo: dateEnd,
                             offset: start,
-                            limit: this.exportMaxSize,
-                            isAllData: this.isAllData
+                            limit: exportMaxSize,
+                            isAllData: isAllData
                         }
                     });
+                    
                     return response.data;
                 } catch (error) {
                     console.error(error);
                     throw error;
                 }
             };
-
             const processBatches = async () => {
-                const batchPromises = [];
-
                 for (let batch = 0; batch < totalBatches; batch++) {
-					const start = batch * this.exportMaxSize;
-					const end = Math.min(start + this.exportMaxSize, this.isAllData ? this.totalItems : this.selected.length);
-
-					batchPromises.push(fetchBatchData(start, end));
-				}
-
-                try {
-                    const results = await Promise.all(batchPromises);
-
-                    results.forEach((data) => {
-                        allConstellationData = allConstellationData.concat(data.dataConstellation);
-                        allFamilyMembersData = allFamilyMembersData.concat(data.dataFamilyMembers);
-                    });
-
-                    this.generateExcel(allConstellationData, allFamilyMembersData);
-                } catch (error) {
-                    console.error('Error processing Constellation Export batches:', error);
-                } finally {
-                    this.loadingExport = false;
-                    this.isAllData = false;
+                    const start = batch * this.exportMaxSize;
+                    const end = Math.min(start + this.exportMaxSize, this.isAllData ? this.totalItems : this.selected.length);
+                    try {
+                        let response = await fetchBatchData(start, end,this.selectedStatus,this.date,this.dateEnd,this.exportMaxSize,this.isAllData);
+                        allConstellationData.push(...response.dataConstellation);
+                        allFamilyMembersData.push(...response.dataFamilyMembers);
+                    } catch (error) {
+                        console.error('Error en batch:', batch, error);
+                    }
                 }
+
+                this.generateExcel(allConstellationData, allFamilyMembersData);
+                this.loadingExport = false;
+                this.isAllData = false;
             };
+
 
             processBatches();
         },
@@ -425,7 +416,6 @@ export default {
             const ws = utils.json_to_sheet(allConstellationData);
             const wb = utils.book_new();
             utils.book_append_sheet(wb, ws, "Constellation Requests");
-
             utils.sheet_add_aoa(
                 ws,
                 [
@@ -490,6 +480,7 @@ export default {
             );
 
             writeFileXLSX(wb, "Constellation_request.xlsx");
+            this.isAllData = false;
         }
     },
 };

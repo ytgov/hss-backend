@@ -93,13 +93,17 @@ midwiferyRouter.post("/", async (req: Request, res: Response) => {
         var midwiferyOptions = Object();
         db = await helper.getOracleClient(db, DB_CONFIG_MIDWIFERY);
 
+        const allowedSortOrders = ["ASC", "DESC"];
+        const allowedSortFields = ["ID", "PREFERRED_NAME", "PREFERRED_PHONE", "FIRST_PREGNANCY", "DUE_DATE", "BIRTH_LOCATIONS", "MEDICAL_CONCERNS", "MAJOR_MEDICAL_CONDITIONS", "DO_YOU_IDENTIFY_WITH_ONE_OR_MORE_OF_THESE_GROUPS_AND_COMMUNITIE","CREATED_AT", "STATUS_DESCRIPTION" ];
+
         const page = parseInt(req.body.params.page as string) || 1;
         const pageSize = parseInt(req.body.params.pageSize as string) || 10;
         const offset = (page - 1) * pageSize;
         const sortBy = req.body.params.sortBy;
         const sortOrder = req.body.params.sortOrder;
         const initialFetch = req.body.params.initialFetch;
-
+        const safeSortOrder = allowedSortOrders.includes(sortOrder?.toUpperCase()) ? sortOrder.toUpperCase() : "ASC";
+        const safeSortBy = allowedSortFields.includes(sortBy?.toUpperCase()) ? sortBy.toUpperCase() : "ID";
         let query = db(`${SCHEMA_MIDWIFERY}.MIDWIFERY_SERVICES`)
         .join(`${SCHEMA_MIDWIFERY}.MIDWIFERY_STATUS`, 'MIDWIFERY_SERVICES.STATUS', '=', 'MIDWIFERY_STATUS.ID')
         .leftJoin(`${SCHEMA_MIDWIFERY}.MIDWIFERY_BIRTH_LOCATIONS`, 'MIDWIFERY_SERVICES.WHERE_TO_GIVE_BIRTH', '=', 'MIDWIFERY_BIRTH_LOCATIONS.ID')
@@ -128,21 +132,22 @@ midwiferyRouter.post("/", async (req: Request, res: Response) => {
             query.where(db.raw("TO_CHAR(MIDWIFERY_SERVICES.CREATED_AT, 'YYYY-MM-DD') >=  ? AND TO_CHAR(MIDWIFERY_SERVICES.CREATED_AT, 'YYYY-MM-DD') <= ?",
                 [dateFrom, dateTo]));
         }
-
-        if (status_request) {
+        if (status_request && status_request.length > 0) {
             query.whereIn("MIDWIFERY_SERVICES.STATUS", status_request);
         }
-
-        if (sortBy) {
-            switch (sortBy) {
-                case "birth_locations":
-                    query = query.orderBy(`MIDWIFERY_SERVICES.WHERE_TO_GIVE_BIRTH`, sortOrder);
+        if (safeSortBy) {
+            switch (safeSortBy) {
+                case "BIRTH_LOCATIONS":
+                    query = query.orderBy(`MIDWIFERY_SERVICES.WHERE_TO_GIVE_BIRTH`, safeSortOrder);
                     break;
+                case "STATUS_DESCRIPTION":
+                        query = query.orderBy(`MIDWIFERY_STATUS.DESCRIPTION`, safeSortOrder);
+                        break;
                 case "do_you_identify_with_one_or_more_of_these_groups_and_communitie":
-                 query = query.orderByRaw(`GENERAL.process_blob_value(MIDWIFERY_SERVICES.DO_YOU_IDENTIFY_WITH_ONE_OR_MORE_OF_THESE_GROUPS_AND_COMMUNITIE, '${SCHEMA_MIDWIFERY}.MIDWIFERY_GROUPS_COMMUNITIES')  ${sortOrder}`);
+                 query = query.orderByRaw(`GENERAL.process_blob_value(MIDWIFERY_SERVICES.DO_YOU_IDENTIFY_WITH_ONE_OR_MORE_OF_THESE_GROUPS_AND_COMMUNITIE, '${SCHEMA_MIDWIFERY}.MIDWIFERY_GROUPS_COMMUNITIES')  ${safeSortOrder}`);
                     break;
                 default:
-                    query = query.orderBy(`MIDWIFERY_SERVICES.${sortBy.toUpperCase()}`, sortOrder);
+                    query = query.orderBy(`MIDWIFERY_SERVICES.${safeSortBy.toUpperCase()}`, safeSortOrder);
                     break;
             }
         } else {
@@ -529,6 +534,7 @@ midwiferyRouter.post("/export", async (req: Request, res: Response) => {
         var dateFrom = req.body.params.dateFrom;
         var dateTo = req.body.params.dateTo;
         let status_request = req.body.params.status;
+
         var midwiferyOptions = Object();
         db = await helper.getOracleClient(db, DB_CONFIG_MIDWIFERY);
         let userId = req.user?.db_user.user.id || null;
@@ -594,7 +600,7 @@ midwiferyRouter.post("/export", async (req: Request, res: Response) => {
             [dateFrom, dateTo]));
         }
 
-        if (status_request &&  query) {
+        if (status_request && status_request.length > 0 &&  query) {
             query.whereIn("MIDWIFERY_SERVICES.STATUS", status_request);
         }
 
