@@ -471,23 +471,23 @@ dentalRouter.post("/export/", async (req: Request, res: Response) => {
         let userId = req.user?.db_user.user.id || null;
 
         let query = db(`${SCHEMA_DENTAL}.DENTAL_SERVICE_SUBMISSIONS_DETAILS`)
-    .leftJoin(`${SCHEMA_DENTAL}.DENTAL_SERVICE_INTERNAL_FIELDS`, 
-        "DENTAL_SERVICE_SUBMISSIONS_DETAILS.ID", 
-        "DENTAL_SERVICE_INTERNAL_FIELDS.DENTAL_SERVICE_ID"
-    )
-    .select(
-        "DENTAL_SERVICE_SUBMISSIONS_DETAILS.*",
-        "DENTAL_SERVICE_INTERNAL_FIELDS.PROGRAM_YEAR as program_year",
-        db.raw(`CASE
-                WHEN COALESCE(DENTAL_SERVICE_INTERNAL_FIELDS.INCOME_AMOUNT, 0) = TRUNC(COALESCE(DENTAL_SERVICE_INTERNAL_FIELDS.INCOME_AMOUNT, 0))
-                THEN TO_CHAR(COALESCE(DENTAL_SERVICE_INTERNAL_FIELDS.INCOME_AMOUNT, 0), 'FM9999999')
-                ELSE TO_CHAR(COALESCE(DENTAL_SERVICE_INTERNAL_FIELDS.INCOME_AMOUNT, 0), 'FM9999999.99')
-                END AS income_amount`),
-        db.raw("COALESCE(TO_CHAR(DENTAL_SERVICE_INTERNAL_FIELDS.DATE_ENROLLMENT, 'YYYY-MM-DD'), '') AS date_enrollment"),
-        "DENTAL_SERVICE_INTERNAL_FIELDS.POLICY_NUMBER as policy_number",
-        db.raw("COALESCE(TO_CHAR(DENTAL_SERVICE_INTERNAL_FIELDS.CREATED_AT, 'YYYY-MM-DD HH24:MI:SS'), '') AS created_at_if")
-    )
-    .where("DENTAL_SERVICE_SUBMISSIONS_DETAILS.STATUS", "<>", 4);
+        .leftJoin(`${SCHEMA_DENTAL}.DENTAL_SERVICE_INTERNAL_FIELDS`, 
+            "DENTAL_SERVICE_SUBMISSIONS_DETAILS.ID", 
+            "DENTAL_SERVICE_INTERNAL_FIELDS.DENTAL_SERVICE_ID"
+        )
+        .select(
+            "DENTAL_SERVICE_SUBMISSIONS_DETAILS.*",
+            "DENTAL_SERVICE_INTERNAL_FIELDS.PROGRAM_YEAR as program_year",
+            db.raw(`CASE
+                    WHEN COALESCE(DENTAL_SERVICE_INTERNAL_FIELDS.INCOME_AMOUNT, 0) = TRUNC(COALESCE(DENTAL_SERVICE_INTERNAL_FIELDS.INCOME_AMOUNT, 0))
+                    THEN TO_CHAR(COALESCE(DENTAL_SERVICE_INTERNAL_FIELDS.INCOME_AMOUNT, 0), 'FM9999999')
+                    ELSE TO_CHAR(COALESCE(DENTAL_SERVICE_INTERNAL_FIELDS.INCOME_AMOUNT, 0), 'FM9999999.99')
+                    END AS income_amount`),
+            db.raw("COALESCE(TO_CHAR(DENTAL_SERVICE_INTERNAL_FIELDS.DATE_ENROLLMENT, 'YYYY-MM-DD'), '') AS date_enrollment"),
+            "DENTAL_SERVICE_INTERNAL_FIELDS.POLICY_NUMBER as policy_number",
+            db.raw("COALESCE(TO_CHAR(DENTAL_SERVICE_INTERNAL_FIELDS.CREATED_AT, 'YYYY-MM-DD HH24:MI:SS'), '') AS created_at_if")
+        )
+        .where("DENTAL_SERVICE_SUBMISSIONS_DETAILS.STATUS", "<>", 4);
 
         if (requests.length > 0 && !isAllData) {
             query.whereIn("DENTAL_SERVICE_SUBMISSIONS_DETAILS.ID", requests);
@@ -515,11 +515,8 @@ dentalRouter.post("/export/", async (req: Request, res: Response) => {
 
         dentalService.forEach(value => {
             value.date_of_birth = value.date_of_birth || "N/A";
-            //value.file_name = value.file_name ? `${value.file_name}.${value.file_type}` : "";
             delete value.rownum_;
             idSubmissions.push(value.id);
-            // ['id', 'status', 'are_you_eligible_for_the_pharmacare_and_extended_health_care_ben', 
-            //  'file_id', 'file_type', 'file_size'].forEach(key => delete value[key]);
             ['id', 'status', 'are_you_eligible_for_the_pharmacare_and_extended_health_care_ben'].forEach(key => delete value[key]);
         });
         

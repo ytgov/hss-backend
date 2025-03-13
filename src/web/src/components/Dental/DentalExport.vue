@@ -415,70 +415,70 @@ export default {
 					}, 100);
 				});
 			}
-					let totalBatches = 0;
+			let totalBatches = 0;
 
-					if(this.selected.length > 0 && !this.isAllData){
-						totalBatches = Math.ceil(this.selected.length / this.exportMaxSize);
-					}else if(this.selected.length == 0 && !this.isAllData){
-						totalBatches = Math.ceil(this.totalItems / this.exportMaxSize);
-						this.isAllData = true;
-					}else{
-						totalBatches = Math.ceil(this.totalItems / this.exportMaxSize);
+			if(this.selected.length > 0 && !this.isAllData){
+				totalBatches = Math.ceil(this.selected.length / this.exportMaxSize);
+			}else if(this.selected.length == 0 && !this.isAllData){
+				totalBatches = Math.ceil(this.totalItems / this.exportMaxSize);
+				this.isAllData = true;
+			}else{
+				totalBatches = Math.ceil(this.totalItems / this.exportMaxSize);
+			}
+
+			let dentalData = [];
+			let dependantsData = [];
+
+			const fetchBatchData =  async (start, end, selectedStatus, date, dateEnd, exportMaxSize, isAllData, dateYear) => {
+				let idArray = [];
+
+				if (!this.isAllData) {
+					idArray = this.selected.slice(start, end).map(e => e.id);
+				} else {
+					idArray = []; // Send an empty array when all data is to be exported
+				}
+
+				try {
+					const response = await axios.post(DENTAL_EXPORT_FILE_URL, {
+						params: {
+							status: selectedStatus,
+							requests: idArray,
+							dateFrom: date,
+							dateTo: dateEnd,
+							dateYear: dateYear,
+							offset: start, // Server should handle offset for all data
+							limit: exportMaxSize,
+							isAllData: isAllData,
+						}
+					});
+
+					return response.data;
+				} catch (error) {
+					console.error(error);
+					throw error;
+				}
+			};
+
+			const processBatches = async () => {
+				for (let batch = 0; batch < totalBatches; batch++) {
+					const start = batch * this.exportMaxSize;
+					const end = Math.min(start + this.exportMaxSize, this.isAllData ? this.totalItems : this.selected.length);
+					try {
+						let response = await fetchBatchData(start, end,this.selectedStatus,this.date,this.dateEnd,this.exportMaxSize,this.isAllData, this.dateYear);
+	
+						dentalData.push(...response.dataDental);
+						dependantsData.push(...response.dataDependents);
+					} catch (error) {
+						console.error('Error en batch:', batch, error);
 					}
+				}
+				this.generateExcel(dentalData, dependantsData);
+				this.loadingExport = false;
+				this.isAllData = false;
 
-					let dentalData = [];
-					let dependantsData = [];
+			};
 
-					const fetchBatchData =  async (start, end, selectedStatus, date, dateEnd, exportMaxSize, isAllData, dateYear) => {
-						let idArray = [];
-
-						if (!this.isAllData) {
-							idArray = this.selected.slice(start, end).map(e => e.id);
-						} else {
-							idArray = []; // Send an empty array when all data is to be exported
-						}
-
-						try {
-							const response = await axios.post(DENTAL_EXPORT_FILE_URL, {
-								params: {
-									status: selectedStatus,
-									requests: idArray,
-									dateFrom: date,
-									dateTo: dateEnd,
-									dateYear: dateYear,
-									offset: start, // Server should handle offset for all data
-									limit: exportMaxSize,
-									isAllData: isAllData,
-								}
-							});
-
-							return response.data;
-						} catch (error) {
-							console.error(error);
-							throw error;
-						}
-					};
-
-					const processBatches = async () => {
-						for (let batch = 0; batch < totalBatches; batch++) {
-							const start = batch * this.exportMaxSize;
-							const end = Math.min(start + this.exportMaxSize, this.isAllData ? this.totalItems : this.selected.length);
-							try {
-								let response = await fetchBatchData(start, end,this.selectedStatus,this.date,this.dateEnd,this.exportMaxSize,this.isAllData, this.dateYear);
-			
-								dentalData.push(...response.dataDental);
-								dependantsData.push(...response.dataDependents);
-							} catch (error) {
-								console.error('Error en batch:', batch, error);
-							}
-						}
-						this.generateExcel(dentalData, dependantsData);
-						this.loadingExport = false;
-						this.isAllData = false;
-
-					};
-
-					processBatches();
+			processBatches();
 	
 		},
 		generateExcel(dentalData, dependantsData) {
