@@ -222,7 +222,6 @@ constellationRouter.get("/validateRecord/:constellationHealth_id",[param("conste
  * @return json
  */
 constellationRouter.get("/show/:constellationHealth_id", checkPermissions("constellation_view"), [param("constellationHealth_id").isInt().notEmpty()], async (req: Request, res: Response) => {
-
     try {
         var constellationHealth_id = Number(req.params.constellationHealth_id); 
         db = await helper.getOracleClient(db, DB_CONFIG_CONSTELLATION);
@@ -230,7 +229,14 @@ constellationRouter.get("/show/:constellationHealth_id", checkPermissions("const
         var constellationFamily = Object();
 
         constellationHealth = await db(`${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH`)
-            .leftJoin('GENERAL.COMMUNITY_LOCATIONS', 'CONSTELLATION_HEALTH.COMMUNITY_LOCATED',  db.raw("TO_CHAR('COMMUNITY_LOCATIONS.ID')"))      
+            .joinRaw(`
+                LEFT JOIN GENERAL.COMMUNITY_LOCATIONS
+                ON CASE 
+                        WHEN REGEXP_LIKE(CONSTELLATION_HEALTH.COMMUNITY_LOCATED, '^[0-9]+$') 
+                        THEN TO_NUMBER(CONSTELLATION_HEALTH.COMMUNITY_LOCATED) 
+                        ELSE NULL 
+                    END = COMMUNITY_LOCATIONS.ID
+            `)   
             .leftJoin(`${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH_LANGUAGE`, 'CONSTELLATION_HEALTH.LANGUAGE_PREFER_TO_RECEIVE_SERVICES', 'CONSTELLATION_HEALTH_LANGUAGE.ID')
             .leftJoin(`${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH_DEMOGRAPHICS`, 'CONSTELLATION_HEALTH.DEMOGRAPHICS_GROUPS', 'CONSTELLATION_HEALTH_DEMOGRAPHICS.ID')
             .where('CONSTELLATION_HEALTH.ID', constellationHealth_id)
@@ -251,7 +257,12 @@ constellationRouter.get("/show/:constellationHealth_id", checkPermissions("const
                     `${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH.PROVINCE`,
                     `${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH.YHCIP`,
                     `${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH.POSTAL_CODE`,
-                    db.raw('CASE WHEN COMMUNITY_LOCATIONS.DESCRIPTION IS NULL THEN CONSTELLATION_HEALTH.COMMUNITY_LOCATED ELSE COMMUNITY_LOCATIONS.DESCRIPTION END AS COMMUNITY_LOCATED'),
+                    db.raw(`
+                        COALESCE(
+                            COMMUNITY_LOCATIONS.DESCRIPTION, 
+                           CONSTELLATION_HEALTH.COMMUNITY_LOCATED
+                        ) AS COMMUNITY_LOCATED
+                    `),
                     `${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH.PREFER_TO_BE_CONTACTED`,
                     `${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH.PHONE_NUMBER`,
                     `${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH.EMAIL_ADDRESS`,
@@ -523,7 +534,14 @@ constellationRouter.post("/export/", async (req: Request, res: Response) => {
         const isAllData  = req.body.params.isAllData;
 
         let query = db(`${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH`)
-            .leftJoin('GENERAL.COMMUNITY_LOCATIONS', 'CONSTELLATION_HEALTH.COMMUNITY_LOCATED',  db.raw("TO_CHAR('COMMUNITY_LOCATIONS.ID')"))      
+            .joinRaw(`
+                LEFT JOIN GENERAL.COMMUNITY_LOCATIONS
+                ON CASE 
+                        WHEN REGEXP_LIKE(CONSTELLATION_HEALTH.COMMUNITY_LOCATED, '^[0-9]+$') 
+                        THEN TO_NUMBER(CONSTELLATION_HEALTH.COMMUNITY_LOCATED) 
+                        ELSE NULL 
+                    END = COMMUNITY_LOCATIONS.ID
+            `)
             .leftJoin(`${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH_LANGUAGE`, 'CONSTELLATION_HEALTH.LANGUAGE_PREFER_TO_RECEIVE_SERVICES', 'CONSTELLATION_HEALTH_LANGUAGE.ID')
             .leftJoin(`${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH_DEMOGRAPHICS`, 'CONSTELLATION_HEALTH.DEMOGRAPHICS_GROUPS', 'CONSTELLATION_HEALTH_DEMOGRAPHICS.ID')
             .select(`${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH.FIRST_NAME`,
@@ -536,7 +554,12 @@ constellationRouter.post("/export/", async (req: Request, res: Response) => {
                     `${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH.HEALTH_CARE_CARD`,
                     `${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH.YHCIP`,
                      `${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH.POSTAL_CODE`,
-                    db.raw('CASE WHEN COMMUNITY_LOCATIONS.DESCRIPTION IS NULL THEN CONSTELLATION_HEALTH.COMMUNITY_LOCATED ELSE COMMUNITY_LOCATIONS.DESCRIPTION END AS COMMUNITY_LOCATED'),
+                    db.raw(`
+                        COALESCE(
+                            COMMUNITY_LOCATIONS.DESCRIPTION, 
+                           CONSTELLATION_HEALTH.COMMUNITY_LOCATED
+                        ) AS COMMUNITY_LOCATED
+                    `),
                     `${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH.PREFER_TO_BE_CONTACTED`,
                     `${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH.PHONE_NUMBER`,
                     `${SCHEMA_CONSTELLATION}.CONSTELLATION_HEALTH.EMAIL_ADDRESS`,
@@ -583,7 +606,9 @@ constellationRouter.post("/export/", async (req: Request, res: Response) => {
             }else{
                 value.language_prefer_to_receive_services = value.language_preferred;
             }
-
+            if (value && 'rownum_' in value) {
+                delete value.rownum_;
+            }
             delete value.id;
         });
 
@@ -647,7 +672,9 @@ constellationRouter.post("/export/", async (req: Request, res: Response) => {
                 if(value.date_of_birth_family_member == 0) {
                     value.date_of_birth_family_member =  "N/A";
                 }
-
+                if (value && 'rownum_' in value) {
+                    delete value.rownum_;
+                }
             });
         }
 
@@ -792,10 +819,8 @@ constellationRouter.post("/duplicates", async (req: Request, res: Response) => {
             .orderBy("CONSTELLATION_HEALTH.CREATED_AT");
 
         let index = 0;
-
         constellationDuplicate.forEach(function (value: any) {
-            if(value.status !== 4 && constellationOriginal[value.original_id].status !== 4){
-
+            if(value.status !== 4 &&  constellationOriginal[value.original_id] && constellationOriginal[value.original_id].status !== 4){
                 let url = "constellationWarnings/details/"+value.id;
 
                 delete value.id;

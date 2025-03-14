@@ -269,8 +269,22 @@ midwiferyRouter.get("/show/:midwifery_id",[param("midwifery_id").isInt().notEmpt
         midwifery = await db(`${SCHEMA_MIDWIFERY}.MIDWIFERY_SERVICES`)
             .leftJoin(`${SCHEMA_MIDWIFERY}.MIDWIFERY_BIRTH_LOCATIONS`, 'MIDWIFERY_SERVICES.WHERE_TO_GIVE_BIRTH', 'MIDWIFERY_BIRTH_LOCATIONS.ID')
             .leftJoin(`${SCHEMA_MIDWIFERY}.MIDWIFERY_PREFERRED_CONTACT_TYPES`, 'MIDWIFERY_SERVICES.PREFER_TO_BE_CONTACTED', 'MIDWIFERY_PREFERRED_CONTACT_TYPES.ID')
-            .leftJoin(`${SCHEMA_MIDWIFERY}.MIDWIFERY_COMMUNITY_LOCATIONS`, 'MIDWIFERY_SERVICES.COMMUNITY_LOCATED', 'MIDWIFERY_COMMUNITY_LOCATIONS.ID')
-            .leftJoin(`${SCHEMA_MIDWIFERY}.MIDWIFERY_LANGUAGES`, 'MIDWIFERY_SERVICES.PREFERRED_LANGUAGE', 'MIDWIFERY_LANGUAGES.ID')
+            .joinRaw(`
+                LEFT JOIN ${SCHEMA_MIDWIFERY}.MIDWIFERY_COMMUNITY_LOCATIONS 
+                ON CASE 
+                    WHEN REGEXP_LIKE(MIDWIFERY_SERVICES.COMMUNITY_LOCATED, '^[0-9]+$') 
+                    THEN TO_NUMBER(MIDWIFERY_SERVICES.COMMUNITY_LOCATED) 
+                    ELSE NULL 
+                END = MIDWIFERY_COMMUNITY_LOCATIONS.ID
+            `)
+            .joinRaw(`
+                LEFT JOIN ${SCHEMA_MIDWIFERY}.MIDWIFERY_LANGUAGES 
+                ON CASE 
+                    WHEN REGEXP_LIKE(MIDWIFERY_SERVICES.PREFERRED_LANGUAGE, '^[0-9]+$') 
+                    THEN TO_NUMBER(MIDWIFERY_SERVICES.PREFERRED_LANGUAGE) 
+                    ELSE NULL 
+                END = MIDWIFERY_LANGUAGES.ID
+            `)
             .select('MIDWIFERY_SERVICES.ID',
                     'MIDWIFERY_SERVICES.CONFIRMATION_NUMBER',
                     'MIDWIFERY_SERVICES.STATUS',
@@ -279,8 +293,18 @@ midwiferyRouter.get("/show/:midwifery_id",[param("midwifery_id").isInt().notEmpt
                     'MIDWIFERY_SERVICES.PREFERRED_NAME',
                     'MIDWIFERY_SERVICES.PRONOUNS',
                     'MIDWIFERY_SERVICES.YUKON_HEALTH_INSURANCE',
-                    'MIDWIFERY_COMMUNITY_LOCATIONS.DESCRIPTION AS COMMUNITY_LOCATED',
-                    'MIDWIFERY_LANGUAGES.DESCRIPTION AS PREFERRED_LANGUAGE', 
+                    db.raw(`
+                    COALESCE(
+                        MIDWIFERY_COMMUNITY_LOCATIONS.DESCRIPTION, 
+                        MIDWIFERY_SERVICES.COMMUNITY_LOCATED
+                    ) AS COMMUNITY_LOCATED
+                    `),
+                    db.raw(`
+                        COALESCE(
+                            MIDWIFERY_LANGUAGES.DESCRIPTION, 
+                            MIDWIFERY_SERVICES.PREFERRED_LANGUAGE
+                        ) AS PREFERRED_LANGUAGE
+                    `),
                     'MIDWIFERY_SERVICES.NEED_INTERPRETATION',
                     'MIDWIFERY_SERVICES.PREFERRED_PHONE',
                     'MIDWIFERY_SERVICES.PREFERRED_EMAIL',
@@ -534,7 +558,6 @@ midwiferyRouter.post("/export", async (req: Request, res: Response) => {
         var dateFrom = req.body.params.dateFrom;
         var dateTo = req.body.params.dateTo;
         let status_request = req.body.params.status;
-
         var midwiferyOptions = Object();
         db = await helper.getOracleClient(db, DB_CONFIG_MIDWIFERY);
         let userId = req.user?.db_user.user.id || null;
@@ -546,8 +569,22 @@ midwiferyRouter.post("/export", async (req: Request, res: Response) => {
         .join(`${SCHEMA_MIDWIFERY}.MIDWIFERY_STATUS`, 'MIDWIFERY_SERVICES.STATUS', '=', 'MIDWIFERY_STATUS.ID')
         .leftJoin(`${SCHEMA_MIDWIFERY}.MIDWIFERY_BIRTH_LOCATIONS`, 'MIDWIFERY_SERVICES.WHERE_TO_GIVE_BIRTH', 'MIDWIFERY_BIRTH_LOCATIONS.ID')
         .leftJoin(`${SCHEMA_MIDWIFERY}.MIDWIFERY_PREFERRED_CONTACT_TYPES`, 'MIDWIFERY_SERVICES.PREFER_TO_BE_CONTACTED', 'MIDWIFERY_PREFERRED_CONTACT_TYPES.ID')
-        .leftJoin(`${SCHEMA_MIDWIFERY}.MIDWIFERY_COMMUNITY_LOCATIONS`, 'MIDWIFERY_SERVICES.COMMUNITY_LOCATED', 'MIDWIFERY_COMMUNITY_LOCATIONS.ID')
-        .leftJoin(`${SCHEMA_MIDWIFERY}.MIDWIFERY_LANGUAGES`, 'MIDWIFERY_SERVICES.PREFERRED_LANGUAGE', 'MIDWIFERY_LANGUAGES.ID')
+        .joinRaw(`
+            LEFT JOIN ${SCHEMA_MIDWIFERY}.MIDWIFERY_COMMUNITY_LOCATIONS 
+            ON CASE 
+                 WHEN REGEXP_LIKE(MIDWIFERY_SERVICES.COMMUNITY_LOCATED, '^[0-9]+$') 
+                 THEN TO_NUMBER(MIDWIFERY_SERVICES.COMMUNITY_LOCATED) 
+                 ELSE NULL 
+               END = MIDWIFERY_COMMUNITY_LOCATIONS.ID
+        `)
+        .joinRaw(`
+            LEFT JOIN ${SCHEMA_MIDWIFERY}.MIDWIFERY_LANGUAGES 
+            ON CASE 
+                 WHEN REGEXP_LIKE(MIDWIFERY_SERVICES.PREFERRED_LANGUAGE, '^[0-9]+$') 
+                 THEN TO_NUMBER(MIDWIFERY_SERVICES.PREFERRED_LANGUAGE) 
+                 ELSE NULL 
+               END = MIDWIFERY_LANGUAGES.ID
+        `)
         .select('MIDWIFERY_SERVICES.ID',
                 'MIDWIFERY_SERVICES.CONFIRMATION_NUMBER',
                 'MIDWIFERY_SERVICES.STATUS',
@@ -556,8 +593,6 @@ midwiferyRouter.post("/export", async (req: Request, res: Response) => {
                 'MIDWIFERY_SERVICES.PREFERRED_NAME',
                 'MIDWIFERY_SERVICES.PRONOUNS',
                 'MIDWIFERY_SERVICES.YUKON_HEALTH_INSURANCE',
-                'MIDWIFERY_COMMUNITY_LOCATIONS.DESCRIPTION AS COMMUNITY_LOCATED',
-                'MIDWIFERY_LANGUAGES.DESCRIPTION AS PREFERRED_LANGUAGE',
                 'MIDWIFERY_SERVICES.NEED_INTERPRETATION',
                 'MIDWIFERY_SERVICES.PREFERRED_PHONE',
                 'MIDWIFERY_SERVICES.PREFERRED_EMAIL',
@@ -588,7 +623,19 @@ midwiferyRouter.post("/export", async (req: Request, res: Response) => {
                 " CASE  WHEN WHEN_WAS_THE_FIRST_DAY_OF_YOUR_LAST_PERIOD_ IS NULL THEN ''  ELSE TO_CHAR(WHEN_WAS_THE_FIRST_DAY_OF_YOUR_LAST_PERIOD_, 'YYYY, FMMonth, FMDD')  || CASE  WHEN WHEN_WAS_THE_FIRST_DAY_OF_YOUR_LAST_PERIOD_ IS NULL THEN '' WHEN TO_CHAR(WHEN_WAS_THE_FIRST_DAY_OF_YOUR_LAST_PERIOD_, 'DD') IN ('01', '21', '31') THEN 'st' WHEN TO_CHAR(WHEN_WAS_THE_FIRST_DAY_OF_YOUR_LAST_PERIOD_, 'DD') IN ('02', '22') THEN 'nd' WHEN TO_CHAR(WHEN_WAS_THE_FIRST_DAY_OF_YOUR_LAST_PERIOD_, 'DD') IN ('03', '23') THEN 'rd'  ELSE 'th'  END  END AS WHEN_WAS_THE_FIRST_DAY_OF_YOUR_LAST_PERIOD_,"+
                 " CASE  WHEN DUE_DATE IS NULL THEN ''  ELSE TO_CHAR(DUE_DATE, 'YYYY, FMMonth, FMDD')  || CASE  WHEN DUE_DATE IS NULL THEN '' WHEN TO_CHAR(DUE_DATE, 'DD') IN ('01', '21', '31') THEN 'st' WHEN TO_CHAR(DUE_DATE, 'DD') IN ('02', '22') THEN 'nd' WHEN TO_CHAR(DUE_DATE, 'DD') IN ('03', '23') THEN 'rd'  ELSE 'th'  END  END AS DUE_DATE ,"+
                 "TO_CHAR(MIDWIFERY_SERVICES.CREATED_AT, 'YYYY-MM-DD HH24:MI:SS') AS CREATED_AT,"+
-                "TO_CHAR(MIDWIFERY_SERVICES.UPDATED_AT, 'YYYY-MM-DD HH24:MI:SS') AS UPDATED_AT")
+                "TO_CHAR(MIDWIFERY_SERVICES.UPDATED_AT, 'YYYY-MM-DD HH24:MI:SS') AS UPDATED_AT"),
+                db.raw(`
+                    COALESCE(
+                        MIDWIFERY_COMMUNITY_LOCATIONS.DESCRIPTION, 
+                        MIDWIFERY_SERVICES.COMMUNITY_LOCATED
+                    ) AS COMMUNITY_LOCATED
+                `),
+                db.raw(`
+                    COALESCE(
+                        MIDWIFERY_LANGUAGES.DESCRIPTION, 
+                        MIDWIFERY_SERVICES.PREFERRED_LANGUAGE
+                    ) AS PREFERRED_LANGUAGE
+                `)
             ).where('MIDWIFERY_SERVICES.STATUS', '<>', 4 );
 
         if(requests.length > 0 &&  query){
@@ -619,43 +666,9 @@ midwiferyRouter.post("/export", async (req: Request, res: Response) => {
             description: string;
         }
 
-        interface Community {
-            id: number;
-            description: string;
-        }
-
-        interface ContactType {
-            id: number;
-            description: string;
-        }
-
         midwiferyOptions = await db(`${SCHEMA_MIDWIFERY}.MIDWIFERY_OPTIONS`).select().then((rows: MidwiferyOption[]) => {
             let arrayResult = Object();
 
-            for (let row of rows) {
-                arrayResult[row['id']] = row['description'];
-            }
-
-            return arrayResult;
-        });
-
-        var communities = Object();
-        var contact = Object();
-        var communityLocations = Object();
-        var languages = Object();
-
-        communities = await db(`${SCHEMA_MIDWIFERY}.MIDWIFERY_GROUPS_COMMUNITIES`).select().then((rows: Community[]) => {
-            let arrayResult = Object();
-
-            for (let row of rows) {
-                arrayResult[row['id']] = row['description'];
-            }
-
-            return arrayResult;
-        });
-
-        contact =  await db(`${SCHEMA_MIDWIFERY}.MIDWIFERY_CLINIC_CONTACT_TYPES`).select().then((rows: ContactType[]) => {
-            let arrayResult = Object();
             for (let row of rows) {
                 arrayResult[row['id']] = row['description'];
             }
@@ -712,11 +725,11 @@ midwiferyRouter.post("/export", async (req: Request, res: Response) => {
             if(!_.isNull(value.major_medical_conditions)){
                 value.major_medical_conditions = midwiferyOptions[value.major_medical_conditions];
             }
-
+            if (value && 'rownum_' in value) {
+                delete value.rownum_;
+            }
             delete value.id;
             delete value.status;
-            delete value.community_located;
-            delete value.preferred_language;
             delete value.where_to_give_birth;
             delete value.prefer_to_be_contacted;
         });
@@ -959,8 +972,22 @@ midwiferyRouter.get("/duplicates/details/:duplicate_id",[param("duplicate_id").i
         midwiferyEntries = await db(`${SCHEMA_MIDWIFERY}.MIDWIFERY_SERVICES`)
         .leftJoin(`${SCHEMA_MIDWIFERY}.MIDWIFERY_BIRTH_LOCATIONS`, 'MIDWIFERY_SERVICES.WHERE_TO_GIVE_BIRTH', 'MIDWIFERY_BIRTH_LOCATIONS.ID')
         .leftJoin(`${SCHEMA_MIDWIFERY}.MIDWIFERY_PREFERRED_CONTACT_TYPES`, 'MIDWIFERY_SERVICES.PREFER_TO_BE_CONTACTED', 'MIDWIFERY_PREFERRED_CONTACT_TYPES.ID')
-        .leftJoin(`${SCHEMA_MIDWIFERY}.MIDWIFERY_COMMUNITY_LOCATIONS`, 'MIDWIFERY_SERVICES.COMMUNITY_LOCATED', 'MIDWIFERY_COMMUNITY_LOCATIONS.ID')
-        .leftJoin(`${SCHEMA_MIDWIFERY}.MIDWIFERY_LANGUAGES`, 'MIDWIFERY_SERVICES.PREFERRED_LANGUAGE', 'MIDWIFERY_LANGUAGES.ID')
+        .joinRaw(`
+            LEFT JOIN ${SCHEMA_MIDWIFERY}.MIDWIFERY_COMMUNITY_LOCATIONS 
+            ON CASE 
+                 WHEN REGEXP_LIKE(MIDWIFERY_SERVICES.COMMUNITY_LOCATED, '^[0-9]+$') 
+                 THEN TO_NUMBER(MIDWIFERY_SERVICES.COMMUNITY_LOCATED) 
+                 ELSE NULL 
+               END = MIDWIFERY_COMMUNITY_LOCATIONS.ID
+        `)
+        .joinRaw(`
+            LEFT JOIN ${SCHEMA_MIDWIFERY}.MIDWIFERY_LANGUAGES 
+            ON CASE 
+                 WHEN REGEXP_LIKE(MIDWIFERY_SERVICES.PREFERRED_LANGUAGE, '^[0-9]+$') 
+                 THEN TO_NUMBER(MIDWIFERY_SERVICES.PREFERRED_LANGUAGE) 
+                 ELSE NULL 
+               END = MIDWIFERY_LANGUAGES.ID
+        `)
         .select('MIDWIFERY_SERVICES.ID',
                 'MIDWIFERY_SERVICES.CONFIRMATION_NUMBER',
                 'MIDWIFERY_SERVICES.STATUS',
@@ -969,8 +996,12 @@ midwiferyRouter.get("/duplicates/details/:duplicate_id",[param("duplicate_id").i
                 'MIDWIFERY_SERVICES.PREFERRED_NAME',
                 'MIDWIFERY_SERVICES.PRONOUNS',
                 'MIDWIFERY_SERVICES.YUKON_HEALTH_INSURANCE',
-                'MIDWIFERY_COMMUNITY_LOCATIONS.DESCRIPTION AS COMMUNITY_LOCATED',
-                'MIDWIFERY_LANGUAGES.DESCRIPTION AS PREFERRED_LANGUAGE',
+                db.raw(`
+                    COALESCE(
+                      MIDWIFERY_COMMUNITY_LOCATIONS.DESCRIPTION, 
+                      MIDWIFERY_SERVICES.COMMUNITY_LOCATED
+                    ) AS COMMUNITY_LOCATED
+                `),
                 'MIDWIFERY_SERVICES.NEED_INTERPRETATION',
                 'MIDWIFERY_SERVICES.PREFERRED_PHONE',
                 'MIDWIFERY_SERVICES.PREFERRED_EMAIL',
@@ -997,6 +1028,12 @@ midwiferyRouter.get("/duplicates/details/:duplicate_id",[param("duplicate_id").i
                 `),
                 'MIDWIFERY_BIRTH_LOCATIONS.DESCRIPTION AS BIRTH_LOCATIONS',
                 'MIDWIFERY_PREFERRED_CONTACT_TYPES.DESCRIPTION AS PREFERRED_CONTACT',
+                db.raw(`
+                    COALESCE(
+                        MIDWIFERY_LANGUAGES.DESCRIPTION, 
+                        MIDWIFERY_SERVICES.PREFERRED_LANGUAGE
+                    ) AS PREFERRED_LANGUAGE
+                `),
                 db.raw("TO_CHAR(MIDWIFERY_SERVICES.DATE_OF_BIRTH, 'YYYY-MM-DD') AS DATE_OF_BIRTH, "+
                     " CASE  WHEN WHEN_WAS_THE_FIRST_DAY_OF_YOUR_LAST_PERIOD_ IS NULL THEN ''  ELSE TO_CHAR(WHEN_WAS_THE_FIRST_DAY_OF_YOUR_LAST_PERIOD_, 'YYYY, FMMonth, FMDD')  || CASE  WHEN WHEN_WAS_THE_FIRST_DAY_OF_YOUR_LAST_PERIOD_ IS NULL THEN '' WHEN TO_CHAR(WHEN_WAS_THE_FIRST_DAY_OF_YOUR_LAST_PERIOD_, 'DD') IN ('01', '21', '31') THEN 'st' WHEN TO_CHAR(WHEN_WAS_THE_FIRST_DAY_OF_YOUR_LAST_PERIOD_, 'DD') IN ('02', '22') THEN 'nd' WHEN TO_CHAR(WHEN_WAS_THE_FIRST_DAY_OF_YOUR_LAST_PERIOD_, 'DD') IN ('03', '23') THEN 'rd'  ELSE 'th'  END  END AS WHEN_WAS_THE_FIRST_DAY_OF_YOUR_LAST_PERIOD_,"+
                     " CASE  WHEN DUE_DATE IS NULL THEN ''  ELSE TO_CHAR(DUE_DATE, 'YYYY, FMMonth, FMDD')  || CASE  WHEN DUE_DATE IS NULL THEN '' WHEN TO_CHAR(DUE_DATE, 'DD') IN ('01', '21', '31') THEN 'st' WHEN TO_CHAR(DUE_DATE, 'DD') IN ('02', '22') THEN 'nd' WHEN TO_CHAR(DUE_DATE, 'DD') IN ('03', '23') THEN 'rd'  ELSE 'th'  END  END AS DUE_DATE ")

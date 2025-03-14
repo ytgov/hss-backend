@@ -60,14 +60,14 @@
 
                             <tr>
                                 <td>In which city or community is your home located?</td>
-                                <td>{{ midwifery.community }}</td>
-                                <td>{{ midwiferyDuplicated.community }}</td>
+                                <td>{{ midwifery.community_located }}</td>
+                                <td>{{ midwiferyDuplicated.community_located }}</td>
                             </tr>
 
                             <tr>
                                 <td>What is your preferred language?</td>
-                                <td>{{ midwifery.language }}</td>
-                                <td>{{ midwiferyDuplicated.language }}</td>
+                                <td>{{ midwifery.preferred_language }}</td>
+                                <td>{{ midwiferyDuplicated.preferred_language }}</td>
                             </tr>
 
                             <tr>
@@ -109,14 +109,14 @@
                                 <td>{{ options[midwifery.yukon_health_insurance] }}</td>
                             </tr>
 
-                            <tr v-if="midwifery.community">
+                            <tr v-if="midwifery.community_located">
                                 <td>In which city or community is your home located?</td>
-                                <td>{{ midwifery.community }}</td>
+                                <td>{{ midwifery.community_located }}</td>
                             </tr>
 
-                            <tr v-if="midwifery.language">
+                            <tr v-if="midwifery.preferred_language">
                                 <td>What is your preferred language?</td>
-                                <td>{{ midwifery.language }}</td>
+                                <td>{{ midwifery.preferred_language }}</td>
                             </tr>
 
                             <tr v-if="midwifery.need_interpretation">
